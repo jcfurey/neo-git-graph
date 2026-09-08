@@ -90,6 +90,9 @@ export function getWebviewLocalizedStrings() {
     dialogAddTagSubmit: vscode.l10n.t("Add Tag"),
     dialogCreateBranchTitle: vscode.l10n.t("Enter the name of the branch {0}"),
     dialogCreateBranchSubmit: vscode.l10n.t("Create Branch"),
+    dialogCheckoutRemoteTitle: vscode.l10n.t(
+      "Enter a local branch name for {0}. Existing branches will be fast-forwarded when possible:"
+    ),
     dialogCheckoutConfirm: vscode.l10n.t(
       "Are you sure you want to checkout commit {0}? This will result in a 'detached HEAD' state."
     ),

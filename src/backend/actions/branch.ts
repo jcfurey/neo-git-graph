@@ -29,7 +29,15 @@ export async function checkoutBranch(
 ): Promise<void> {
   if (input.remoteBranch === null) {
     await git.checkout(input.branchName);
-  } else {
-    await git.checkoutBranch(input.branchName, input.remoteBranch);
+    return;
   }
+
+  const branches = await git.branchLocal();
+  if (!branches.all.includes(input.branchName)) {
+    await git.checkoutBranch(input.branchName, input.remoteBranch);
+    return;
+  }
+
+  await git.checkout(input.branchName);
+  await git.merge(["--ff-only", input.remoteBranch]);
 }

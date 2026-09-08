@@ -103,5 +103,6 @@
   "{0} addition": "{0} 处添加",
   "{0} additions": "{0} 处添加",
   "{0} deletion": "{0} 处删除",
-  "{0} deletions": "{0} 处删除"
+  "{0} deletions": "{0} 处删除",
+  "Enter a local branch name for {0}. Existing branches will be fast-forwarded when possible:": "输入用于检出 {0} 的本地分支名称。已有分支将在可能时快进更新："
 }
