@@ -8,5 +8,5 @@ export async function findGitRepos(
   const results = await Promise.all(
     paths.map((p) => searchDirectoryForRepos(p, maxDepth, gitPath, []))
   );
-  return results.flat();
+  return [...new Set(results.flat())];
 }

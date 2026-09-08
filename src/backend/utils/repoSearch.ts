@@ -1,6 +1,6 @@
 import * as fs from "node:fs/promises";
 
-import { isGitRepository } from "@/backend/utils/git";
+import { getSubmodulePaths, isGitRepository } from "@/backend/utils/git";
 import { evalPromises } from "@/backend/utils/promise";
 
 async function isDirectory(path: string): Promise<boolean> {
@@ -22,7 +22,8 @@ export async function searchDirectoryForRepos(
 
   const isRepo = await isGitRepository(directory, gitPath);
   if (isRepo) {
-    return [directory];
+    const submodules = await getSubmodulePaths(directory, gitPath);
+    return [directory, ...submodules.filter((repo) => !knownRepoPaths.includes(repo))];
   }
 
   if (maxDepth <= 0) {
