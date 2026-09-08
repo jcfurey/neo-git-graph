@@ -4,6 +4,7 @@ import type { GitCommitNode, GitRef, GitResetMode } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
 import { openFormDialog, openRunningDialog, runAction } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
+import { openRemoteAction } from "@/webview/lib/remote-actions";
 import type { ContextMenuEntry } from "@/webview/types";
 import { format } from "@/webview/utils/format";
 
@@ -305,6 +306,17 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean): Array<ContextMe
   }
 
   entries.push({
+    title: `${window.l10n.pushBranch}…`,
+    onClick: () => openRemoteAction("push", gitRef.name)
+  });
+  if (isHeadBranch) {
+    entries.push({
+      title: `${window.l10n.pullBranch}…`,
+      onClick: () => openRemoteAction("pull", gitRef.name)
+    });
+  }
+
+  entries.push({
     title: `${window.l10n.renameBranch}…`,
     onClick: () =>
       openFormDialog({
@@ -368,6 +380,10 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean): Array<ContextMe
 
 function remoteBranchMenu(gitRef: GitRef): Array<ContextMenuEntry> {
   return [
+    {
+      title: `${window.l10n.fetch}…`,
+      onClick: () => openRemoteAction("fetch", "", gitRef.name)
+    },
     {
       title: `${window.l10n.checkoutBranch}…`,
       onClick: () => checkoutBranchAction(gitRef)

@@ -1,3 +1,4 @@
+import type { SimpleGit } from "simple-git";
 import * as vscode from "vscode";
 
 import { checkoutBranch, createBranch, deleteBranch, renameBranch } from "@/backend/actions/branch";
@@ -8,19 +9,21 @@ import {
   revertCommit
 } from "@/backend/actions/commit";
 import { mergeBranch, mergeCommit } from "@/backend/actions/merge";
+import { fetchRemote, pullBranch, pushBranch } from "@/backend/actions/remote";
 import { addTag, deleteTag, pushTag } from "@/backend/actions/tag";
-import type { GitClient } from "@/backend/gitClient";
+import { gitClientFactory, type GitClient } from "@/backend/gitClient";
 import { commitDetails } from "@/backend/queries/commitDetails";
 import { loadBranches } from "@/backend/queries/loadBranches";
 import { loadCommits } from "@/backend/queries/loadCommits";
-import type { GitFileChangeType } from "@/backend/types";
+import { loadRemotes } from "@/backend/queries/loadRemotes";
+import type { ActionRequest, GitFileChangeType, QueryResult } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
 import { selectWatchedRepo } from "@/extension/watchers/git-repo.watcher";
 import { AvatarManager } from "@/old-extension/avatarManager";
 import type { Config } from "@/old-extension/config";
 import { encodeDiffDocUri } from "@/old-extension/diffDocProvider";
 import { ExtensionState } from "@/old-extension/extensionState";
-import type { RequestMessage, ResponseMessage } from "@/types";
+import type { ResponseMessage } from "@/types";
 
 import type { RepoManager } from "./repoManager";
 import type { WebviewBridge } from "./webviewBridge";
@@ -81,38 +84,71 @@ export function registerMessageHandlers(
     selectWatchedRepo(repo);
   }
 
-  function registerAction<T extends RequestMessage["command"]>(
+  function registerAction<T extends ActionRequest["command"]>(
     command: T,
-    handler: (msg: Extract<RequestMessage, { command: T }>) => Promise<void>
+    handler: (git: SimpleGit, msg: Extract<ActionRequest, { command: T }>) => Promise<void>
   ) {
-    bridge.onMessage(command, async (msg) => {
+    bridge.onMessage(command, async (message) => {
+      const msg = message as Extract<ActionRequest, { command: T }>;
       let status: string | null = null;
       try {
-        await handler(msg);
+        await handler(gitClientFactory(msg.repo, config.gitPath()).getInstance(), msg);
       } catch (e: unknown) {
         status = e instanceof Error ? e.message : String(e);
       }
-      bridge.post({ command, status } as ResponseMessage);
+      bridge.post({
+        command,
+        status,
+        ...("requestId" in msg ? { requestId: msg.requestId, repo: msg.repo } : {})
+      } as ResponseMessage);
     });
   }
 
   // --- Action handlers ---
 
-  registerAction("addTag", (msg) => addTag(gitClient.getInstance(), msg));
-  registerAction("deleteTag", (msg) => deleteTag(gitClient.getInstance(), msg));
-  registerAction("pushTag", (msg) => pushTag(gitClient.getInstance(), msg));
-  registerAction("createBranch", (msg) => createBranch(gitClient.getInstance(), msg));
-  registerAction("deleteBranch", (msg) => deleteBranch(gitClient.getInstance(), msg));
-  registerAction("renameBranch", (msg) => renameBranch(gitClient.getInstance(), msg));
-  registerAction("checkoutBranch", (msg) => checkoutBranch(gitClient.getInstance(), msg));
-  registerAction("checkoutCommit", (msg) => checkoutCommit(gitClient.getInstance(), msg));
-  registerAction("cherrypickCommit", (msg) => cherrypickCommit(gitClient.getInstance(), msg));
-  registerAction("revertCommit", (msg) => revertCommit(gitClient.getInstance(), msg));
-  registerAction("resetToCommit", (msg) => resetToCommit(gitClient.getInstance(), msg));
-  registerAction("mergeBranch", (msg) => mergeBranch(gitClient.getInstance(), msg));
-  registerAction("mergeCommit", (msg) => mergeCommit(gitClient.getInstance(), msg));
+  registerAction("addTag", (git, msg) => addTag(git, msg));
+  registerAction("deleteTag", (git, msg) => deleteTag(git, msg));
+  registerAction("pushTag", (git, msg) => pushTag(git, msg));
+  registerAction("createBranch", (git, msg) => createBranch(git, msg));
+  registerAction("deleteBranch", (git, msg) => deleteBranch(git, msg));
+  registerAction("renameBranch", (git, msg) => renameBranch(git, msg));
+  registerAction("checkoutBranch", (git, msg) => checkoutBranch(git, msg));
+  registerAction("checkoutCommit", (git, msg) => checkoutCommit(git, msg));
+  registerAction("cherrypickCommit", (git, msg) => cherrypickCommit(git, msg));
+  registerAction("revertCommit", (git, msg) => revertCommit(git, msg));
+  registerAction("resetToCommit", (git, msg) => resetToCommit(git, msg));
+  registerAction("mergeBranch", (git, msg) => mergeBranch(git, msg));
+  registerAction("mergeCommit", (git, msg) => mergeCommit(git, msg));
+
+  registerAction("pushBranch", (git, msg) => pushBranch(git, msg));
+  registerAction("pullBranch", (git, msg) => pullBranch(git, msg));
+  registerAction("fetchRemote", (git, msg) => fetchRemote(git, msg));
 
   // --- Query handlers ---
+
+  bridge.onMessage("loadRemotes", async (msg) => {
+    let settings: Pick<QueryResult<"loadRemotes">, "remotes" | "upstream" | "pushRemote"> = {
+      remotes: [],
+      upstream: null,
+      pushRemote: null
+    };
+    let status: string | null = null;
+    try {
+      settings = await loadRemotes(
+        gitClientFactory(msg.repo, config.gitPath()).getInstance(),
+        msg.branchName
+      );
+    } catch (error: unknown) {
+      status = error instanceof Error ? error.message : String(error);
+    }
+    bridge.post({
+      command: "loadRemotes",
+      repo: msg.repo,
+      requestId: msg.requestId,
+      ...settings,
+      status
+    });
+  });
 
   bridge.onMessage("loadCommits", async (msg) => {
     setCurrentRepo(msg.repo);
