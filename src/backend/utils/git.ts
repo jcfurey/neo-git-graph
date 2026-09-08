@@ -1,5 +1,7 @@
 import { simpleGit } from "simple-git";
 
+import { normalizeRepoPath } from "@/backend/utils/repoPath";
+
 export async function getGitVersion(gitPath: string): Promise<string | null> {
   try {
     const result = await simpleGit({ binary: gitPath }).version();
@@ -27,7 +29,10 @@ export async function getSubmodulePaths(repoPath: string, gitPath: string): Prom
       // Git visits initialized submodules only. NUL separators preserve spaces and newlines.
       'printf "%s\\0" "$toplevel/$sm_path"'
     ]);
-    return output.split("\0").filter((submodule) => submodule.length > 0);
+    return output
+      .split("\0")
+      .filter((submodule) => submodule.length > 0)
+      .map(normalizeRepoPath);
   } catch {
     return [];
   }
