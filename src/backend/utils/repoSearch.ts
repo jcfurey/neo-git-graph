@@ -19,7 +19,9 @@ export async function searchDirectoryForRepos(
 ): Promise<string[]> {
   const repoPath = normalizeRepoPath(directory);
   const knownRepos = knownRepoPaths.map(normalizeRepoPath);
-  if (knownRepos.some((r) => repoPath === r || repoPath.startsWith(r + "/"))) {
+  if (
+    knownRepos.some((r) => repoPath === r || repoPath.startsWith(r.endsWith("/") ? r : r + "/"))
+  ) {
     return [];
   }
 

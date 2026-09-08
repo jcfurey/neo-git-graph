@@ -48,4 +48,45 @@ describe("repository path normalization", () => {
       vi.doUnmock("@/backend/utils/git");
     }
   });
+
+  it.each([
+    ["posix", "/", "/workspace"],
+    ["win32", "C:\\", "C:\\workspace"],
+    ["win32", "\\\\server\\share\\", "\\\\server\\share\\workspace"],
+    ["posix", "/workspace/", "/workspace/child"],
+    ["win32", "C:\\workspace\\", "C:\\workspace\\child"]
+  ] as const)("skips children of the %s known repo %s", async (platform, known, child) => {
+    await usePlatform(platform);
+    const isGitRepository = vi.fn(async () => true);
+    vi.doMock("@/backend/utils/git", () => ({
+      isGitRepository,
+      getSubmodulePaths: async () => []
+    }));
+    try {
+      const { searchDirectoryForRepos } = await import("@/backend/utils/repoSearch");
+      expect(await searchDirectoryForRepos(child, 0, "git", [known])).toEqual([]);
+      expect(isGitRepository).not.toHaveBeenCalled();
+    } finally {
+      vi.doUnmock("@/backend/utils/git");
+    }
+  });
+
+  it.each([
+    ["posix", "/workspace", "/workspace-other"],
+    ["win32", "C:\\", "D:\\workspace"]
+  ] as const)("still scans unrelated %s paths", async (platform, known, other) => {
+    const { normalizeRepoPath } = await usePlatform(platform);
+    vi.doMock("@/backend/utils/git", () => ({
+      isGitRepository: async () => true,
+      getSubmodulePaths: async () => []
+    }));
+    try {
+      const { searchDirectoryForRepos } = await import("@/backend/utils/repoSearch");
+      expect(await searchDirectoryForRepos(other, 0, "git", [known])).toEqual([
+        normalizeRepoPath(other)
+      ]);
+    } finally {
+      vi.doUnmock("@/backend/utils/git");
+    }
+  });
 });
