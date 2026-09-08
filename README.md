@@ -41,6 +41,7 @@ This fork:
 
 ## Features
 
+- **Remote actions**: Push local branches to a chosen remote, set upstream tracking, pull the current branch with fast-forward only, and fetch updates with optional pruning
 - **Remote branch checkout**: Reuse and fast-forward an existing local branch, or create a new tracking branch
 - **Graph view**: See branches, tags, and uncommitted changes in one graph
 - **Commit details**: Click a commit to see message, files, and diffs

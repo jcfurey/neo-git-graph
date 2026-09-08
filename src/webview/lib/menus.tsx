@@ -8,6 +8,7 @@ import {
   openRunningDialog,
   runAction
 } from "@/webview/lib/actions";
+import { openRemoteAction } from "@/webview/lib/remote-actions";
 import type { ContextMenuEntry } from "@/webview/types";
 import { format } from "@/webview/utils/format";
 
@@ -309,6 +310,17 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean): Array<ContextMe
   }
 
   entries.push({
+    title: `${window.l10n.pushBranch}…`,
+    onClick: () => openRemoteAction("push", gitRef.name)
+  });
+  if (isHeadBranch) {
+    entries.push({
+      title: `${window.l10n.pullBranch}…`,
+      onClick: () => openRemoteAction("pull", gitRef.name)
+    });
+  }
+
+  entries.push({
     title: `${window.l10n.renameBranch}…`,
     onClick: () =>
       openFormDialog({
@@ -372,6 +384,10 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean): Array<ContextMe
 
 function remoteBranchMenu(gitRef: GitRef): Array<ContextMenuEntry> {
   return [
+    {
+      title: `${window.l10n.fetch}…`,
+      onClick: () => openRemoteAction("fetch", "", gitRef.name)
+    },
     {
       title: `${window.l10n.checkoutBranch}…`,
       onClick: () => checkoutBranchAction(gitRef)

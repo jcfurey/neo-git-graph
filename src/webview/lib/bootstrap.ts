@@ -8,6 +8,7 @@ import { handleLoadCommits } from "./handler/load-commits";
 import { handleLoadRepos } from "./handler/load-repo";
 import { handleRefresh } from "./handler/refresh";
 import { handleViewDiff } from "./handler/view-diff";
+import { handleLoadRemotes } from "./remote-actions";
 import { startSync } from "./sync";
 import { vscode } from "./vscode";
 
@@ -28,6 +29,10 @@ const handlers: Handlers = {
   mergeBranch: handleActionResult,
   mergeCommit: handleActionResult,
   pushTag: handleActionResult,
+  pushBranch: handleActionResult,
+  pullBranch: handleActionResult,
+  fetchRemote: handleActionResult,
+  loadRemotes: handleLoadRemotes,
   renameBranch: handleActionResult,
   resetToCommit: handleActionResult,
   revertCommit: handleActionResult,

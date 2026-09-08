@@ -13,6 +13,15 @@ type ActionPayloads = {
   mergeBranch: { branchName: string; createNewCommit: boolean };
   mergeCommit: { commitHash: string; createNewCommit: boolean };
   pushTag: { tagName: string };
+  pushBranch: {
+    requestId: string;
+    branchName: string;
+    remote: string;
+    remoteBranch: string;
+    setUpstream: boolean;
+  };
+  pullBranch: { requestId: string; branchName: string; remote: string; remoteBranch: string };
+  fetchRemote: { requestId: string; remote: string | null; prune: boolean };
   renameBranch: { oldName: string; newName: string };
   resetToCommit: { commitHash: string; resetMode: GitResetMode };
   revertCommit: { commitHash: string; parentIndex: number };
@@ -23,7 +32,12 @@ export type ActionRequest = {
 }[keyof ActionPayloads];
 
 export type ActionResponse = {
-  [K in keyof ActionPayloads]: { command: K; status: GitCommandStatus };
+  [K in keyof ActionPayloads]: {
+    command: K;
+    status: GitCommandStatus;
+    repo?: string;
+    requestId?: string;
+  };
 }[keyof ActionPayloads];
 
 export type ActionPayload<T extends keyof ActionPayloads> = ActionPayloads[T];
