@@ -17,6 +17,22 @@ export async function isGitRepository(repoPath: string, gitPath: string): Promis
   }
 }
 
+export async function getSubmodulePaths(repoPath: string, gitPath: string): Promise<string[]> {
+  try {
+    const output = await simpleGit({ baseDir: repoPath, binary: gitPath }).raw([
+      "submodule",
+      "foreach",
+      "--quiet",
+      "--recursive",
+      // Git visits initialized submodules only. NUL separators preserve spaces and newlines.
+      'printf "%s\\0" "$toplevel/$sm_path"'
+    ]);
+    return output.split("\0").filter((submodule) => submodule.length > 0);
+  } catch {
+    return [];
+  }
+}
+
 export async function getRemoteUrl(repoPath: string, gitPath: string): Promise<string | null> {
   try {
     const url = await simpleGit({ baseDir: repoPath, binary: gitPath }).raw([
