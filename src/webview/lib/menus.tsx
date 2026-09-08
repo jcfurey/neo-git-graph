@@ -234,7 +234,7 @@ export function commitMenu(
 
 /**
  * Check out a branch. A local branch is checked out as it is. A remote branch
- * needs a name for the local branch that tracks it.
+ * uses a new or existing local branch, fast-forwarding an existing branch when possible.
  */
 export function checkoutBranchAction(gitRef: GitRef) {
   if (gitRef.type === "head") {
@@ -247,8 +247,8 @@ export function checkoutBranchAction(gitRef: GitRef) {
   }
 
   openFormDialog({
-    message: format(window.l10n.dialogCreateBranchTitle, <Name>{gitRef.name}</Name>),
-    inputs: [{ kind: "ref", value: gitRef.name.split("/").findLast(Boolean) ?? gitRef.name }],
+    message: format(window.l10n.dialogCheckoutRemoteTitle, <Name>{gitRef.name}</Name>),
+    inputs: [{ kind: "ref", value: gitRef.name.slice(gitRef.name.indexOf("/") + 1) }],
     action: window.l10n.checkoutBranch,
     source: refMenuSource(gitRef),
     onSubmit: ([branchName]) =>

@@ -7,6 +7,7 @@ import type { LocalizedStrings } from "@/extension/l10n/webviewL10n";
 import type { GitGraphViewState } from "@/types";
 
 let commitMenu: typeof import("@/webview/lib/menus").commitMenu;
+let checkoutBranchAction: typeof import("@/webview/lib/menus").checkoutBranchAction;
 let stores: typeof import("@/webview/lib/stores");
 
 const commit: GitCommitNode = {
@@ -39,7 +40,7 @@ beforeAll(async () => {
     configurable: true
   });
 
-  ({ commitMenu } = await import("@/webview/lib/menus"));
+  ({ commitMenu, checkoutBranchAction } = await import("@/webview/lib/menus"));
   stores = await import("@/webview/lib/stores");
 });
 
@@ -102,6 +103,27 @@ describe.each(["cherrypickCommit", "revertCommit"] as const)("%s menu", (command
       repo: "repo",
       commitHash: "commit",
       parentIndex: 2
+    });
+  });
+});
+
+describe("remote branch checkout", () => {
+  it.each([
+    ["origin/main", "main"],
+    ["origin/feature/navigation", "feature/navigation"]
+  ])("suggests the full local branch name for %s", (remoteBranch, branchName) => {
+    checkoutBranchAction({ type: "remote", name: remoteBranch, hash: "commit" });
+    const form = stores.dialog.value;
+    if (form?.kind !== "form") {
+      throw new Error("Expected a checkout dialog");
+    }
+    expect(form.inputs).toEqual([{ kind: "ref", value: branchName }]);
+    form.onSubmit([branchName]);
+    expect(stores.actionRequest.value?.action).toEqual({
+      command: "checkoutBranch",
+      repo: "repo",
+      branchName,
+      remoteBranch
     });
   });
 });

@@ -41,6 +41,7 @@ This fork:
 
 ## Features
 
+- **Remote branch checkout**: Reuse and fast-forward an existing local branch, or create a new tracking branch
 - **Graph view**: See branches, tags, and uncommitted changes in one graph
 - **Commit details**: Click a commit to see message, files, and diffs
 - **Branch actions**: Create, checkout, rename, delete, and merge

@@ -69,6 +69,7 @@
   "Lightweight": "Lightweight",
   "Optional": "Optional",
   "Enter the name of the branch {0}": "Enter the name of the branch {0}",
+  "Enter a local branch name for {0}. Existing branches will be fast-forwarded when possible:": "Enter a local branch name for {0}. Existing branches will be fast-forwarded when possible:",
   "Are you sure you want to checkout commit {0}? This will result in a 'detached HEAD' state.": "Are you sure you want to checkout commit {0}? This will result in a 'detached HEAD' state.",
   "Are you sure you want to cherry pick commit {0}?": "Are you sure you want to cherry pick commit {0}?",
   "Are you sure you want to revert commit {0}?": "Are you sure you want to revert commit {0}?",

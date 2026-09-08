@@ -101,5 +101,6 @@
   "{0} addition": "{0} 處新增",
   "{0} additions": "{0} 處新增",
   "{0} deletion": "{0} 處刪除",
-  "{0} deletions": "{0} 處刪除"
+  "{0} deletions": "{0} 處刪除",
+  "Enter a local branch name for {0}. Existing branches will be fast-forwarded when possible:": "輸入用於檢出 {0} 的本地分支名稱。現有分支將在可能時快進更新："
 }
