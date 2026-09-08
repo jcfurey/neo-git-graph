@@ -32,6 +32,7 @@ export type RpcMethodMap = {
 export type RpcMethod = keyof RpcMethodMap;
 
 export type RpcNotificationMap = {
+  "repo.select": GitRepo;
   "repo.changed": RepoChange;
   "repo.rescan": null;
   "repo.updated": RepoUpdate;

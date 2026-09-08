@@ -48,6 +48,7 @@ This fork:
 - **Commit actions**: Checkout, cherry-pick, revert, and reset
 - **Avatar support (deprecated in v0.6.0)**: Optional avatars from GitHub, GitLab, or Gravatar
 - **Multi-repo**: Work with multiple repositories in one workspace, including initialized submodules and their nested submodules
+- **Repository selection**: Click a repository's Git Graph button in Source Control to open its graph or switch the existing graph to that repository
 - **Devcontainer support**: Works in remote and container environments
 
 ## Installation

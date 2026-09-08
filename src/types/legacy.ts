@@ -66,6 +66,7 @@ export type ResponseRefresh = {
 };
 
 export type RequestMessage =
+  | { command: "viewReady" }
   | ActionRequest
   | QueryRequest
   | RequestFetchAvatar
