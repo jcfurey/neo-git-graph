@@ -4,6 +4,7 @@ import path from "node:path";
 import { simpleGit } from "simple-git";
 import * as vscode from "vscode";
 
+import { getSubmodulePaths } from "@/backend/utils/git";
 import { extConfig } from "@/extension/config";
 import { logger } from "@/extension/util/logger";
 import type { GitRepo, ScanRepoResult } from "@/types";
@@ -23,7 +24,8 @@ async function startScan(gitBinary: string, paths: string[], maxDepth: number): 
   const repos = await Promise.all(
     paths.map((directory) => scanDirectory(gitBinary, directory, maxDepth))
   );
-  return repos.flat().toSorted((a, b) => a.path.localeCompare(b.path));
+  const uniqueRepos = new Map(repos.flat().map((repo) => [repo.path, repo]));
+  return [...uniqueRepos.values()].toSorted((a, b) => a.path.localeCompare(b.path));
 }
 
 async function scanDirectory(
@@ -39,7 +41,11 @@ async function scanDirectory(
     });
 
   if (isRepo) {
-    return [{ name: path.basename(directory), path: directory }];
+    const submodules = await getSubmodulePaths(directory, gitBinary);
+    return [directory, ...submodules].map((repoPath) => ({
+      name: path.basename(repoPath),
+      path: repoPath
+    }));
   }
 
   if (depth <= 0) {

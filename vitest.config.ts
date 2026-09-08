@@ -29,7 +29,7 @@ export default defineConfig({
         },
         test: {
           name: "extension",
-          include: ["tests/old-extension/**/*.test.ts"]
+          include: ["tests/old-extension/**/*.test.ts", "tests/extension/**/*.test.ts"]
         }
       },
       {

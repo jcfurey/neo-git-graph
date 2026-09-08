@@ -47,7 +47,7 @@ This fork:
 - **Tag actions**: Create, delete, and push tags
 - **Commit actions**: Checkout, cherry-pick, revert, and reset
 - **Avatar support (deprecated in v0.6.0)**: Optional avatars from GitHub, GitLab, or Gravatar
-- **Multi-repo**: Work with multiple repositories in one workspace
+- **Multi-repo**: Work with multiple repositories in one workspace, including initialized submodules and their nested submodules
 - **Devcontainer support**: Works in remote and container environments
 
 ## Installation
