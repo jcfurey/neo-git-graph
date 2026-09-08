@@ -18,8 +18,15 @@ describe("createWebviewPanel", () => {
 
   it("keeps the webview document and refreshes data after a hide-and-show cycle", () => {
     let viewStateHandler: (() => void) | undefined;
+    let receive: ((message: unknown) => void) | undefined;
     let repoHandler: ((repos: import("@/types").GitRepoSet, count: number) => void) | undefined;
-    const webview = { html: "" };
+    const webview = {
+      html: "",
+      onDidReceiveMessage: vi.fn((handler: (message: unknown) => void) => {
+        receive = handler;
+        return { dispose: vi.fn() };
+      })
+    };
     const panel = {
       visible: true,
       webview,
@@ -34,8 +41,10 @@ describe("createWebviewPanel", () => {
     };
     const bridge = { post: vi.fn() };
     const repoFileWatcher = { stop: vi.fn() };
-    const repos = { "/repo": { columnWidths: null } };
+    const repos = { "/repo": { columnWidths: null }, "/repo/child": { columnWidths: null } };
     const repoManager = {
+      addRepo: vi.fn(() => false),
+      sendRepos: vi.fn(),
       getRepos: vi.fn(() => repos),
       registerViewCallback: vi.fn(
         (handler: (nextRepos: import("@/types").GitRepoSet, count: number) => void) => {
@@ -46,7 +55,7 @@ describe("createWebviewPanel", () => {
     };
     const onPanelShown = vi.fn();
 
-    createWebviewPanel({
+    const graph = createWebviewPanel({
       panel: panel as unknown as import("vscode").WebviewPanel,
       bridge: bridge as unknown as import("@/extension/webviewBridge").WebviewBridge,
       config: {
@@ -92,5 +101,22 @@ describe("createWebviewPanel", () => {
       lastActiveRepo: "/repo"
     });
     expect(mocks.buildWebviewHtml).toHaveBeenCalledTimes(1);
+
+    graph.selectRepo("/repo/child");
+    expect(bridge.post).toHaveBeenCalledTimes(3);
+    receive?.({ command: "viewReady" });
+    expect(bridge.post).toHaveBeenLastCalledWith({
+      command: "loadRepos",
+      repos,
+      lastActiveRepo: "/repo",
+      selectedRepo: "/repo/child"
+    });
+    graph.selectRepo("/repo");
+    expect(bridge.post).toHaveBeenLastCalledWith({
+      command: "loadRepos",
+      repos,
+      lastActiveRepo: "/repo",
+      selectedRepo: "/repo"
+    });
   });
 });

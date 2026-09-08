@@ -10,6 +10,7 @@ export function handleLoadRepos(msg: LoadRepoMessage) {
   const repos = Object.keys(msg.repos);
 
   const next =
+    repos.find((repo) => repo === msg.selectedRepo) ??
     repos.find((repo) => repo === selectedRepo.value) ??
     repos.find((repo) => repo === msg.lastActiveRepo) ??
     repos.at(0);

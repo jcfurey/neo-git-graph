@@ -60,4 +60,5 @@ export function initWebview() {
   startSync();
 
   vscode.postMessage({ command: "loadRepos", check: false });
+  vscode.postMessage({ command: "viewReady" });
 }

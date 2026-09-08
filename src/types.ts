@@ -68,6 +68,7 @@ export type ResponseLoadRepos = {
   command: "loadRepos";
   repos: GitRepoSet;
   lastActiveRepo: string | null;
+  selectedRepo?: string;
 };
 
 export type RequestSaveRepoState = {
@@ -105,6 +106,7 @@ export type ResponseRefresh = {
 };
 
 export type RequestMessage =
+  | { command: "viewReady" }
   | ActionRequest
   | QueryRequest
   | RequestFetchAvatar

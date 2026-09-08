@@ -6,12 +6,14 @@ import { AvatarManager } from "@/avatarManager";
 import { GitClient, gitClientFactory } from "@/backend/gitClient";
 import { findGitRepos } from "@/backend/queries/repoSearch";
 import { buildExtensionUri } from "@/backend/utils/path";
+import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { config } from "@/config";
 import { DiffDocProvider } from "@/diffDocProvider";
 import { EXTENSION_NAME } from "@/extension/constant/const";
 import { createMaxDepthTracker } from "@/extension/maxDepthTracker";
 import { registerMessageHandlers } from "@/extension/messageHandler";
 import { createRepoManager, RepoManager } from "@/extension/repoManager";
+import { getSourceControlRepo } from "@/extension/repoSelection";
 import { logger } from "@/extension/utils/logger";
 import { WebviewBridge, webviewBridgeFactory } from "@/extension/webviewBridge";
 import { createWebviewPanel, WebviewPanel } from "@/extension/webviewPanel";
@@ -30,59 +32,69 @@ function registerViewCommand(
 ) {
   let currentPanel: WebviewPanel | undefined;
   ctx.subscriptions.push(
-    vscode.commands.registerCommand("neo-git-graph.view", () => {
-      if (currentPanel) {
-        currentPanel.reveal(vscode.window.activeTextEditor?.viewColumn);
-        return;
+    vscode.commands.registerCommand(
+      "neo-git-graph.view",
+      (sourceControl?: vscode.SourceControl) => {
+        const repo = getSourceControlRepo(sourceControl);
+        if (currentPanel) {
+          currentPanel.reveal(vscode.window.activeTextEditor?.viewColumn);
+          if (repo !== undefined) {
+            currentPanel.selectRepo(repo);
+          }
+          return;
+        }
+
+        const vsPanel = vscode.window.createWebviewPanel(
+          "neo-git-graph",
+          EXTENSION_NAME,
+          vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One,
+          {
+            enableScripts: true,
+            retainContextWhenHidden: true,
+            localResourceRoots: [
+              buildExtensionUri(ctx.extensionPath, "media"),
+              buildExtensionUri(ctx.extensionPath, "out")
+            ]
+          }
+        );
+
+        let bridge!: WebviewBridge;
+        const repoFileWatcher = new RepoFileWatcher(() => {
+          if (vsPanel.visible) {
+            bridge.post({ command: "refresh" });
+          }
+        });
+        bridge = webviewBridgeFactory(vsPanel.webview, repoFileWatcher);
+        avatarManager.registerBridge(bridge.post.bind(bridge));
+
+        const { onPanelShown } = registerMessageHandlers(bridge, {
+          config,
+          gitClient,
+          repoManager,
+          extensionState,
+          avatarManager,
+          repoFileWatcher
+        });
+
+        currentPanel = createWebviewPanel({
+          panel: vsPanel,
+          bridge,
+          config,
+          repoFileWatcher,
+          extensionPath: ctx.extensionPath,
+          extensionState,
+          avatarManager,
+          repoManager,
+          onDispose: () => {
+            currentPanel = undefined;
+          },
+          onPanelShown
+        });
+        if (repo !== undefined) {
+          currentPanel.selectRepo(repo);
+        }
       }
-
-      const vsPanel = vscode.window.createWebviewPanel(
-        "neo-git-graph",
-        EXTENSION_NAME,
-        vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One,
-        {
-          enableScripts: true,
-          retainContextWhenHidden: true,
-          localResourceRoots: [
-            buildExtensionUri(ctx.extensionPath, "media"),
-            buildExtensionUri(ctx.extensionPath, "out")
-          ]
-        }
-      );
-
-      let bridge!: WebviewBridge;
-      const repoFileWatcher = new RepoFileWatcher(() => {
-        if (vsPanel.visible) {
-          bridge.post({ command: "refresh" });
-        }
-      });
-      bridge = webviewBridgeFactory(vsPanel.webview, repoFileWatcher);
-      avatarManager.registerBridge(bridge.post.bind(bridge));
-
-      const { onPanelShown } = registerMessageHandlers(bridge, {
-        config,
-        gitClient,
-        repoManager,
-        extensionState,
-        avatarManager,
-        repoFileWatcher
-      });
-
-      currentPanel = createWebviewPanel({
-        panel: vsPanel,
-        bridge,
-        config,
-        repoFileWatcher,
-        extensionPath: ctx.extensionPath,
-        extensionState,
-        avatarManager,
-        repoManager,
-        onDispose: () => {
-          currentPanel = undefined;
-        },
-        onPanelShown
-      });
-    })
+    )
   );
 }
 
@@ -121,13 +133,13 @@ export function initExtension(
     ctx.subscriptions.push(
       gitWatcher,
       gitWatcher.onDidCreate((uri) => {
-        const repoPath = path.dirname(uri.fsPath);
+        const repoPath = normalizeRepoPath(path.dirname(uri.fsPath));
         if (repoManager.addRepo(repoPath)) {
           repoManager.sendRepos();
         }
       }),
       gitWatcher.onDidDelete((uri) => {
-        const repoPath = path.dirname(uri.fsPath);
+        const repoPath = normalizeRepoPath(path.dirname(uri.fsPath));
         if (repoManager.removeReposWithinFolder(repoPath)) {
           repoManager.sendRepos();
         }
@@ -150,7 +162,7 @@ export function initExtension(
         if (e.removed.length > 0) {
           let changes = false;
           for (const folder of e.removed) {
-            if (repoManager.removeReposWithinFolder(folder.uri.fsPath)) {
+            if (repoManager.removeReposWithinFolder(normalizeRepoPath(folder.uri.fsPath))) {
               changes = true;
             }
           }

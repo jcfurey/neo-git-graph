@@ -8,6 +8,7 @@ import { RepoFileWatcher } from "@/repoFileWatcher";
 import { GitRepoSet } from "@/types";
 
 import { RepoManager } from "./repoManager";
+import { createRepoSelection } from "./repoSelection";
 import { WebviewBridge } from "./webviewBridge";
 import { buildWebviewHtml } from "./webviewHtml";
 
@@ -38,6 +39,18 @@ export function createWebviewPanel(opts: {
 
   const disposables: vscode.Disposable[] = [];
   let isPanelVisible = true;
+  const repoSelection = createRepoSelection(panel.webview, (repo) => {
+    if (repoManager.addRepo(repo)) {
+      repoManager.sendRepos();
+    }
+    bridge.post({
+      command: "loadRepos",
+      repos: repoManager.getRepos(),
+      lastActiveRepo: extensionState.getLastActiveRepo(),
+      selectedRepo: repo
+    });
+  });
+  disposables.push(repoSelection);
 
   panel.iconPath =
     config.tabIconColourTheme() === "colour"
@@ -102,6 +115,7 @@ export function createWebviewPanel(opts: {
   });
 
   return {
+    selectRepo: repoSelection.select,
     reveal(column?: vscode.ViewColumn) {
       panel.reveal(column);
     },
