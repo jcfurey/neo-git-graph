@@ -55,7 +55,13 @@ const titles: Record<string, keyof LocalizedStrings> = {
   recoverBranch: "recoverBranch",
   viewRangeFile: "compareRevisions",
   viewHistoricalFile: "openHistoricalFile",
-  previewFileRestore: "restorePreview"
+  previewFileRestore: "restorePreview",
+  submodulePointer: "stagePointer",
+  fetch: "fetch",
+  sync: "syncPreview",
+  cleanup: "cleanupBranches",
+  bisectStart: "bisectStart",
+  bisectMark: "bisectTitle"
 };
 
 export function beginActivity(

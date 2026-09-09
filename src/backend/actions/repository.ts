@@ -10,6 +10,7 @@ import {
   withRecoveryEditor
 } from "@/backend/actions/rebase";
 import { manageRemote } from "@/backend/actions/remotes";
+import { runWorkflowAction } from "@/backend/actions/workflows";
 import { loadOperation, loadStashes, loadWorktrees } from "@/backend/queries/repository";
 import type { RepositoryAction, StashDetails } from "@/backend/types";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
@@ -43,6 +44,13 @@ export async function runRepositoryAction(
   binary = "git"
 ): Promise<RepositoryEffect> {
   switch (action.kind) {
+    case "submodulePointer":
+    case "fetch":
+    case "sync":
+    case "cleanup":
+    case "bisectStart":
+    case "bisectMark":
+      return runWorkflowAction(git, action, binary);
     case "submodule":
     case "restoreFile":
     case "previewFileRestore":

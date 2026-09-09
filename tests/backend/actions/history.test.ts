@@ -50,7 +50,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
   for (const dir of dirs) {
-    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });
 
@@ -87,7 +87,7 @@ describe("history inspection", () => {
   });
 
   it("follows renames and preserves unusual file names", async () => {
-    const before = "old\tname\nfile.txt";
+    const before = process.platform === "win32" ? "old [name] file.txt" : "old\tname\nfile.txt";
     const after = "new [name].txt";
     const first = commit(before, "old", "old name");
     read(["mv", "--", before, after]);
@@ -156,7 +156,11 @@ describe("file restoration", () => {
     await expect(run({ kind: "restoreFile", plan })).rejects.toThrow("changed");
     await expect(loadRestorePlan(git(), "HEAD", "f", "../outside")).rejects.toThrow("inside");
     await expect(loadRestorePlan(git(), "HEAD", "f", ".git/config")).rejects.toThrow("inside");
-    fs.symlinkSync(path.dirname(repo), path.join(repo, "link"));
+    fs.symlinkSync(
+      path.dirname(repo),
+      path.join(repo, "link"),
+      process.platform === "win32" ? "junction" : "dir"
+    );
     await expect(loadRestorePlan(git(), "HEAD", "f", "link/outside")).rejects.toThrow(
       "normal directory"
     );

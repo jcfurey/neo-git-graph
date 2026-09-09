@@ -105,7 +105,8 @@ export function registerMessageHandlers(
       try {
         const request: ActionRequest = msg;
         const recursive =
-          request.command === "repositoryAction" && request.action.kind === "submodule";
+          request.command === "repositoryAction" &&
+          (request.action.kind === "submodule" || request.action.kind === "submodulePointer");
         if (
           [...busyRepos].some(
             ([repo, descendants]) =>
@@ -214,12 +215,21 @@ export function registerMessageHandlers(
 
   // --- Query handlers ---
 
+  const queryControllers = new Map<string, { repo: string; controller: AbortController }>();
+  bridge.onMessage("cancelRepositoryQuery", (msg) => {
+    const pending = queryControllers.get(msg.requestId);
+    if (pending?.repo === msg.repo) {
+      pending.controller.abort();
+    }
+  });
   bridge.onMessage("repositoryQuery", async (msg) => {
+    const controller = new AbortController();
+    queryControllers.set(msg.requestId, { repo: msg.repo, controller });
     let data: QueryResult<"repositoryQuery">["data"] = null;
     let status: string | null = null;
     try {
       data = await repositoryQuery(
-        gitClientFactory(msg.repo, config.gitPath()).getInstance(),
+        gitClientFactory(msg.repo, config.gitPath(), controller.signal).getInstance(),
         msg.query,
         {
           repos:
@@ -237,11 +247,17 @@ export function registerMessageHandlers(
                   ])
                 ]
               : [],
-          binary: config.gitPath()
+          binary: config.gitPath(),
+          signal: controller.signal
         }
       );
     } catch (error: unknown) {
       status = error instanceof Error ? error.message : String(error);
+    } finally {
+      queryControllers.delete(msg.requestId);
+    }
+    if (controller.signal.aborted) {
+      return;
     }
     bridge.post({
       command: "repositoryQuery",
@@ -354,6 +370,12 @@ export function registerMessageHandlers(
   });
 
   return {
+    dispose: () => {
+      for (const { controller } of queryControllers.values()) {
+        controller.abort();
+      }
+      queryControllers.clear();
+    },
     onPanelShown: () => {
       currentRepo = null;
     }

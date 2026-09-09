@@ -108,7 +108,7 @@ export function CompareView({
           setRequest({ kind: "compare", left, right, mergeBase });
         }}
       >
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid gap-3 sm:grid-cols-2">
           <TextField label={window.l10n.comparisonLeft} value={left} change={setLeft} />
           <TextField label={window.l10n.comparisonRight} value={right} change={setRight} />
         </div>

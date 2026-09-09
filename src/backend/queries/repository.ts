@@ -4,7 +4,14 @@ import path from "node:path";
 
 import type { SimpleGit } from "simple-git";
 
+import { loadBisect } from "@/backend/queries/bisect";
 import { historyQuery } from "@/backend/queries/history";
+import {
+  loadSyncPlan,
+  loadUpstreamPlan,
+  loadCleanupPlan,
+  submoduleComparison
+} from "@/backend/queries/workflows";
 import { loadWorkspace } from "@/backend/queries/workspace";
 import type {
   OperationKind,
@@ -192,11 +199,43 @@ export async function loadRebasePlan(git: SimpleGit, baseRef: string): Promise<R
 export async function repositoryQuery(
   git: SimpleGit,
   query: RepositoryQuery,
-  workspace: { repos: string[]; binary: string } = { repos: [], binary: "git" }
+  workspace: { repos: string[]; binary: string; signal?: AbortSignal } = {
+    repos: [],
+    binary: "git"
+  }
 ): Promise<RepositoryQueryData> {
   switch (query.kind) {
+    case "bisect":
+      return {
+        kind: "bisect",
+        state: await loadBisect(git),
+        head: await resolveCommit(git, "HEAD").catch(() => null)
+      };
+    case "submodulePlan":
+      return {
+        kind: "submodulePlan",
+        ...(await submoduleComparison(
+          git,
+          query.path,
+          query.staged,
+          workspace.binary,
+          workspace.signal
+        ))
+      };
+    case "syncPlan":
+      return {
+        kind: "syncPlan",
+        plan: await loadSyncPlan(git, query.branch, query.remote, query.remoteBranch)
+      };
+    case "upstreamPlan":
+      return { kind: "upstreamPlan", plan: await loadUpstreamPlan(git) };
+    case "cleanupPlan":
+      return { kind: "cleanupPlan", plan: await loadCleanupPlan(git) };
     case "workspace":
-      return { kind: "workspace", entries: await loadWorkspace(workspace.repos, workspace.binary) };
+      return {
+        kind: "workspace",
+        entries: await loadWorkspace(workspace.repos, workspace.binary, workspace.signal)
+      };
     case "history":
     case "compare":
     case "compareCommits":

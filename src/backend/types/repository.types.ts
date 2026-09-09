@@ -35,6 +35,7 @@ export type RebaseEntry = {
 export type RebasePlan = { base: string; head: string; branch: string; entries: RebaseEntry[] };
 
 export type RepositoryQuery =
+  | WorkflowQuery
   | HistoryQuery
   | { kind: "state" }
   | { kind: "stashes" }
@@ -42,6 +43,7 @@ export type RepositoryQuery =
   | { kind: "lease"; remote: string; branch: string };
 
 export type RepositoryQueryData =
+  | WorkflowQueryData
   | HistoryQueryData
   | { kind: "state"; state: RepositoryState }
   | { kind: "stashes"; stashes: StashDetails[] }
@@ -49,6 +51,7 @@ export type RepositoryQueryData =
   | { kind: "lease"; hash: string };
 
 export type RepositoryAction =
+  | WorkflowAction
   | HistoryAction
   | { kind: "addRemote"; name: string; url: string; fetch: boolean }
   | { kind: "editRemote"; name: string; fetchUrls: string[]; pushUrls: string[] }
@@ -72,3 +75,4 @@ export type RepositoryAction =
   | { kind: "removeWorktree"; path: string; expectedHead: string }
   | { kind: "openWorktree"; path: string };
 import type { HistoryAction, HistoryQuery, HistoryQueryData } from "./history.types";
+import type { WorkflowAction, WorkflowQuery, WorkflowQueryData } from "./workflow.types";

@@ -3,6 +3,7 @@ import path from "node:path";
 
 import type { SimpleGit } from "simple-git";
 
+import { loadBisect } from "@/backend/queries/bisect";
 import {
   gitDirectory,
   loadOperation,
@@ -16,6 +17,9 @@ import { requireCurrentBranch, resolveCommit } from "@/backend/utils/validation"
 export async function requireIdle(git: SimpleGit) {
   if ((await loadOperation(git)) !== null) {
     throw new Error("Finish or abort the operation already in progress first.");
+  }
+  if ((await loadBisect(git)) !== null) {
+    throw new Error("Reset the bisect session before starting another Git operation.");
   }
 }
 

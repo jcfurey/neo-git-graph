@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "fix/**"]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -27,6 +28,10 @@ jobs:
         with:
           runtime: node@${{ matrix.node }}
           cache: true
+          install: false
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Format check
         run: pnpm run format
@@ -41,21 +46,63 @@ jobs:
         run: pnpm run l10n:check
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
     strategy:
+      fail-fast: false
       matrix:
-        node: [24]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@v7
 
       - uses: pnpm/setup@v2
         with:
-          runtime: node@${{ matrix.node }}
+          runtime: node@24
           cache: true
+          install: false
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Run tests
         run: pnpm run test
 
-      - name: Run extension tests
+      - name: Run extension and UI tests (Linux)
+        if: runner.os == 'Linux'
         run: xvfb-run -a pnpm run test:ext
+
+      - name: Run extension and UI tests (Windows/macOS)
+        if: runner.os != 'Linux'
+        run: pnpm run test:ext
+
+      - name: Collect UI diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-${{ matrix.os }}
+          path: test-results/
+          if-no-files-found: ignore
+
+      - name: Benchmark large histories and workspaces
+        if: runner.os == 'Linux'
+        run: pnpm run benchmark
+
+      - name: Collect benchmark results
+        if: runner.os == 'Linux' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark
+          path: test-results/benchmark.json
+          if-no-files-found: ignore
+
+      - name: Build installable extension
+        if: runner.os == 'Linux'
+        run: pnpm exec vsce package --no-dependencies --out neo-git-graph.vsix
+
+      - name: Upload extension
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: neo-git-graph-vsix
+          path: neo-git-graph.vsix

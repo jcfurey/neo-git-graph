@@ -75,7 +75,7 @@ function registerViewCommand(
         bridge = webviewBridgeFactory(vsPanel.webview, repoFileWatcher);
         avatarManager.registerBridge(bridge.post.bind(bridge));
 
-        const { onPanelShown } = registerMessageHandlers(bridge, {
+        const { onPanelShown, dispose: disposeQueries } = registerMessageHandlers(bridge, {
           config,
           gitClient,
           repoManager,
@@ -94,6 +94,7 @@ function registerViewCommand(
           avatarManager,
           repoManager,
           onDispose: () => {
+            disposeQueries();
             currentPanel = undefined;
           },
           onPanelShown

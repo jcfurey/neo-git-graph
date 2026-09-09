@@ -48,6 +48,24 @@ Removal preserves the branch. The main/current worktree cannot be removed from t
 
 Submodule rows distinguish the actual HEAD, the revision recorded in the parent index, and the revision recorded in the parent commit. Their action menu offers **Initialize Submodule**, **Sync Submodule URLs**, and **Update to Recorded Revision**. Sync copies URLs from `.gitmodules`. Initialize/update use recursive Git checkout of the parent's recorded index revision, including nested submodules. Git checks for conflicting local changes; the extension rejects updates while an initialized child has an interrupted operation. No force checkout or `--remote` advancement is used.
 
+Click either revision-change badge, or choose **Compare Submodule Revisions**, to inspect added and removed child commits. Toggle **Compare staged pointer** to compare the parent commit with its index; the other mode compares the index with the child checkout. **Stage Submodule Pointer** and **Unstage Submodule Pointer** change only that gitlink in the parent index, preserving other staged files, child files, and `.gitmodules`. Unstaging a newly added pointer removes it from the index. The dialog links to both graphs. Staged-only pointer changes count in the changed-repositories filter.
+
+**Workspace Fetch & Update**, in the sidebar or Repository Tools, fetches selected or all initialized repositories. Two workers run independently; a failed repository does not stop the others. Results remain available after hiding the dialog or switching graphs. Each successful fetch offers an upstream review for its current branch. Apply updates individually after inspecting the incoming commits; detached HEADs, missing upstreams, divergent branches, dirty worktrees, and active operations cannot be fast-forwarded through this control. Workspace results last for the current graph view.
+
+## Synchronization review and branch cleanup
+
+**Push Branch** opens **Preview Push** before sending commits. Review incoming/outgoing commits and the exact local and last-fetched remote tips. **Fetch & Refresh Preview** updates that information. New remote branches show the reachable outgoing history. Force-with-lease uses the reviewed remote tip as the expected server value; ordinary pushes retain Git's non-fast-forward protection. The pushed source is the reviewed commit ID, even if another client subsequently moves the local branch.
+
+**Pull Branch** first fetches the selected remote, then displays the incoming and outgoing commits. **Apply Reviewed Fast-forward** requires a clean checkout of the selected branch and applies the exact reviewed commit without fetching again. A local or remote-tracking tip that changes before submission invalidates the plan. Refresh the preview to include later commits.
+
+**Repository Tools → Clean Up Merged Branches** lists local branches whose tips are ancestors of the current HEAD. Select branches and confirm the names and tips before deleting them. Branches used by any worktree, `main`, `master`, and known remote default branches are excluded. The backend repeats these checks and compare-and-deletes each selected ref using its reviewed tip. A failure stops the remaining deletions and reports how many completed. Remote branches are unaffected.
+
+## Finding regressions with bisect
+
+Open **Repository Tools → Find a Regression (Bisect)**, or use **Use as Good/Bad Bisect Commit** on graph commits. Choose known good and bad endpoints, commit or stash changes, then **Start Bisect**. Git checks out candidate commits. Build or test each candidate, reopen the bisect controls from the status strip, and choose **Mark Good**, **Mark Bad**, or **Skip Untestable Commit**.
+
+The result displays the first bad commit, or explains when skipped commits prevent a unique result. **Reset Bisect** ends the session and restores Git's original checkout. Native Git bisect state survives reloading VS Code, and stale classifications are rejected if the session or checkout changed. Changes made while testing must be committed or stashed before advancing/resetting. Other history-changing workflows that require an idle repository also require resetting bisect first.
+
 ## Search, file history, and comparison
 
 The search row queries repository history beyond the graph's loaded commits, with 100 results per page. Enter a commit message or a resolvable SHA of at least seven characters. **Filters** adds literal author/email and path filters, inclusive dates, rename following for a single file, and named filters saved per repository. A selected branch limits the history to that branch. Filtered results may omit commits between matches. **Return to Graph** clears the filters.
@@ -67,3 +85,11 @@ Ctrl/Cmd-click selects individual commits; Shift-click selects a range. Select u
 Arrow keys move between commit rows; Home/End move to the first/last loaded row. Enter opens details, Space selects, and Shift+F10 opens actions. Ctrl/Cmd+F or `/` focuses history search when no dialog is active. Repository switches preserve filters and scroll position.
 
 Running operations show their repository, action, and elapsed time. **Hide** closes the progress dialog while Git continues. **Git Activity** retains the last 100 operations from this view, including results that arrive after switching repositories or opening another dialog. Errors have selectable output and **Copy Error Details**. This activity list lasts for the current graph view; it is separate from Git's reflog.
+
+Closing a menu or dialog restores focus to the original control or commit row. On narrow windows the workspace sidebar moves above the graph and dialog fields stack vertically. Superseded history queries cancel their Git processes; hiding a mutation's progress dialog leaves that operation running.
+
+## Validation and performance
+
+`pnpm test:ext` includes the committed end-to-end UI checks and launches an isolated VS Code instance with a disposable workspace. Failed tests save diagnostic text under `test-results/`; successful UI checks capture screenshots there. CI is configured for Linux, Windows, and macOS and produces an installable VSIX artifact. `NGG_VSCODE_PATH` can select a local VS Code executable, and `NGG_HEADLESS=1` enables Linux headless runs.
+
+`pnpm benchmark` creates a disposable history with 50,000 commits and 40 submodules, measures paged history, old-commit search, workspace scans, a 10,000-commit graph layout, and read cancellation, then writes `test-results/benchmark.json`. `NGG_BENCH_COMMITS` and `NGG_BENCH_SUBMODULES` adjust fixture sizes. These are diagnostic timings, not a pass/fail speed threshold; they exclude VS Code DOM rendering and depend on the machine and filesystem cache.

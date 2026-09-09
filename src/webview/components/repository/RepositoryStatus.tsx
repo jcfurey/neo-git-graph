@@ -1,4 +1,5 @@
 import type { OperationKind, OperationState } from "@/backend/types";
+import { BisectStatus } from "@/webview/components/repository/BisectView";
 import { openTracking } from "@/webview/components/repository/RemoteManager";
 import { Button } from "@/webview/components/ui/Button";
 import {
@@ -52,6 +53,7 @@ export function RepositoryStatus() {
   const repo = selectedRepo.value;
   return (
     <div class="space-y-2 border-b border-line px-4 py-2 text-sm">
+      <BisectStatus />
       <div class="flex flex-wrap items-center gap-3" role="status">
         <b>{state.head || window.l10n.detachedHead}</b>
         <span>

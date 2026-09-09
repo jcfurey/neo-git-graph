@@ -4,6 +4,8 @@ import {
   openFileHistory,
   openReflog
 } from "@/webview/components/history/HistoryTools";
+import { openCleanup, openWorkspaceSync } from "@/webview/components/history/WorkflowTools";
+import { openBisect } from "@/webview/components/repository/BisectView";
 import { openRemotes } from "@/webview/components/repository/RemoteManager";
 import { openStashes } from "@/webview/components/repository/StashManager";
 import { openWorktrees } from "@/webview/components/repository/WorktreeManager";
@@ -89,6 +91,9 @@ export function MainHeader({ repos: paths }: { repos: Array<string> }) {
               { title: window.l10n.manageRemotes, onClick: openRemotes },
               { title: window.l10n.stashes, onClick: openStashes },
               { title: window.l10n.worktrees, onClick: openWorktrees },
+              { title: window.l10n.workspaceSync, onClick: openWorkspaceSync },
+              { title: window.l10n.cleanupBranches, onClick: openCleanup },
+              { title: window.l10n.bisectTitle, onClick: openBisect },
               null,
               { title: window.l10n.reflog, onClick: openReflog },
               {

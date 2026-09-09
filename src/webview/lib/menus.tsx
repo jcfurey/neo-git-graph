@@ -3,6 +3,7 @@ import type { ComponentChildren } from "preact";
 import type { GitCommitNode, GitRef, GitResetMode } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
 import { openCompare, openFixup } from "@/webview/components/history/HistoryTools";
+import { chooseBisectCommit } from "@/webview/components/repository/BisectView";
 import { openInteractiveRebase, openRebase } from "@/webview/components/repository/RebaseEditor";
 import { openTracking } from "@/webview/components/repository/RemoteManager";
 import { openAddWorktree } from "@/webview/components/repository/WorktreeManager";
@@ -231,6 +232,8 @@ export function commitMenu(
     },
     { title: window.l10n.createFixup + "…", onClick: () => openFixup(hash) },
     { title: window.l10n.compareWith, onClick: () => openCompare("HEAD", hash) },
+    { title: window.l10n.bisectChooseGood, onClick: () => chooseBisectCommit("good", hash) },
+    { title: window.l10n.bisectChooseBad, onClick: () => chooseBisectCommit("bad", hash) },
     {
       title: window.l10n.copyCommitHash,
       onClick: () => copyToClipboard(window.l10n.typeCommitHash, hash)

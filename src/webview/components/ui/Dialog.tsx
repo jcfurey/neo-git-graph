@@ -137,7 +137,7 @@ function Field({
 
   if (input.kind === "checkbox") {
     return (
-      <div class={labelled ? "col-span-2" : "text-center"}>
+      <div class={labelled ? "sm:col-span-2" : "text-center"}>
         <Checkbox
           label={input.label}
           checked={value === true}
@@ -186,7 +186,7 @@ function Field({
 
   return (
     <>
-      <label for={id} class="whitespace-nowrap">
+      <label for={id} class="break-words">
         {input.label}
       </label>
       {control}
@@ -230,7 +230,7 @@ function FormBody({
       {state.inputs.length > 0 && (
         <div
           class={`mt-2.5 grid gap-2.5 text-left ${
-            labelled ? "grid-cols-labelled items-center" : ""
+            labelled ? "sm:grid-cols-labelled items-center" : ""
           }`}
         >
           {state.inputs.map((input, index) => (

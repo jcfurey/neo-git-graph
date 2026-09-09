@@ -14,6 +14,9 @@ export default defineConfig({
         resolve: { alias },
         test: {
           name: "backend",
+          // Real Git workflows need additional process-launch time on Windows runners.
+          testTimeout: 30000,
+          hookTimeout: 30000,
           include: ["tests/backend/**/*.test.ts"]
         }
       },

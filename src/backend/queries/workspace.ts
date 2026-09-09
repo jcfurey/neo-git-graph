@@ -27,7 +27,11 @@ export async function submoduleLinks(git: SimpleGit) {
 }
 
 /** Bound concurrency keeps a workspace with many submodules responsive. */
-export async function loadWorkspace(repos: string[], binary: string): Promise<WorkspaceEntry[]> {
+export async function loadWorkspace(
+  repos: string[],
+  binary: string,
+  signal?: AbortSignal
+): Promise<WorkspaceEntry[]> {
   const queue = [...new Set(repos.map(normalizeRepoPath))];
   const visited = new Set<string>();
   const entries = new Map<string, WorkspaceEntry>();
@@ -36,6 +40,7 @@ export async function loadWorkspace(repos: string[], binary: string): Promise<Wo
     Pick<WorkspaceEntry, "parent" | "submodulePath" | "recorded" | "committed">
   >();
   while (queue.length > 0) {
+    signal?.throwIfAborted();
     const batch = queue.splice(0, 4).filter((repo) => !visited.has(repo));
     for (const repo of batch) {
       visited.add(repo);
@@ -59,7 +64,7 @@ export async function loadWorkspace(repos: string[], binary: string): Promise<Wo
           error: null
         };
         try {
-          const git = gitClientFactory(repo, binary).getInstance();
+          const git = gitClientFactory(repo, binary, signal).getInstance();
           const top = normalizeRepoPath(
             (await git.raw(["rev-parse", "--show-toplevel"])).replace(/\n$/, "")
           );
@@ -81,6 +86,7 @@ export async function loadWorkspace(repos: string[], binary: string): Promise<Wo
           });
           return { entry, children };
         } catch (error) {
+          signal?.throwIfAborted();
           entry.error = error instanceof Error ? error.message : String(error);
           return { entry, children: [] };
         }

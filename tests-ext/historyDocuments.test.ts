@@ -18,7 +18,7 @@ suite("History documents", () => {
   });
 
   test("loads simultaneous comparisons from their own repositories", async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "ngg-document-"));
+    const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-document-")));
     const file = "file # with spaces.txt";
     const repos = [path.join(root, "first"), path.join(root, "second")];
     const provider = new DiffDocProvider(
@@ -47,7 +47,7 @@ suite("History documents", () => {
       assert.deepStrictEqual(contents, ["repository 0", "repository 1"]);
     } finally {
       provider.dispose();
-      fs.rmSync(root, { recursive: true, force: true });
+      fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   });
 });

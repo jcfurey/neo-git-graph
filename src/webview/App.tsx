@@ -25,9 +25,9 @@ export function App() {
       <MainHeader repos={repos} />
       <SearchBar />
       <RepositoryStatus />
-      <div class="flex min-w-0 flex-1 items-start">
+      <div class="flex min-w-0 flex-1 flex-col items-start md:flex-row">
         {workspaceVisible.value && <WorkspacePane />}
-        <div class="min-w-0 flex-1">
+        <div class="min-w-0 w-full flex-1">
           <GraphView />
         </div>
       </div>

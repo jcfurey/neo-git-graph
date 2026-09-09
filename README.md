@@ -41,6 +41,9 @@ This fork:
 
 ## Features
 
+- Review push/pull commits, fetch across workspace repositories, and apply reviewed fast-forward updates.
+- Compare and stage submodule pointers, clean up merged local branches, and find regressions with guided Git bisect.
+
 - **Workspace overview**: Inspect branches, local changes, ahead/behind counts, and submodule revisions; initialize, sync, or update nested submodules
 - **History search**: Search all repository history by message, SHA, author, date, or path, follow file renames, and save filters per repository
 - **Compare and restore**: Compare revisions or changes since their common ancestor, inspect unique commits and file diffs, and restore historical file contents while preserving staged changes

@@ -1,4 +1,4 @@
-import { signal } from "@preact/signals";
+import { effect, signal } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 
 import type {
@@ -25,36 +25,63 @@ export const repositoryStateError = signal<string | null>(null);
 export const repositoryRevision = signal(0);
 const panels = new Map<
   string,
-  { repo: string; receive: (data: RepositoryQueryData | null, error: string | null) => void }
+  {
+    repo: string;
+    viewRepo: string | undefined;
+    detached: boolean;
+    receive: (data: RepositoryQueryData | null, error: string | null) => void;
+  }
 >();
 
 /** Independent, cancellable subscriptions for panels that do not own a dialog. */
 export function requestPanelQuery(
   query: RepositoryQuery,
   receive: (data: RepositoryQueryData | null, error: string | null) => void,
-  repo = selectedRepo.value
+  repo = selectedRepo.value,
+  detached = false
 ) {
   if (repo === undefined) {
     return () => {};
   }
   const requestId = `repository-panel-${++nextRequest}`;
-  panels.set(requestId, { repo, receive });
+  panels.set(requestId, { repo, receive, detached, viewRepo: selectedRepo.value });
   vscode.postMessage({ command: "repositoryQuery", repo, requestId, query });
   return () => {
-    panels.delete(requestId);
+    if (panels.delete(requestId)) {
+      cancelQuery(repo, requestId);
+    }
   };
 }
 let nextRequest = 0;
 let stateRequest = "";
+let stateRepo: string | undefined;
+function cancelQuery(repo: string, requestId: string) {
+  vscode.postMessage({ command: "cancelRepositoryQuery", repo, requestId });
+}
 const queries = new Map<
   string,
   { repo: string; dialog: DialogState; callback: (data: RepositoryQueryData) => void }
 >();
 
+effect(() => {
+  const current = dialog.value;
+  const repo = selectedRepo.value;
+  for (const [id, pending] of queries) {
+    if (pending.dialog !== current || pending.repo !== repo) {
+      queries.delete(id);
+      cancelQuery(pending.repo, id);
+    }
+  }
+});
+
 export function resetRepositoryState() {
+  if (stateRequest && stateRepo) {
+    cancelQuery(stateRepo, stateRequest);
+  }
   repositoryState.value = null;
   repositoryStateError.value = null;
   stateRequest = "";
+  stateRepo = undefined;
 }
 
 export function requestRepositoryState() {
@@ -62,6 +89,10 @@ export function requestRepositoryState() {
   if (repo === undefined) {
     return;
   }
+  if (stateRequest && stateRepo) {
+    cancelQuery(stateRepo, stateRequest);
+  }
+  stateRepo = repo;
   stateRequest = `repository-state-${++nextRequest}`;
   vscode.postMessage({
     command: "repositoryQuery",
@@ -90,7 +121,7 @@ export function handleRepositoryQuery(message: QueryResult<"repositoryQuery">) {
   const panel = panels.get(message.requestId);
   if (panel) {
     panels.delete(message.requestId);
-    if (panel.repo === message.repo && message.repo === selectedRepo.value) {
+    if (panel.repo === message.repo && (panel.detached || panel.viewRepo === selectedRepo.value)) {
       panel.receive(message.data, message.status);
     }
     return;
@@ -100,6 +131,7 @@ export function handleRepositoryQuery(message: QueryResult<"repositoryQuery">) {
     return;
   }
   if (message.requestId === stateRequest) {
+    stateRequest = "";
     repositoryStateError.value = message.status;
     repositoryState.value = message.data?.kind === "state" ? message.data.state : null;
     return;
@@ -130,7 +162,11 @@ export function sendRepositoryAction(action: RepositoryAction, repo = selectedRe
         action.kind === "viewRangeFile" ||
         action.kind === "viewHistoricalFile" ||
         action.kind === "previewFileRestore",
-      otherRepo: action.kind === "submodule"
+      otherRepo:
+        action.kind === "submodule" ||
+        action.kind === "submodulePointer" ||
+        action.kind === "viewRangeFile" ||
+        action.kind === "viewHistoricalFile"
     }
   );
 }

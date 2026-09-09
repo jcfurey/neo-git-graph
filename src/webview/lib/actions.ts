@@ -2,6 +2,7 @@ import { batch } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 
 import type { GitFileChange } from "@/backend/types";
+import { captureFocus, restoreFocus } from "@/webview/lib/focus";
 import { enterNavigation, leaveNavigation } from "@/webview/lib/navigation";
 import { sendRemoteAction } from "@/webview/lib/remote-actions";
 import {
@@ -154,16 +155,19 @@ export function openContextMenu(
 ) {
   event.preventDefault();
   event.stopPropagation();
+  captureFocus(event.target);
   contextMenu.value = { x: event.clientX, y: event.clientY, entries, source };
 }
 
 export function closeContextMenu() {
   contextMenu.value = null;
+  restoreFocus();
 }
 
 /** Open a dialog. The context menu that asked for it closes. */
 let nextDialogToken = 0;
 function openDialog(body: DialogBody) {
+  captureFocus();
   batch(() => {
     contextMenu.value = null;
     dialog.value = { ...body, token: ++nextDialogToken };
@@ -172,6 +176,7 @@ function openDialog(body: DialogBody) {
 
 export function closeDialog() {
   dialog.value = null;
+  restoreFocus();
 }
 
 export function openContentDialog(message: string, content: ComponentChildren, wide = false) {

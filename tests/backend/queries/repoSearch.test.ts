@@ -5,6 +5,7 @@ import * as path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { findGitRepos } from "@/backend/queries/repoSearch";
+import { normalizeRepoPath } from "@/backend/utils/repoPath";
 
 import { git } from "@tests/backend/helpers";
 
@@ -36,9 +37,9 @@ function initRepo(dir: string) {
 }
 
 beforeAll(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ngg-search-"));
-  repoA = path.join(tmpDir, "repo-a");
-  repoB = path.join(tmpDir, "nested", "repo-b");
+  tmpDir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-search-")));
+  repoA = normalizeRepoPath(path.join(tmpDir, "repo-a"));
+  repoB = normalizeRepoPath(path.join(tmpDir, "nested", "repo-b"));
 
   initRepo(repoA);
   initRepo(repoB);

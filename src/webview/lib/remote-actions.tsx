@@ -1,4 +1,5 @@
 import type { ActionResponse, QueryResult } from "@/backend/types";
+import { openSync } from "@/webview/components/history/WorkflowTools";
 import {
   closeDialog,
   openErrorDialog,
@@ -6,9 +7,10 @@ import {
   openRunningDialog
 } from "@/webview/lib/actions";
 import { beginActivity, finishActivity } from "@/webview/lib/activity";
-import { requestRepositoryQuery, sendRepositoryAction } from "@/webview/lib/repository-actions";
+import { sendRepositoryAction } from "@/webview/lib/repository-actions";
 import { dialog, selectedRepo } from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
+import { backgroundAction } from "@/webview/lib/workspace-actions";
 import type { ActionCommand, DialogState } from "@/webview/types";
 import { format } from "@/webview/utils/format";
 
@@ -27,6 +29,8 @@ type Pending = {
   dialog: DialogState | null;
   viewRepo?: string;
   background?: boolean;
+  mutates?: boolean | undefined;
+  onComplete?: ((error: string | null) => void) | undefined;
 };
 
 let nextRequest = 0;
@@ -55,10 +59,16 @@ export function sendRemoteAction(
   command: RemoteCommand,
   repo: string,
   message: string,
-  options: { background?: boolean; otherRepo?: boolean } = {}
+  options: {
+    background?: boolean;
+    otherRepo?: boolean;
+    mutates?: boolean;
+    onComplete?: (error: string | null) => void;
+  } = {}
 ) {
   if (selectedRepo.value === undefined || (!options.otherRepo && selectedRepo.value !== repo)) {
     closeDialog();
+    options.onComplete?.(window.l10n.unableToRunGitAction);
     return;
   }
   const entry = beginActivity(command, repo, message);
@@ -73,7 +83,9 @@ export function sendRemoteAction(
     repo,
     dialog: dialog.value,
     viewRepo: selectedRepo.value,
-    background: options.background ?? false
+    background: options.background ?? false,
+    mutates: options.mutates,
+    onComplete: options.onComplete
   });
   vscode.postMessage({ ...command, repo });
 }
@@ -82,7 +94,10 @@ const send = sendRemoteAction;
 
 export function actionMutates(message: ActionResponse) {
   const pending = message.requestId ? pendingActions.get(message.requestId) : undefined;
-  return message.requestId === undefined || (pending !== undefined && !pending.background);
+  return (
+    message.requestId === undefined ||
+    (pending !== undefined && (pending.mutates ?? !pending.background))
+  );
 }
 
 /** Ignore a late result after the user changes repositories or opens another dialog. */
@@ -91,14 +106,19 @@ export function acceptRemoteActionResult(message: ActionResponse): boolean {
     return true;
   }
   const pending = pendingActions.get(message.requestId);
+  if (pending && pending.repo !== message.repo) {
+    return false;
+  }
   pendingActions.delete(message.requestId);
   finishActivity(message);
+  pending?.onComplete?.(message.status);
   if (pending?.background) {
     if (
       pending.repo === message.repo &&
       selectedRepo.value === pending.viewRepo &&
       dialog.value === pending.dialog &&
-      message.status !== null
+      message.status !== null &&
+      !pending.onComplete
     ) {
       openErrorDialog(window.l10n.unableToRunGitAction, message.status);
     }
@@ -258,44 +278,14 @@ export function handleLoadRemotes(message: QueryResult<"loadRemotes">) {
         { kind: "checkbox", label: window.l10n.setUpstream, value: upstream === null },
         { kind: "checkbox", label: window.l10n.forceWithLease, value: false }
       ],
-      action: window.l10n.pushBranch,
+      action: window.l10n.previewPush,
       source,
-      onSubmit: ([selectedRemote, destination, setUpstream, force]) => {
-        const command = {
-          command: "pushBranch" as const,
-          requestId,
-          branchName,
-          remote: selectedRemote,
-          remoteBranch: destination,
-          setUpstream
-        };
-        if (!force) {
-          send(command, repo, window.l10n.pushingBranch);
-          return;
-        }
-        requestRepositoryQuery(
-          { kind: "lease", remote: selectedRemote, branch: destination },
-          (data) => {
-            if (data.kind !== "lease") {
-              return;
-            }
-            openFormDialog({
-              message: format(
-                window.l10n.forcePushConfirm,
-                <b>{destination}</b>,
-                <b>{selectedRemote}</b>,
-                <code>{data.hash.slice(0, 12)}</code>
-              ),
-              inputs: [],
-              action: window.l10n.pushBranch,
-              source,
-              onSubmit: () =>
-                send({ ...command, expectedRemoteHash: data.hash }, repo, window.l10n.pushingBranch)
-            });
-          },
-          repo
-        );
-      }
+      onSubmit: ([selectedRemote, destination, setUpstream, force]) =>
+        openSync(repo, branchName, selectedRemote, destination, {
+          operation: "push",
+          setUpstream,
+          force
+        })
     });
   } else {
     openFormDialog({
@@ -304,20 +294,25 @@ export function handleLoadRemotes(message: QueryResult<"loadRemotes">) {
         { kind: "select", label: window.l10n.remote, value: remote, options },
         { kind: "ref", label: window.l10n.remoteBranch, value: remoteBranch }
       ],
-      action: window.l10n.pullBranch,
+      action: window.l10n.previewPull,
       source,
-      onSubmit: ([selectedRemote, destination]) =>
-        send(
-          {
-            command: "pullBranch",
-            requestId,
-            branchName,
-            remote: selectedRemote,
-            remoteBranch: destination
-          },
-          repo,
-          window.l10n.pullingBranch
-        )
+      onSubmit: async ([selectedRemote, destination]) => {
+        openRunningDialog(window.l10n.fetching);
+        const owner = dialog.value;
+        const error = await backgroundAction(repo, { kind: "fetch", remote: selectedRemote });
+        if (selectedRepo.value !== repo || dialog.value !== owner) {
+          return;
+        }
+        if (error) {
+          openErrorDialog(window.l10n.unableToRunGitAction, error);
+          return;
+        }
+        openSync(repo, branchName, selectedRemote, destination, {
+          operation: "pull",
+          setUpstream: false,
+          force: false
+        });
+      }
     });
   }
 }
