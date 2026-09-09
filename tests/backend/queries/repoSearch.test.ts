@@ -5,7 +5,6 @@ import * as path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { findGitRepos } from "@/backend/queries/repoSearch";
-
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 
 import { git } from "@tests/backend/helpers";
