@@ -1,16 +1,25 @@
-import type { GitCommitNode, GitRef } from "@/backend/types";
+import type { HistoryEntry, GitRef } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
 import { RefLabel } from "@/webview/components/commit/RefLabel";
+import { fileContextMenu } from "@/webview/components/history/file-menu";
 import { UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { openContextMenu } from "@/webview/lib/actions";
 import type { CommitMessages } from "@/webview/lib/menus";
 import { commitMenu, commitMenuSource } from "@/webview/lib/menus";
+import {
+  historyFilter,
+  focusedCommit,
+  selectCommitRows,
+  selectedCommits
+} from "@/webview/lib/navigation";
 import { activeSource, uncommittedChanges } from "@/webview/lib/stores";
 import { getCommitDate } from "@/webview/utils/date";
 import { format } from "@/webview/utils/format";
 
 type CommitRowProps = {
-  commit: GitCommitNode;
+  commit: HistoryEntry;
+  rows?: HistoryEntry[];
+  tabStop?: boolean;
   isHead: boolean;
   headBranch: string | null;
   /** Commit messages by hash, so the menu can name the parents of a merge. */
@@ -58,6 +67,8 @@ function rowClass(isHead: boolean, expanded: boolean, selectable: boolean, menuO
 
 export function CommitRow({
   commit,
+  rows = [commit],
+  tabStop = true,
   isHead,
   headBranch,
   messages,
@@ -73,17 +84,89 @@ export function CommitRow({
   const source = commitMenuSource(commit.hash);
   const menuOpen = activeSource.value === source;
   const refs = orderRefs(commit.refs, headBranch);
+  const marked = selectedCommits.value.some((row) => row.hash === commit.hash);
+  const menu = () => [
+    ...commitMenu(commit, messages),
+    ...(commit.filePath
+      ? [
+          null,
+          ...fileContextMenu(
+            commit.hash,
+            commit.filePath,
+            commit.previousPath ?? commit.filePath,
+            commit.change?.startsWith("D") === true,
+            historyFilter.value.path
+          )
+        ]
+      : [])
+  ];
 
   return (
     <tr
-      class={rowClass(isHead, expanded, onSelect !== undefined, menuOpen)}
-      style={colour === undefined ? undefined : `--color-graph: ${colour}`}
-      onClick={onSelect}
-      onContextMenu={
-        uncommitted
-          ? undefined
-          : (event) => openContextMenu(event, source, commitMenu(commit, messages))
+      class={
+        rowClass(isHead, expanded || marked, onSelect !== undefined, menuOpen) +
+        " focus:outline-1 focus:-outline-offset-1 focus:outline-focus"
       }
+      data-commit-hash={uncommitted ? undefined : commit.hash}
+      tabIndex={uncommitted ? undefined : tabStop ? 0 : -1}
+      aria-selected={marked}
+      title={window.l10n.selectCommitsHint}
+      style={colour === undefined ? undefined : `--color-graph: ${colour}`}
+      onClick={(event) => {
+        if (uncommitted) {
+          return;
+        }
+        focusedCommit.value = commit.hash;
+        event.currentTarget.focus({ preventScroll: true });
+        selectCommitRows(commit, rows, event.ctrlKey || event.metaKey, event.shiftKey);
+        if (!event.ctrlKey && !event.metaKey && !event.shiftKey) {
+          onSelect?.();
+        }
+      }}
+      onKeyDown={(event) => {
+        if (uncommitted || event.target !== event.currentTarget) {
+          return;
+        }
+        if (["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) {
+          event.preventDefault();
+          const available = rows.filter((row) => row.hash !== "*");
+          const index = available.findIndex((row) => row.hash === commit.hash);
+          const next =
+            available[
+              event.key === "Home"
+                ? 0
+                : event.key === "End"
+                  ? available.length - 1
+                  : Math.max(
+                      0,
+                      Math.min(available.length - 1, index + (event.key === "ArrowDown" ? 1 : -1))
+                    )
+            ];
+          if (next) {
+            focusedCommit.value = next.hash;
+            selectCommitRows(next, rows, false, event.shiftKey);
+            event.currentTarget
+              .closest("table")
+              ?.querySelector<HTMLElement>(`tr[data-commit-hash="${next.hash}"]`)
+              ?.focus();
+          }
+        } else if (event.key === "Enter") {
+          event.preventDefault();
+          onSelect?.();
+        } else if (event.key === " ") {
+          event.preventDefault();
+          selectCommitRows(commit, rows, true, event.shiftKey);
+        } else if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+          event.preventDefault();
+          const rect = event.currentTarget.getBoundingClientRect();
+          openContextMenu(
+            new MouseEvent("contextmenu", { clientX: rect.left + 80, clientY: rect.bottom }),
+            source,
+            menu()
+          );
+        }
+      }}
+      onContextMenu={uncommitted ? undefined : (event) => openContextMenu(event, source, menu())}
     >
       <td class={CELL_CLASS} />
       <td class={`${CELL_CLASS} w-full max-w-0 pl-2.5 ${isHead ? "shadow-head" : ""}`}>

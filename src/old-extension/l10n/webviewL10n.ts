@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 
+import { getHistoryLocalizedStrings } from "./historyL10n";
 import { getRepositoryLocalizedStrings } from "./repositoryL10n";
 
 /**
@@ -12,6 +13,7 @@ import { getRepositoryLocalizedStrings } from "./repositoryL10n";
 export function getWebviewLocalizedStrings() {
   return {
     ...getRepositoryLocalizedStrings(),
+    ...getHistoryLocalizedStrings(),
     // UI labels
     repo: vscode.l10n.t("Repo"),
     branch: vscode.l10n.t("Branch"),

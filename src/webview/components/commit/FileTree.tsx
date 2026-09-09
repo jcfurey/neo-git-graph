@@ -1,8 +1,9 @@
 import { useState } from "preact/hooks";
 
 import type { GitFileChange } from "@/backend/types";
+import { fileContextMenu } from "@/webview/components/history/file-menu";
 import { Icon } from "@/webview/components/ui/Icons";
-import { viewDiff } from "@/webview/lib/actions";
+import { openContextMenu, viewDiff } from "@/webview/lib/actions";
 import type { FileTreeNode } from "@/webview/utils/fileTree";
 
 const ICON_CLASS = "mr-2 size-3.25 shrink-0 fill-fg opacity-60";
@@ -92,8 +93,29 @@ function FileEntry({
       type="button"
       class={`${ENTRY_CLASS} ${FILE_COLOUR[file.type]} ${binary ? "cursor-default" : "cursor-pointer"}`}
       title={binary ? window.l10n.tooltipBinaryFile : undefined}
-      disabled={binary}
-      onClick={() => viewDiff(commitHash, file)}
+      onClick={() => {
+        if (!binary) {
+          viewDiff(commitHash, file);
+        }
+      }}
+      onContextMenu={(event) =>
+        openContextMenu(
+          event,
+          "file:" + file.newFilePath,
+          fileContextMenu(commitHash, file.newFilePath, file.oldFilePath, file.type === "D")
+        )
+      }
+      onKeyDown={(event) => {
+        if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+          event.preventDefault();
+          const rect = event.currentTarget.getBoundingClientRect();
+          openContextMenu(
+            new MouseEvent("contextmenu", { clientX: rect.left, clientY: rect.bottom }),
+            "file:" + file.newFilePath,
+            fileContextMenu(commitHash, file.newFilePath, file.oldFilePath, file.type === "D")
+          );
+        }
+      }}
     >
       <FileIcon />
       <span class="truncate">{name}</span>

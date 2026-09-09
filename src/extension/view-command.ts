@@ -16,11 +16,13 @@ import { watchGitDir } from "./watchers/git.watcher";
 export function createViewCommand(ctx: vscode.ExtensionContext) {
   let currentPanel: vscode.WebviewPanel | undefined = undefined;
   let repoSelection: ReturnType<typeof createRepoSelection> | undefined;
+  let pendingFile: { repo: string; path: string } | undefined;
   const messageProtocol = createMessageProtocol(ctx);
   const rpcServer = createRpcServer();
 
-  return (sourceControl?: vscode.SourceControl) => {
+  return (sourceControl?: Pick<vscode.SourceControl, "rootUri">, file?: string) => {
     const repo = getSourceControlRepo(sourceControl);
+    pendingFile = repo !== undefined && file !== undefined ? { repo, path: file } : undefined;
     if (currentPanel) {
       currentPanel.reveal(vscode.window.activeTextEditor?.viewColumn);
       if (repo !== undefined) {
@@ -58,6 +60,10 @@ export function createViewCommand(ctx: vscode.ExtensionContext) {
     const gitRepoWatcher = watchGitRepo();
     const selection = createRepoSelection(webPanel.webview, (repoPath) => {
       void rpcNotify.notify("repo.select", { name: path.basename(repoPath), path: repoPath });
+      if (pendingFile?.repo === repoPath) {
+        void webPanel.webview.postMessage({ command: "fileHistory", ...pendingFile });
+        pendingFile = undefined;
+      }
     });
     repoSelection = selection;
 
@@ -72,6 +78,7 @@ export function createViewCommand(ctx: vscode.ExtensionContext) {
       gitRepoWatcher.dispose();
       selection.dispose();
       repoSelection = undefined;
+      pendingFile = undefined;
       currentPanel = undefined;
     });
     currentPanel = webPanel;

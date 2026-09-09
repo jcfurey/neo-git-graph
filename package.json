@@ -98,6 +98,11 @@
         "category": "(neo) Git Graph",
         "command": "neo-git-graph.clearAvatarCache",
         "title": "%command.clearAvatarCache%"
+      },
+      {
+        "category": "(neo) Git Graph",
+        "command": "neo-git-graph.fileHistory",
+        "title": "%command.fileHistory%"
       }
     ],
     "menus": {
@@ -106,6 +111,20 @@
           "command": "neo-git-graph.view",
           "group": "navigation",
           "when": "scmProvider == git"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "neo-git-graph.fileHistory",
+          "group": "git",
+          "when": "!explorerResourceIsFolder && (resourceScheme == file || resourceScheme == vscode-remote)"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "neo-git-graph.fileHistory",
+          "group": "git",
+          "when": "!explorerResourceIsFolder && (resourceScheme == file || resourceScheme == vscode-remote)"
         }
       ]
     },

@@ -104,13 +104,18 @@ export async function interactiveRebase(git: SimpleGit, plan: RebasePlan, binary
     new Set(plan.entries.map((entry) => entry.hash)).size !== expected.size ||
     plan.entries.some(
       (entry) =>
-        !expected.has(entry.hash) || !["pick", "reword", "squash", "drop"].includes(entry.action)
+        !expected.has(entry.hash) ||
+        !["pick", "reword", "squash", "fixup", "drop"].includes(entry.action)
     )
   ) {
     throw new Error("The rebase plan no longer matches the branch. Reload the plan.");
   }
   const retained = plan.entries.filter((entry) => entry.action !== "drop");
-  if (retained.length === 0 || retained[0]?.action === "squash") {
+  if (
+    retained.length === 0 ||
+    retained[0]?.action === "squash" ||
+    retained[0]?.action === "fixup"
+  ) {
     throw new Error("Keep at least one commit. The first retained commit cannot be squashed.");
   }
   if (

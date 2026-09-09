@@ -22,6 +22,28 @@ import type { DialogState } from "@/webview/types";
 
 export const repositoryState = signal<RepositoryState | null>(null);
 export const repositoryStateError = signal<string | null>(null);
+export const repositoryRevision = signal(0);
+const panels = new Map<
+  string,
+  { repo: string; receive: (data: RepositoryQueryData | null, error: string | null) => void }
+>();
+
+/** Independent, cancellable subscriptions for panels that do not own a dialog. */
+export function requestPanelQuery(
+  query: RepositoryQuery,
+  receive: (data: RepositoryQueryData | null, error: string | null) => void,
+  repo = selectedRepo.value
+) {
+  if (repo === undefined) {
+    return () => {};
+  }
+  const requestId = `repository-panel-${++nextRequest}`;
+  panels.set(requestId, { repo, receive });
+  vscode.postMessage({ command: "repositoryQuery", repo, requestId, query });
+  return () => {
+    panels.delete(requestId);
+  };
+}
 let nextRequest = 0;
 let stateRequest = "";
 const queries = new Map<
@@ -65,6 +87,14 @@ export function requestRepositoryQuery(
 }
 
 export function handleRepositoryQuery(message: QueryResult<"repositoryQuery">) {
+  const panel = panels.get(message.requestId);
+  if (panel) {
+    panels.delete(message.requestId);
+    if (panel.repo === message.repo && message.repo === selectedRepo.value) {
+      panel.receive(message.data, message.status);
+    }
+    return;
+  }
   if (message.repo !== selectedRepo.value) {
     queries.delete(message.requestId);
     return;
@@ -94,7 +124,14 @@ export function sendRepositoryAction(action: RepositoryAction, repo = selectedRe
   sendRemoteAction(
     { command: "repositoryAction", requestId: `repository-action-${++nextRequest}`, action },
     repo,
-    window.l10n.runningGitAction
+    window.l10n.runningGitAction,
+    {
+      background:
+        action.kind === "viewRangeFile" ||
+        action.kind === "viewHistoricalFile" ||
+        action.kind === "previewFileRestore",
+      otherRepo: action.kind === "submodule"
+    }
   );
 }
 

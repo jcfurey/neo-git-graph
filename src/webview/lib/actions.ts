@@ -3,8 +3,13 @@ import type { ComponentChildren } from "preact";
 
 import type { GitFileChange } from "@/backend/types";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
+import { enterNavigation, leaveNavigation } from "@/webview/lib/navigation";
 import { sendRemoteAction } from "@/webview/lib/remote-actions";
-import { requestRepositoryState, resetRepositoryState } from "@/webview/lib/repository-actions";
+import {
+  repositoryRevision,
+  requestRepositoryState,
+  resetRepositoryState
+} from "@/webview/lib/repository-actions";
 import {
   branchList,
   commitDetails,
@@ -67,8 +72,10 @@ export function selectRepo(repo: string) {
     return;
   }
 
+  leaveNavigation(selectedRepo.value);
   batch(() => {
     selectedRepo.value = repo;
+    enterNavigation(repo);
     branchList.value = undefined;
     headBranch.value = null;
     selectedBranch.value = undefined;
@@ -166,6 +173,7 @@ export function refresh() {
   }
 
   requestBranches(repo);
+  repositoryRevision.value++;
   requestRepositoryState();
   const branch = selectedBranch.value;
   if (branch !== undefined) {
@@ -231,8 +239,8 @@ export function closeDialog() {
   dialog.value = null;
 }
 
-export function openContentDialog(message: string, content: ComponentChildren) {
-  openDialog({ kind: "content", message, content });
+export function openContentDialog(message: string, content: ComponentChildren, wide = false) {
+  openDialog({ kind: "content", message, content, wide });
 }
 
 type FormDialog<T extends ReadonlyArray<DialogInput>> = {
@@ -279,8 +287,11 @@ export function openErrorDialog(message: string, reason: string | null = null) {
 }
 
 /** Report a command that runs longer than the others. The response replaces it. */
-export function openRunningDialog(message: string) {
-  openDialog({ kind: "running", message });
+export function openRunningDialog(
+  message: string,
+  context: { detail: string; started: number } | undefined = undefined
+) {
+  openDialog({ kind: "running", message, ...context });
 }
 
 /** Ask the editor to run a git command on the selected repo. */

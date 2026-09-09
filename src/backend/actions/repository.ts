@@ -2,6 +2,7 @@ import path from "node:path";
 
 import type { SimpleGit } from "simple-git";
 
+import { runHistoryAction } from "@/backend/actions/history";
 import {
   interactiveRebase,
   rebaseBranch,
@@ -18,6 +19,9 @@ import { requireBranchName, resolveCommit } from "@/backend/utils/validation";
 export type RepositoryEffect =
   | { kind: "worktree" | "conflict"; path: string }
   | { kind: "document"; text: string }
+  | { kind: "diff"; left: string | null; right: string | null; before: string; after: string }
+  | { kind: "historicalFile"; hash: string; path: string }
+  | { kind: "restoreDiff"; hash: string; sourcePath: string; destination: string; exists: boolean }
   | void;
 
 async function findStash(git: SimpleGit, stash: StashDetails) {
@@ -39,6 +43,15 @@ export async function runRepositoryAction(
   binary = "git"
 ): Promise<RepositoryEffect> {
   switch (action.kind) {
+    case "submodule":
+    case "restoreFile":
+    case "previewFileRestore":
+    case "fixup":
+    case "batch":
+    case "recoverBranch":
+    case "viewRangeFile":
+    case "viewHistoricalFile":
+      return runHistoryAction(git, action, binary);
     case "addRemote":
     case "editRemote":
     case "renameRemote":

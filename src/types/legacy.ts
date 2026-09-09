@@ -75,6 +75,7 @@ export type RequestMessage =
   | RequestViewDiff;
 
 export type ResponseMessage =
+  | { command: "fileHistory"; repo: string; path: string }
   | ActionResponse
   | QueryResponse
   | ResponseFetchAvatar

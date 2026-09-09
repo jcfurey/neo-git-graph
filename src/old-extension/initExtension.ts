@@ -105,7 +105,9 @@ export function initExtension(
     ctx.subscriptions.push(
       vscode.workspace.registerTextDocumentContentProvider(
         DiffDocProvider.scheme,
-        new DiffDocProvider(gitClient.getInstance)
+        new DiffDocProvider(gitClient.getInstance, (repo) =>
+          gitClientFactory(repo, config.gitPath()).getInstance()
+        )
       )
     );
 

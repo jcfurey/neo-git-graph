@@ -6,6 +6,7 @@ import { Checkbox } from "@/webview/components/ui/Checkbox";
 import { Icon } from "@/webview/components/ui/Icons";
 import { Select } from "@/webview/components/ui/Select";
 import { closeDialog } from "@/webview/lib/actions";
+import { copyToClipboard } from "@/webview/lib/copy";
 import { dialog } from "@/webview/lib/stores";
 import type { DialogInput, DialogState } from "@/webview/types";
 import { hasInvalidRefChars } from "@/webview/utils/ref";
@@ -15,7 +16,7 @@ const FOCUSABLE = "input:not([disabled]), textarea, select, button:not([disabled
 const PANEL_CLASS = [
   "fixed left-1/2 top-1/2 z-40 max-h-4/5 w-dialog",
   "-translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-md border border-line",
-  "bg-menu p-2.5 text-center text-menu-fg outline-none shadow-dialog"
+  "bg-menu p-5 text-center text-menu-fg outline-none shadow-dialog"
 ].join(" ");
 
 const INPUT_CLASS =
@@ -64,7 +65,15 @@ function trapTab(panel: HTMLElement, event: KeyboardEvent) {
   }
 }
 
-function Panel({ labelledBy, children }: { labelledBy: string; children: ComponentChildren }) {
+function Panel({
+  labelledBy,
+  children,
+  wide
+}: {
+  labelledBy: string;
+  children: ComponentChildren;
+  wide: boolean;
+}) {
   const panel = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -89,7 +98,7 @@ function Panel({ labelledBy, children }: { labelledBy: string; children: Compone
 
   return (
     <>
-      <div class="fixed inset-0 z-30" onClick={closeDialog} />
+      <div class="fixed inset-0 z-30 bg-black/20" onClick={closeDialog} />
       <div
         ref={panel}
         role="dialog"
@@ -97,6 +106,9 @@ function Panel({ labelledBy, children }: { labelledBy: string; children: Compone
         aria-labelledby={labelledBy}
         tabIndex={-1}
         class={PANEL_CLASS}
+        style={{
+          width: wide ? "min(960px, calc(100vw - 2rem))" : "min(600px, calc(100vw - 2rem))"
+        }}
         onKeyDown={(event) => {
           if (event.key === "Tab" && panel.current !== null) {
             trapTab(panel.current, event);
@@ -257,6 +269,14 @@ function MessageBody({
   state: Extract<DialogState, { kind: "error" | "running" }>;
   labelledBy: string;
 }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (state.kind !== "running" || state.started === undefined) {
+      return;
+    }
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [state]);
   return (
     <>
       <p id={labelledBy} class="flex items-center justify-center gap-1.5">
@@ -271,11 +291,33 @@ function MessageBody({
         )}
         {state.kind === "running" ? `${state.message} ...` : state.message}
       </p>
+      {state.kind === "running" && state.detail && (
+        <p class="mt-3 break-all text-left text-xs whitespace-pre-wrap select-text">
+          {state.detail}
+        </p>
+      )}
+      {state.kind === "running" && state.started !== undefined && (
+        <p class="mt-3 text-muted">
+          {window.l10n.elapsedSeconds.replace(
+            "{0}",
+            String(Math.max(0, Math.floor((now - state.started) / 1000)))
+          )}
+          <br />
+          {window.l10n.operationKeepsRunning}
+        </p>
+      )}
       {state.kind === "error" && state.reason !== null && (
         <p class="mt-2.5 text-left italic whitespace-pre-wrap select-text">{state.reason}</p>
       )}
-      <div class="mt-2.5 flex justify-center">
-        <Button onClick={closeDialog}>{window.l10n.dialogDismiss}</Button>
+      <div class="mt-4 flex justify-center gap-2">
+        {state.kind === "error" && state.reason && (
+          <Button onClick={() => copyToClipboard(window.l10n.copyError, state.reason!)}>
+            {window.l10n.copyError}
+          </Button>
+        )}
+        <Button onClick={closeDialog}>
+          {state.kind === "running" ? window.l10n.hideOperation : window.l10n.dialogDismiss}
+        </Button>
       </div>
     </>
   );
@@ -290,7 +332,11 @@ export function Dialog() {
   }
 
   return (
-    <Panel key={state.token} labelledBy={labelledBy}>
+    <Panel
+      key={state.token}
+      labelledBy={labelledBy}
+      wide={state.kind === "content" && state.wide === true}
+    >
       {state.kind === "content" ? (
         <>
           <h2 id={labelledBy} class="mb-3 font-bold">

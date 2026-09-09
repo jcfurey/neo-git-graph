@@ -8,3 +8,11 @@ export function normalizeRepoPath(repoPath: string): string {
     ? normalized.replace(/^[A-Z]:/, (drive) => drive.toLowerCase())
     : normalized;
 }
+
+export function isRepoWithinPath(repo: string, root: string) {
+  const relative = path.relative(normalizeRepoPath(root), normalizeRepoPath(repo));
+  return (
+    relative === "" ||
+    (relative !== ".." && !relative.startsWith(".." + path.sep) && !path.isAbsolute(relative))
+  );
+}

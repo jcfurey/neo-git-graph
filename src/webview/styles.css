@@ -22,7 +22,7 @@
   --shadow-scroll: 0 -6px 6px 6px var(--vscode-scrollbar-shadow);
 
   --color-fg: var(--vscode-foreground);
-  --color-muted: #808080;
+  --color-muted: var(--vscode-descriptionForeground);
   --color-dropdown: var(--vscode-dropdown-background);
   --color-dropdown-fg: var(--vscode-dropdown-foreground);
   --color-dropdown-border: var(--vscode-dropdown-border);

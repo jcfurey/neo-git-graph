@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import { EXTENSION_NAME } from "./extension/constants";
 import { logger } from "./extension/util/logger";
 import { createViewCommand } from "./extension/view-command";
+import { registerFileHistoryCommand } from "./old-extension/fileHistoryCommand";
 import { legacyLogger } from "./old-extension/utils/logger";
 
 export function activate(ctx: vscode.ExtensionContext) {
@@ -21,9 +22,9 @@ export function activate(ctx: vscode.ExtensionContext) {
 
   ctx.subscriptions.push(statusBarItem);
 
-  ctx.subscriptions.push(
-    vscode.commands.registerCommand("neo-git-graph.view", createViewCommand(ctx))
-  );
+  const view = createViewCommand(ctx);
+  ctx.subscriptions.push(vscode.commands.registerCommand("neo-git-graph.view", view));
+  registerFileHistoryCommand(ctx, (repo, file) => view({ rootUri: vscode.Uri.file(repo) }, file));
 
   logger.info("Extension activated");
 }

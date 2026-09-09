@@ -18,7 +18,9 @@ const mocks = vi.hoisted(() => {
   });
   return { postMessage: vi.fn() };
 });
-vi.mock("@/webview/lib/vscode", () => ({ vscode: { postMessage: mocks.postMessage } }));
+vi.mock("@/webview/lib/vscode", () => ({
+  vscode: { postMessage: mocks.postMessage, getState: vi.fn(), setState: vi.fn() }
+}));
 
 beforeEach(() => {
   mocks.postMessage.mockClear();
