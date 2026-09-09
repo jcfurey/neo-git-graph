@@ -71,7 +71,7 @@
       }
     },
     {
-      "files": ["tests-ext/**/*.ts"],
+      "files": ["tests-ext/**/*.{ts,cjs}"],
       "env": {
         "mocha": true
       }
