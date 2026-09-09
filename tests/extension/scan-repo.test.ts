@@ -3,6 +3,7 @@ import * as path from "node:path";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { scanRepos } from "@/extension/handlers/scan-repo";
 
 import { git, makeRepo } from "@tests/backend/helpers";
@@ -44,8 +45,8 @@ describe("repository picker scan", () => {
   it("offers the parent and submodule at the default search depth", async () => {
     expect(await scanRepos()).toEqual({
       repos: [
-        { name: path.basename(parent), path: parent },
-        { name: "child module", path: child }
+        { name: path.basename(parent), path: normalizeRepoPath(parent) },
+        { name: "child module", path: normalizeRepoPath(child) }
       ].toSorted((a, b) => a.path.localeCompare(b.path))
     });
   });
@@ -53,7 +54,9 @@ describe("repository picker scan", () => {
   it("offers each repository once when workspace folders overlap", async () => {
     workspace.workspaceFolders.push({ uri: { fsPath: child } });
     const { repos } = await scanRepos();
-    expect(repos.map((repo) => repo.path).toSorted()).toEqual([parent, child].toSorted());
+    expect(repos.map((repo) => repo.path).toSorted()).toEqual(
+      [parent, child].map(normalizeRepoPath).toSorted()
+    );
   });
 
   it("returns an empty picker when there are no workspace folders", async () => {
