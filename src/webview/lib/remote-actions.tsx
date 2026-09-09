@@ -5,6 +5,7 @@ import {
   openFormDialog,
   openRunningDialog
 } from "@/webview/lib/actions";
+import { beginActivity, finishActivity } from "@/webview/lib/activity";
 import { requestRepositoryQuery, sendRepositoryAction } from "@/webview/lib/repository-actions";
 import { dialog, selectedRepo } from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
@@ -23,7 +24,9 @@ type RemoteCommand = ActionCommand & { requestId: string };
 type Pending = {
   requestId: string;
   repo: string;
-  dialog: DialogState;
+  dialog: DialogState | null;
+  viewRepo?: string;
+  background?: boolean;
 };
 
 let nextRequest = 0;
@@ -48,21 +51,39 @@ export function openRemoteAction(action: RemoteAction, branchName = "", remoteRe
   });
 }
 
-export function sendRemoteAction(command: RemoteCommand, repo: string, message: string) {
-  if (selectedRepo.value !== repo) {
+export function sendRemoteAction(
+  command: RemoteCommand,
+  repo: string,
+  message: string,
+  options: { background?: boolean; otherRepo?: boolean } = {}
+) {
+  if (selectedRepo.value === undefined || (!options.otherRepo && selectedRepo.value !== repo)) {
     closeDialog();
     return;
   }
-  openRunningDialog(message);
+  const entry = beginActivity(command, repo, message);
+  if (!options.background) {
+    openRunningDialog(entry.title, {
+      detail: [repo, entry.detail].filter(Boolean).join("\n"),
+      started: entry.started
+    });
+  }
   pendingActions.set(command.requestId, {
     requestId: command.requestId,
     repo,
-    dialog: dialog.value!
+    dialog: dialog.value,
+    viewRepo: selectedRepo.value,
+    background: options.background ?? false
   });
   vscode.postMessage({ ...command, repo });
 }
 
 const send = sendRemoteAction;
+
+export function actionMutates(message: ActionResponse) {
+  const pending = message.requestId ? pendingActions.get(message.requestId) : undefined;
+  return message.requestId === undefined || (pending !== undefined && !pending.background);
+}
 
 /** Ignore a late result after the user changes repositories or opens another dialog. */
 export function acceptRemoteActionResult(message: ActionResponse): boolean {
@@ -71,10 +92,22 @@ export function acceptRemoteActionResult(message: ActionResponse): boolean {
   }
   const pending = pendingActions.get(message.requestId);
   pendingActions.delete(message.requestId);
+  finishActivity(message);
+  if (pending?.background) {
+    if (
+      pending.repo === message.repo &&
+      selectedRepo.value === pending.viewRepo &&
+      dialog.value === pending.dialog &&
+      message.status !== null
+    ) {
+      openErrorDialog(window.l10n.unableToRunGitAction, message.status);
+    }
+    return false;
+  }
   if (pending === undefined || pending.repo !== message.repo || dialog.value !== pending.dialog) {
     return false;
   }
-  if (selectedRepo.value !== pending.repo) {
+  if (selectedRepo.value !== (pending.viewRepo ?? pending.repo)) {
     closeDialog();
     return false;
   }

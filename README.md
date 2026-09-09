@@ -41,6 +41,12 @@ This fork:
 
 ## Features
 
+- **Workspace overview**: Inspect branches, local changes, ahead/behind counts, and submodule revisions; initialize, sync, or update nested submodules
+- **History search**: Search all repository history by message, SHA, author, date, or path, follow file renames, and save filters per repository
+- **Compare and restore**: Compare revisions or changes since their common ancestor, inspect unique commits and file diffs, and restore historical file contents while preserving staged changes
+- **Reflog recovery**: Find older branch/HEAD positions, jump to their graph context, and create recovery branches
+- **Ordered commit actions**: Select multiple commits for cherry-pick or revert, create staged fixups, and arrange fixup/squash commits in the interactive rebase editor
+- **Navigation and activity**: Keyboard navigation, per-repository scroll and filters, compact repository tools, and operation progress with copyable errors
 - **Repository tools**: Configure remotes and upstreams, inspect ahead/behind status, and manage worktrees
 - **Recovery and stashes**: Continue, abort or skip interrupted operations; inspect and resolve conflicts; save, inspect, apply, pop and drop stashes
 - **Rebase**: Preserve merges when rebasing onto another branch, or reorder, reword, squash and drop commits in a linear interactive plan

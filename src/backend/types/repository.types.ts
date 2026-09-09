@@ -30,23 +30,26 @@ export type StashDetails = { ref: string; hash: string; message: string };
 export type RebaseEntry = {
   hash: string;
   message: string;
-  action: "pick" | "reword" | "squash" | "drop";
+  action: "pick" | "reword" | "squash" | "fixup" | "drop";
 };
 export type RebasePlan = { base: string; head: string; branch: string; entries: RebaseEntry[] };
 
 export type RepositoryQuery =
+  | HistoryQuery
   | { kind: "state" }
   | { kind: "stashes" }
-  | { kind: "rebasePlan"; base: string }
+  | { kind: "rebasePlan"; base: string; autosquash?: boolean }
   | { kind: "lease"; remote: string; branch: string };
 
 export type RepositoryQueryData =
+  | HistoryQueryData
   | { kind: "state"; state: RepositoryState }
   | { kind: "stashes"; stashes: StashDetails[] }
   | { kind: "rebasePlan"; plan: RebasePlan }
   | { kind: "lease"; hash: string };
 
 export type RepositoryAction =
+  | HistoryAction
   | { kind: "addRemote"; name: string; url: string; fetch: boolean }
   | { kind: "editRemote"; name: string; fetchUrls: string[]; pushUrls: string[] }
   | { kind: "renameRemote"; name: string; newName: string }
@@ -68,3 +71,4 @@ export type RepositoryAction =
   | { kind: "addWorktree"; path: string; branch: string; newBranch: boolean; startPoint: string }
   | { kind: "removeWorktree"; path: string; expectedHead: string }
   | { kind: "openWorktree"; path: string };
+import type { HistoryAction, HistoryQuery, HistoryQueryData } from "./history.types";

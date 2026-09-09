@@ -4,6 +4,8 @@ import path from "node:path";
 
 import type { SimpleGit } from "simple-git";
 
+import { historyQuery } from "@/backend/queries/history";
+import { loadWorkspace } from "@/backend/queries/workspace";
 import type {
   OperationKind,
   OperationState,
@@ -14,6 +16,7 @@ import type {
   StashDetails,
   WorktreeDetails
 } from "@/backend/types";
+import { autosquashPlan } from "@/backend/utils/autosquash";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { requireRemote, resolveCommit } from "@/backend/utils/validation";
 
@@ -188,15 +191,28 @@ export async function loadRebasePlan(git: SimpleGit, baseRef: string): Promise<R
 
 export async function repositoryQuery(
   git: SimpleGit,
-  query: RepositoryQuery
+  query: RepositoryQuery,
+  workspace: { repos: string[]; binary: string } = { repos: [], binary: "git" }
 ): Promise<RepositoryQueryData> {
   switch (query.kind) {
+    case "workspace":
+      return { kind: "workspace", entries: await loadWorkspace(workspace.repos, workspace.binary) };
+    case "history":
+    case "compare":
+    case "compareCommits":
+    case "reflog":
+    case "restorePlan":
+    case "stagedPlan":
+    case "batchPlan":
+      return historyQuery(git, query);
     case "state":
       return { kind: "state", state: await loadRepositoryState(git) };
     case "stashes":
       return { kind: "stashes", stashes: await loadStashes(git) };
-    case "rebasePlan":
-      return { kind: "rebasePlan", plan: await loadRebasePlan(git, query.base) };
+    case "rebasePlan": {
+      const plan = await loadRebasePlan(git, query.base);
+      return { kind: "rebasePlan", plan: query.autosquash ? autosquashPlan(plan) : plan };
+    }
     case "lease": {
       await requireRemote(git, query.remote);
       const hash = await resolveCommit(git, `refs/remotes/${query.remote}/${query.branch}`);

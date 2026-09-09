@@ -21,7 +21,9 @@ import {
 import { dialog, selectedRepo } from "@/webview/lib/stores";
 
 const mocks = vi.hoisted(() => ({ postMessage: vi.fn() }));
-vi.mock("@/webview/lib/vscode", () => ({ vscode: { postMessage: mocks.postMessage } }));
+vi.mock("@/webview/lib/vscode", () => ({
+  vscode: { postMessage: mocks.postMessage, getState: vi.fn(), setState: vi.fn() }
+}));
 
 let container: HTMLDivElement;
 const state: RepositoryState = {
@@ -293,6 +295,6 @@ describe("operation and rebase UI", () => {
     expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(
       true
     );
-    expect(container.querySelector('[role="alert"]')?.textContent).toBe("invalidRebasePlan");
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe("firstCannotCombine");
   });
 });

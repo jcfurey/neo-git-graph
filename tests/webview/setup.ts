@@ -25,3 +25,10 @@ Object.defineProperty(globalThis, "acquireVsCodeApi", {
   value: vi.fn(() => vscodeApi),
   configurable: true
 });
+
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "l10n", {
+    value: new Proxy({}, { get: (_target, key) => String(key) }),
+    configurable: true
+  });
+}

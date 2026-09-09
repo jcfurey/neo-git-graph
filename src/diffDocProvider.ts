@@ -1,17 +1,20 @@
+import { sep } from "node:path";
+
 import * as vscode from "vscode";
 
-import { GitInstance } from "./backend/gitClient";
-import { getPathFromStr } from "./backend/utils/path";
+import type { GitInstance } from "@/backend/gitClient";
 
 export class DiffDocProvider implements vscode.TextDocumentContentProvider {
   public static scheme = "neo-git-graph";
   private gitClient: GitInstance;
+  private forRepo: ((repo: string) => ReturnType<GitInstance>) | undefined;
   private onDidChangeEventEmitter = new vscode.EventEmitter<vscode.Uri>();
   private docs = new Map<string, DiffDocument>();
   private subscriptions: vscode.Disposable;
 
-  constructor(gitClient: GitInstance) {
+  constructor(gitClient: GitInstance, forRepo?: (repo: string) => ReturnType<GitInstance>) {
     this.gitClient = gitClient;
+    this.forRepo = forRepo;
     this.subscriptions = vscode.workspace.onDidCloseTextDocument((doc) =>
       this.docs.delete(doc.uri.toString())
     );
@@ -34,8 +37,10 @@ export class DiffDocProvider implements vscode.TextDocumentContentProvider {
     }
 
     let request = decodeDiffDocUri(uri);
-    return this.gitClient()
-      .cwd(request.repo)
+    if (request.repo === undefined || request.commit === undefined) {
+      return "";
+    }
+    return (this.forRepo?.(request.repo) ?? this.gitClient().cwd(request.repo))
       .show([`${request.commit}:${request.filePath}`])
       .catch(() => "")
       .then((data) => {
@@ -59,15 +64,11 @@ class DiffDocument {
 }
 
 export function encodeDiffDocUri(repo: string, path: string, commit: string): vscode.Uri {
-  return vscode.Uri.parse(
-    DiffDocProvider.scheme +
-      ":" +
-      getPathFromStr(path) +
-      "?commit=" +
-      encodeURIComponent(commit) +
-      "&repo=" +
-      encodeURIComponent(repo)
-  );
+  return vscode.Uri.from({
+    scheme: DiffDocProvider.scheme,
+    path: sep === "\\" ? path.replaceAll("\\", "/") : path,
+    query: "commit=" + encodeURIComponent(commit) + "&repo=" + encodeURIComponent(repo)
+  });
 }
 
 export function decodeDiffDocUri(uri: vscode.Uri) {
@@ -77,11 +78,14 @@ export function decodeDiffDocUri(uri: vscode.Uri) {
 
 function decodeUriQueryArgs(query: string) {
   let queryComps = query.split("&"),
-    queryArgs: { [key: string]: string } = {},
-    i;
-  for (i = 0; i < queryComps.length; i++) {
-    let pair = queryComps[i].split("=");
-    queryArgs[pair[0]] = decodeURIComponent(pair[1]);
+    queryArgs: { [key: string]: string } = {};
+  for (const queryComp of queryComps) {
+    const separatorIndex = queryComp.indexOf("=");
+    if (separatorIndex !== -1) {
+      const key = queryComp.slice(0, separatorIndex);
+      const value = queryComp.slice(separatorIndex + 1);
+      queryArgs[key] = decodeURIComponent(value);
+    }
   }
   return queryArgs;
 }

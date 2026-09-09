@@ -10,6 +10,7 @@ import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { config } from "@/config";
 import { DiffDocProvider } from "@/diffDocProvider";
 import { EXTENSION_NAME } from "@/extension/constant/const";
+import { registerFileHistoryCommand } from "@/extension/fileHistoryCommand";
 import { createMaxDepthTracker } from "@/extension/maxDepthTracker";
 import { registerMessageHandlers } from "@/extension/messageHandler";
 import { createRepoManager, RepoManager } from "@/extension/repoManager";
@@ -31,15 +32,22 @@ function registerViewCommand(
   gitClient: GitClient
 ) {
   let currentPanel: WebviewPanel | undefined;
+  registerFileHistoryCommand(ctx, (repo, file) => {
+    void vscode.commands.executeCommand(
+      "neo-git-graph.view",
+      { rootUri: vscode.Uri.file(repo) },
+      file
+    );
+  });
   ctx.subscriptions.push(
     vscode.commands.registerCommand(
       "neo-git-graph.view",
-      (sourceControl?: vscode.SourceControl) => {
+      (sourceControl?: vscode.SourceControl, file?: string) => {
         const repo = getSourceControlRepo(sourceControl);
         if (currentPanel) {
           currentPanel.reveal(vscode.window.activeTextEditor?.viewColumn);
           if (repo !== undefined) {
-            currentPanel.selectRepo(repo);
+            currentPanel.selectRepo(repo, file);
           }
           return;
         }
@@ -91,7 +99,7 @@ function registerViewCommand(
           onPanelShown
         });
         if (repo !== undefined) {
-          currentPanel.selectRepo(repo);
+          currentPanel.selectRepo(repo, file);
         }
       }
     )
@@ -119,7 +127,9 @@ export function initExtension(
     ctx.subscriptions.push(
       vscode.workspace.registerTextDocumentContentProvider(
         DiffDocProvider.scheme,
-        new DiffDocProvider(gitClient.getInstance)
+        new DiffDocProvider(gitClient.getInstance, (repo) =>
+          gitClientFactory(repo, config.gitPath()).getInstance()
+        )
       )
     );
 

@@ -39,6 +39,7 @@ export function createWebviewPanel(opts: {
 
   const disposables: vscode.Disposable[] = [];
   let isPanelVisible = true;
+  let pendingFile: { repo: string; path: string } | undefined;
   const repoSelection = createRepoSelection(panel.webview, (repo) => {
     if (repoManager.addRepo(repo)) {
       repoManager.sendRepos();
@@ -49,6 +50,10 @@ export function createWebviewPanel(opts: {
       lastActiveRepo: extensionState.getLastActiveRepo(),
       selectedRepo: repo
     });
+    if (pendingFile?.repo === repo) {
+      bridge.post({ command: "fileHistory", ...pendingFile });
+      pendingFile = undefined;
+    }
   });
   disposables.push(repoSelection);
 
@@ -115,7 +120,10 @@ export function createWebviewPanel(opts: {
   });
 
   return {
-    selectRepo: repoSelection.select,
+    selectRepo(repo: string, file?: string) {
+      pendingFile = file === undefined ? undefined : { repo, path: file };
+      repoSelection.select(repo);
+    },
     reveal(column?: vscode.ViewColumn) {
       panel.reveal(column);
     },

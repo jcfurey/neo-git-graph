@@ -18,18 +18,21 @@ import { commitDetails } from "@/backend/queries/commitDetails";
 import { loadBranches } from "@/backend/queries/loadBranches";
 import { loadCommits } from "@/backend/queries/loadCommits";
 import { loadRemotes } from "@/backend/queries/loadRemotes";
+import { findGitRepos } from "@/backend/queries/repoSearch";
 import { repositoryQuery } from "@/backend/queries/repository";
 import type { ActionRequest, GitFileChangeType, QueryResult } from "@/backend/types";
+import { getSubmodulePaths } from "@/backend/utils/git";
+import { isRepoWithinPath, normalizeRepoPath } from "@/backend/utils/repoPath";
 import { abbrevCommit } from "@/backend/utils/string";
-import { Config } from "@/config";
+import type { Config } from "@/config";
 import { encodeDiffDocUri } from "@/diffDocProvider";
 import { copyToClipboard } from "@/extension/utils/clipboard";
 import { ExtensionState } from "@/extensionState";
 import { RepoFileWatcher } from "@/repoFileWatcher";
-import { ResponseMessage } from "@/types";
+import type { ResponseMessage } from "@/types";
 
-import { RepoManager } from "./repoManager";
-import { WebviewBridge } from "./webviewBridge";
+import type { RepoManager } from "./repoManager";
+import type { WebviewBridge } from "./webviewBridge";
 
 function viewDiff(
   repo: string,
@@ -77,13 +80,15 @@ export function registerMessageHandlers(
   const { config, gitClient, repoManager, extensionState, avatarManager, repoFileWatcher } = deps;
 
   let currentRepo: string | null = null;
-  const busyRepos = new Set<string>();
+  const busyRepos = new Map<string, boolean>();
+  const viewedRepos = new Set<string>();
 
   function setCurrentRepo(repo: string) {
     if (repo === currentRepo) {
       return;
     }
     currentRepo = repo;
+    viewedRepos.add(repo);
     gitClient.setRepo(repo);
     extensionState.setLastActiveRepo(repo);
     repoFileWatcher.start(repo);
@@ -98,12 +103,22 @@ export function registerMessageHandlers(
       let status: string | null = null;
       let acquired = false;
       try {
-        if (busyRepos.has(msg.repo)) {
+        const request: ActionRequest = msg;
+        const recursive =
+          request.command === "repositoryAction" && request.action.kind === "submodule";
+        if (
+          [...busyRepos].some(
+            ([repo, descendants]) =>
+              repo === msg.repo ||
+              (descendants && isRepoWithinPath(msg.repo, repo)) ||
+              (recursive && isRepoWithinPath(repo, msg.repo))
+          )
+        ) {
           throw new Error(
             "Another Git operation is running in this repository. Wait for it to finish."
           );
         }
-        busyRepos.add(msg.repo);
+        busyRepos.set(msg.repo, recursive);
         acquired = true;
         await handler(gitClientFactory(msg.repo, config.gitPath()).getInstance(), msg);
       } catch (e: unknown) {
@@ -140,6 +155,42 @@ export function registerMessageHandlers(
         content: effect.text
       });
       await vscode.window.showTextDocument(document, { preview: true });
+    } else if (effect?.kind === "diff") {
+      const empty = "0".repeat(40);
+      await vscode.commands.executeCommand(
+        "vscode.diff",
+        encodeDiffDocUri(msg.repo, effect.before, effect.left ?? empty),
+        encodeDiffDocUri(msg.repo, effect.after, effect.right ?? empty),
+        effect.after +
+          " (" +
+          (effect.left?.slice(0, 8) ?? "∅") +
+          " ↔ " +
+          (effect.right?.slice(0, 8) ?? "∅") +
+          ")",
+        { preview: true }
+      );
+    } else if (effect?.kind === "historicalFile") {
+      await vscode.commands.executeCommand(
+        "vscode.open",
+        encodeDiffDocUri(msg.repo, effect.path, effect.hash),
+        { preview: true }
+      );
+    } else if (effect?.kind === "restoreDiff") {
+      await vscode.commands.executeCommand(
+        "vscode.diff",
+        effect.exists
+          ? vscode.Uri.file(effect.destination)
+          : encodeDiffDocUri(msg.repo, effect.sourcePath, "0".repeat(40)),
+        encodeDiffDocUri(msg.repo, effect.sourcePath, effect.hash),
+        effect.destination + " ↔ " + effect.hash.slice(0, 12),
+        { preview: true }
+      );
+    }
+    if (msg.action.kind === "submodule") {
+      for (const repo of await getSubmodulePaths(msg.repo, config.gitPath())) {
+        repoManager.addRepo(normalizeRepoPath(repo));
+      }
+      repoManager.sendRepos();
     }
   });
 
@@ -169,7 +220,25 @@ export function registerMessageHandlers(
     try {
       data = await repositoryQuery(
         gitClientFactory(msg.repo, config.gitPath()).getInstance(),
-        msg.query
+        msg.query,
+        {
+          repos:
+            msg.query.kind === "workspace"
+              ? [
+                  ...new Set([
+                    msg.repo,
+                    ...viewedRepos,
+                    ...Object.keys(repoManager.getRepos()),
+                    ...(await findGitRepos(
+                      (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath),
+                      config.gitPath(),
+                      config.maxDepthOfRepoSearch()
+                    ))
+                  ])
+                ]
+              : [],
+          binary: config.gitPath()
+        }
       );
     } catch (error: unknown) {
       status = error instanceof Error ? error.message : String(error);
@@ -240,7 +309,7 @@ export function registerMessageHandlers(
   bridge.onMessage("commitDetails", async (msg) => {
     bridge.post({
       command: "commitDetails",
-      ...(await commitDetails(gitClient.getInstance(), {
+      ...(await commitDetails(gitClientFactory(msg.repo, config.gitPath()).getInstance(), {
         commitHash: msg.commitHash,
         dateType: config.dateType()
       }))
@@ -262,21 +331,19 @@ export function registerMessageHandlers(
       });
     }
   });
-
-  bridge.onMessage("fetchAvatar", (msg) => {
-    avatarManager.fetchAvatarImage(msg.email, msg.repo, msg.commits);
-  });
-
-  bridge.onMessage("saveRepoState", (msg) => {
-    repoManager.setRepoState(msg.repo, msg.state);
-  });
-
   bridge.onMessage("copyToClipboard", async (msg) => {
     bridge.post({
       command: "copyToClipboard",
       type: msg.type,
       success: await copyToClipboard(msg.data)
     });
+  });
+  bridge.onMessage("fetchAvatar", (msg) => {
+    avatarManager.fetchAvatarImage(msg.email, msg.repo, msg.commits);
+  });
+
+  bridge.onMessage("saveRepoState", (msg) => {
+    repoManager.setRepoState(msg.repo, msg.state);
   });
 
   bridge.onMessage("viewDiff", async (msg) => {

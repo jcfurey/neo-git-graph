@@ -1,6 +1,7 @@
 import { useState } from "preact/hooks";
 
 import type { RebaseEntry, RebasePlan } from "@/backend/types";
+import { autosquashPlan } from "@/backend/utils/autosquash";
 import { Button } from "@/webview/components/ui/Button";
 import { Select } from "@/webview/components/ui/Select";
 import { openContentDialog, openErrorDialog } from "@/webview/lib/actions";
@@ -18,6 +19,7 @@ export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string })
   const invalid =
     retained.length === 0 ||
     retained[0]?.action === "squash" ||
+    retained[0]?.action === "fixup" ||
     entries.some((entry) => entry.action === "reword" && !entry.message.trim());
   function update(index: number, patch: Partial<RebaseEntry>) {
     setEntries((current) =>
@@ -45,6 +47,11 @@ export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string })
         <b>{plan.branch}</b> · {plan.base.slice(0, 12)} → {plan.head.slice(0, 12)}
       </p>
       <p>{window.l10n.rebasePlanDescription}</p>
+      <Button
+        onClick={() => setEntries(autosquashPlan({ ...plan, entries }, plan.entries).entries)}
+      >
+        {window.l10n.arrangeAutosquash}
+      </Button>
       {entries.map((entry, index) => (
         <div key={entry.hash} class="space-y-2 rounded border border-line p-2">
           <p class="break-words">
@@ -59,6 +66,7 @@ export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string })
                 { label: window.l10n.pickCommit, value: "pick" },
                 { label: window.l10n.rewordCommit, value: "reword" },
                 { label: window.l10n.squashCommit, value: "squash" },
+                { label: window.l10n.fixupCommit, value: "fixup" },
                 { label: window.l10n.dropCommit, value: "drop" }
               ]}
             />
@@ -80,7 +88,7 @@ export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string })
           )}
         </div>
       ))}
-      {invalid && <p role="alert">{window.l10n.invalidRebasePlan}</p>}
+      {invalid && <p role="alert">{window.l10n.firstCannotCombine}</p>}
       <Button type="submit" disabled={invalid}>
         {window.l10n.startRebase}
       </Button>
@@ -88,13 +96,13 @@ export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string })
   );
 }
 
-export function openInteractiveRebase(base: string) {
+export function openInteractiveRebase(base: string, autosquash = false) {
   const repo = selectedRepo.value;
   if (repo === undefined) {
     return;
   }
   requestRepositoryQuery(
-    { kind: "rebasePlan", base },
+    { kind: "rebasePlan", base, autosquash },
     (data) => {
       if (data.kind === "rebasePlan") {
         openContentDialog(

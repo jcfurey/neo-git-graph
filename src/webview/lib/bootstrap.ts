@@ -1,4 +1,6 @@
 import type { ResponseMessage } from "@/types";
+import { openFileHistory } from "@/webview/components/history/HistoryTools";
+import { selectRepo } from "@/webview/lib/actions";
 
 import { handleActionResult } from "./handler/action-result";
 import { handleCommitDetails } from "./handler/commit-details";
@@ -20,6 +22,10 @@ type Handlers = {
 };
 
 const handlers: Handlers = {
+  fileHistory: (message) => {
+    selectRepo(message.repo);
+    openFileHistory(message.path);
+  },
   repositoryAction: handleActionResult,
   repositoryQuery: handleRepositoryQuery,
   addTag: handleActionResult,
