@@ -1,10 +1,17 @@
 import type { GitResetMode } from "./git.types";
+import type { RepositoryAction } from "./repository.types";
 
 export type GitCommandStatus = string | null;
 
 type ActionPayloads = {
+  repositoryAction: { requestId: string; action: RepositoryAction };
   addTag: { tagName: string; commitHash: string; lightweight: boolean; message: string };
-  checkoutBranch: { branchName: string; remoteBranch: string | null };
+  checkoutBranch: {
+    branchName: string;
+    remoteBranch: string | null;
+    fetch?: boolean;
+    requestId?: string;
+  };
   checkoutCommit: { commitHash: string };
   cherrypickCommit: { commitHash: string; parentIndex: number };
   createBranch: { commitHash: string; branchName: string };
@@ -12,13 +19,14 @@ type ActionPayloads = {
   deleteTag: { tagName: string };
   mergeBranch: { branchName: string; createNewCommit: boolean };
   mergeCommit: { commitHash: string; createNewCommit: boolean };
-  pushTag: { tagName: string };
+  pushTag: { tagName: string; remote: string; requestId?: string };
   pushBranch: {
     requestId: string;
     branchName: string;
     remote: string;
     remoteBranch: string;
     setUpstream: boolean;
+    expectedRemoteHash?: string;
   };
   pullBranch: { requestId: string; branchName: string; remote: string; remoteBranch: string };
   fetchRemote: { requestId: string; remote: string | null; prune: boolean };
@@ -28,7 +36,7 @@ type ActionPayloads = {
 };
 
 export type ActionRequest = {
-  [K in keyof ActionPayloads]: { command: K; repo: string } & ActionPayloads[K];
+  [K in keyof ActionPayloads]: { command: K; repo: string; requestId?: string } & ActionPayloads[K];
 }[keyof ActionPayloads];
 
 export type ActionResponse = {

@@ -1,25 +1,24 @@
 import type { SimpleGit } from "simple-git";
 
 import type { ActionPayload } from "@/backend/types";
-
-async function requireRemote(git: SimpleGit, remote: string) {
-  const remotes = await git.getRemotes();
-  if (!remotes.some((entry) => entry.name === remote)) {
-    throw new Error(`Remote '${remote}' is not configured for this repository.`);
-  }
-}
-
-async function requireBranchName(git: SimpleGit, branch: string) {
-  await git.raw(["check-ref-format", `refs/heads/${branch}`]);
-}
+import { requireBranchName, requireRemote } from "@/backend/utils/validation";
 
 export async function pushBranch(git: SimpleGit, input: ActionPayload<"pushBranch">) {
   await requireRemote(git, input.remote);
   await requireBranchName(git, input.branchName);
   await requireBranchName(git, input.remoteBranch);
+  if (
+    input.expectedRemoteHash !== undefined &&
+    !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(input.expectedRemoteHash)
+  ) {
+    throw new Error("Fetch and inspect the remote branch before a force-with-lease push.");
+  }
   await git.raw([
     "push",
     ...(input.setUpstream ? ["--set-upstream"] : []),
+    ...(input.expectedRemoteHash === undefined
+      ? []
+      : [`--force-with-lease=refs/heads/${input.remoteBranch}:${input.expectedRemoteHash}`]),
     "--",
     input.remote,
     `refs/heads/${input.branchName}:refs/heads/${input.remoteBranch}`

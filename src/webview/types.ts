@@ -24,6 +24,7 @@ export type ContextMenuState = {
 export type DialogInput =
   | { kind: "text"; label?: string; value: string; placeholder?: string }
   | { kind: "ref"; label?: string; value: string }
+  | { kind: "textarea"; label?: string; value: string; placeholder?: string }
   | {
       kind: "select";
       label?: string;
@@ -41,6 +42,7 @@ export type DialogValues<T extends ReadonlyArray<DialogInput>> = {
 };
 
 export type DialogBody =
+  | { kind: "content"; message: string; content: ComponentChildren }
   | {
       kind: "form";
       message: ComponentChildren;

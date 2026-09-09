@@ -9,6 +9,7 @@ import { handleLoadRepos } from "./handler/load-repo";
 import { handleRefresh } from "./handler/refresh";
 import { handleViewDiff } from "./handler/view-diff";
 import { handleLoadRemotes } from "./remote-actions";
+import { handleRepositoryQuery } from "./repository-actions";
 import { startSync } from "./sync";
 import { vscode } from "./vscode";
 
@@ -19,6 +20,8 @@ type Handlers = {
 };
 
 const handlers: Handlers = {
+  repositoryAction: handleActionResult,
+  repositoryQuery: handleRepositoryQuery,
   addTag: handleActionResult,
   checkoutBranch: handleActionResult,
   checkoutCommit: handleActionResult,

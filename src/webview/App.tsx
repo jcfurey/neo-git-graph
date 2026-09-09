@@ -1,3 +1,4 @@
+import { RepositoryStatus } from "./components/repository/RepositoryStatus";
 import { ContextMenu } from "./components/ui/ContextMenu";
 import { Dialog } from "./components/ui/Dialog";
 import { ScrollShadow } from "./components/ui/ScrollShadow";
@@ -21,6 +22,7 @@ export function App() {
   return (
     <>
       <MainHeader repos={repos} />
+      <RepositoryStatus />
       <GraphView />
       <ScrollShadow />
       <ContextMenu />

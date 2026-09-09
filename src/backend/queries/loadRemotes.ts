@@ -10,7 +10,11 @@ export async function loadRemotes(
 ): Promise<RemoteSettings> {
   const remotes = (await git.getRemotes()).map((remote) => remote.name).toSorted();
   if (branchName === null) {
-    return { remotes, upstream: null, pushRemote: null };
+    return {
+      remotes,
+      upstream: null,
+      pushRemote: (await git.getConfig("remote.pushDefault")).value
+    };
   }
   const [remote, merge, branchPushRemote, pushDefault] = await Promise.all([
     git.getConfig(`branch.${branchName}.remote`),

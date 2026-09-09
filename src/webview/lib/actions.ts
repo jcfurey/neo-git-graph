@@ -1,9 +1,10 @@
 import { batch } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 
-import type { ActionRequest, GitFileChange } from "@/backend/types";
+import type { GitFileChange } from "@/backend/types";
+import { sendRemoteAction } from "@/webview/lib/remote-actions";
+import { requestRepositoryState, resetRepositoryState } from "@/webview/lib/repository-actions";
 import {
-  actionRequest,
   branchList,
   clipboardRequest,
   commitDetails,
@@ -53,7 +54,11 @@ export function selectRepo(repo: string) {
     headBranch.value = null;
     selectedBranch.value = undefined;
     clearCommits();
+    resetRepositoryState();
+    closeDialog();
   });
+
+  requestRepositoryState();
 }
 
 export function selectBranch(branch: CommitBranchType) {
@@ -107,6 +112,7 @@ export function loadMoreCommits() {
 
 export function refresh() {
   refreshToken.value++;
+  requestRepositoryState();
 }
 
 export function closeCommitDetails() {
@@ -148,15 +154,20 @@ export function closeContextMenu() {
 }
 
 /** Open a dialog. The context menu that asked for it closes. */
+let nextDialogToken = 0;
 function openDialog(body: DialogBody) {
   batch(() => {
     contextMenu.value = null;
-    dialog.value = { ...body, token: (dialog.value?.token ?? 0) + 1 };
+    dialog.value = { ...body, token: ++nextDialogToken };
   });
 }
 
 export function closeDialog() {
   dialog.value = null;
+}
+
+export function openContentDialog(message: string, content: ComponentChildren) {
+  openDialog({ kind: "content", message, content });
 }
 
 type FormDialog<T extends ReadonlyArray<DialogInput>> = {
@@ -180,12 +191,19 @@ export function openFormDialog<const T extends ReadonlyArray<DialogInput>>({
   source,
   onSubmit
 }: FormDialog<T>) {
+  const repo = selectedRepo.value;
   openDialog({
     kind: "form",
     message,
     inputs: [...inputs],
     action,
-    onSubmit: onSubmit as (values: Array<string | boolean>) => void,
+    onSubmit: (values) => {
+      if (selectedRepo.value === repo) {
+        onSubmit(values as DialogValues<T>);
+      } else {
+        closeDialog();
+      }
+    },
     source
   });
 }
@@ -201,25 +219,23 @@ export function openRunningDialog(message: string) {
 }
 
 /** Ask the editor to run a git command on the selected repo. */
+let nextActionRequest = 0;
 export function runAction(command: ActionCommand) {
   const repo = selectedRepo.value;
   if (repo === undefined) {
     return;
   }
 
-  actionRequest.value = {
-    action: { ...command, repo } as ActionRequest,
-    token: (actionRequest.value?.token ?? 0) + 1
-  };
+  sendRemoteAction(
+    { ...command, requestId: `action-${++nextActionRequest}` },
+    repo,
+    window.l10n.runningGitAction
+  );
 }
 
-/** Ask the editor to put text on the clipboard. `type` names it in error messages. */
+/** Ask the editor to put text on the clipboard. */
 export function copyToClipboard(type: string, data: string) {
-  clipboardRequest.value = {
-    type,
-    data,
-    token: (clipboardRequest.value?.token ?? 0) + 1
-  };
+  clipboardRequest.value = { type, data, token: (clipboardRequest.value?.token ?? 0) + 1 };
 }
 
 /** Ask the editor to open the diff of a file of a commit. */

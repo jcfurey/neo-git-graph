@@ -1,6 +1,16 @@
 import type { GitCommitDetails, GitCommitNode } from "./git.types";
+import type { RepositoryQuery, RepositoryQueryData } from "./repository.types";
 
 type QueryPayloads = {
+  repositoryQuery: {
+    request: { repo: string; requestId: string; query: RepositoryQuery };
+    response: {
+      repo: string;
+      requestId: string;
+      data: RepositoryQueryData | null;
+      status: string | null;
+    };
+  };
   loadRemotes: {
     request: { repo: string; requestId: string; branchName: string | null };
     response: {

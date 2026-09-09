@@ -61,7 +61,12 @@ function prepare(
 describe("remote action dialogs", () => {
   it("publishes the clicked branch to the chosen remote and destination with upstream tracking", () => {
     const { form, request } = prepare("push");
-    expect(form.inputs.map((input) => input.value)).toEqual(["origin", "feature/navigation", true]);
+    expect(form.inputs.map((input) => input.value)).toEqual([
+      "origin",
+      "feature/navigation",
+      true,
+      false
+    ]);
     form.onSubmit(["upstream", "review/navigation", true]);
     expect(mocks.postMessage).toHaveBeenLastCalledWith({
       command: "pushBranch",
@@ -87,7 +92,12 @@ describe("remote action dialogs", () => {
       upstream: { remote: "upstream", branchName: "release/stable" },
       pushRemote: "upstream"
     });
-    expect(form.inputs.map((input) => input.value)).toEqual(["upstream", "release/stable", false]);
+    expect(form.inputs.map((input) => input.value)).toEqual([
+      "upstream",
+      "release/stable",
+      false,
+      false
+    ]);
   });
 
   it("uses the local branch name when pushing to a different default remote", () => {
@@ -98,6 +108,7 @@ describe("remote action dialogs", () => {
     expect(form.inputs.map((input) => input.value)).toEqual([
       "origin",
       "feature/navigation",
+      false,
       false
     ]);
   });

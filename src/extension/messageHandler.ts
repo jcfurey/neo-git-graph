@@ -11,13 +11,15 @@ import {
 } from "@/backend/actions/commit";
 import { mergeBranch, mergeCommit } from "@/backend/actions/merge";
 import { fetchRemote, pullBranch, pushBranch } from "@/backend/actions/remote";
+import { runRepositoryAction } from "@/backend/actions/repository";
 import { addTag, deleteTag, pushTag } from "@/backend/actions/tag";
 import { gitClientFactory, type GitClient } from "@/backend/gitClient";
 import { commitDetails } from "@/backend/queries/commitDetails";
 import { loadBranches } from "@/backend/queries/loadBranches";
 import { loadCommits } from "@/backend/queries/loadCommits";
 import { loadRemotes } from "@/backend/queries/loadRemotes";
-import { type ActionRequest, GitFileChangeType, type QueryResult } from "@/backend/types";
+import { repositoryQuery } from "@/backend/queries/repository";
+import type { ActionRequest, GitFileChangeType, QueryResult } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
 import { Config } from "@/config";
 import { encodeDiffDocUri } from "@/diffDocProvider";
@@ -75,6 +77,7 @@ export function registerMessageHandlers(
   const { config, gitClient, repoManager, extensionState, avatarManager, repoFileWatcher } = deps;
 
   let currentRepo: string | null = null;
+  const busyRepos = new Set<string>();
 
   function setCurrentRepo(repo: string) {
     if (repo === currentRepo) {
@@ -93,10 +96,22 @@ export function registerMessageHandlers(
     bridge.onMessage(command, async (message) => {
       const msg = message as Extract<ActionRequest, { command: T }>;
       let status: string | null = null;
+      let acquired = false;
       try {
+        if (busyRepos.has(msg.repo)) {
+          throw new Error(
+            "Another Git operation is running in this repository. Wait for it to finish."
+          );
+        }
+        busyRepos.add(msg.repo);
+        acquired = true;
         await handler(gitClientFactory(msg.repo, config.gitPath()).getInstance(), msg);
       } catch (e: unknown) {
         status = e instanceof Error ? e.message : String(e);
+      } finally {
+        if (acquired) {
+          busyRepos.delete(msg.repo);
+        }
       }
       bridge.post({
         command,
@@ -107,6 +122,26 @@ export function registerMessageHandlers(
   }
 
   // --- Action handlers ---
+
+  registerAction("repositoryAction", async (git, msg) => {
+    const effect = await runRepositoryAction(git, msg.action, config.gitPath());
+    if (effect?.kind === "worktree") {
+      await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(effect.path), true);
+    } else if (effect?.kind === "conflict") {
+      const uri = vscode.Uri.file(effect.path);
+      try {
+        await vscode.commands.executeCommand("git.openMergeEditor", uri);
+      } catch {
+        await vscode.commands.executeCommand("vscode.open", uri);
+      }
+    } else if (effect?.kind === "document") {
+      const document = await vscode.workspace.openTextDocument({
+        language: "diff",
+        content: effect.text
+      });
+      await vscode.window.showTextDocument(document, { preview: true });
+    }
+  });
 
   registerAction("addTag", (git, msg) => addTag(git, msg));
   registerAction("deleteTag", (git, msg) => deleteTag(git, msg));
@@ -127,6 +162,26 @@ export function registerMessageHandlers(
   registerAction("fetchRemote", (git, msg) => fetchRemote(git, msg));
 
   // --- Query handlers ---
+
+  bridge.onMessage("repositoryQuery", async (msg) => {
+    let data: QueryResult<"repositoryQuery">["data"] = null;
+    let status: string | null = null;
+    try {
+      data = await repositoryQuery(
+        gitClientFactory(msg.repo, config.gitPath()).getInstance(),
+        msg.query
+      );
+    } catch (error: unknown) {
+      status = error instanceof Error ? error.message : String(error);
+    }
+    bridge.post({
+      command: "repositoryQuery",
+      repo: msg.repo,
+      requestId: msg.requestId,
+      data,
+      status
+    });
+  });
 
   bridge.onMessage("loadRemotes", async (msg) => {
     let settings: Pick<QueryResult<"loadRemotes">, "remotes" | "upstream" | "pushRemote"> = {

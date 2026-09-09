@@ -41,6 +41,10 @@ This fork:
 
 ## Features
 
+- **Repository tools**: Configure remotes and upstreams, inspect ahead/behind status, and manage worktrees
+- **Recovery and stashes**: Continue, abort or skip interrupted operations; inspect and resolve conflicts; save, inspect, apply, pop and drop stashes
+- **Rebase**: Preserve merges when rebasing onto another branch, or reorder, reword, squash and drop commits in a linear interactive plan
+- **Remote ref management**: Choose a remote for tag pushes, delete remote branches/tags with confirmation, and push rewritten history with an explicit force-with-lease check
 - **Remote actions**: Push local branches to a chosen remote, set upstream tracking, pull the current branch with fast-forward only, and fetch updates with optional pruning
 - **Remote branch checkout**: Reuse and fast-forward an existing local branch, or create a new tracking branch
 - **Graph view**: See branches, tags, and uncommitted changes in one graph
@@ -51,6 +55,8 @@ This fork:
 - **Avatar support (deprecated in v0.6.0)**: Optional avatars from GitHub, GitLab, or Gravatar
 - **Multi-repo**: Work with multiple repositories in one workspace
 - **Devcontainer support**: Works in remote and container environments
+
+See [Working from the graph](docs/git-actions.md) for the available actions and their behavior.
 
 ## Installation
 
