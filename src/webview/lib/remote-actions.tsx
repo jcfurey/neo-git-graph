@@ -5,16 +5,21 @@ import {
   openFormDialog,
   openRunningDialog
 } from "@/webview/lib/actions";
+import { requestRepositoryQuery, sendRepositoryAction } from "@/webview/lib/repository-actions";
 import { dialog, selectedRepo } from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
 import type { ActionCommand, DialogState } from "@/webview/types";
 import { format } from "@/webview/utils/format";
 
-type RemoteAction = "push" | "pull" | "fetch";
-type RemoteCommand = Extract<
-  ActionCommand,
-  { command: "pushBranch" | "pullBranch" | "fetchRemote" }
->;
+type RemoteAction =
+  | "push"
+  | "pull"
+  | "fetch"
+  | "checkout"
+  | "tagPush"
+  | "tagDelete"
+  | "branchDelete";
+type RemoteCommand = ActionCommand & { requestId: string };
 type Pending = {
   requestId: string;
   repo: string;
@@ -39,11 +44,11 @@ export function openRemoteAction(action: RemoteAction, branchName = "", remoteRe
     command: "loadRemotes",
     repo,
     requestId,
-    branchName: action === "fetch" ? null : branchName
+    branchName: action === "push" || action === "pull" ? branchName : null
   });
 }
 
-function send(command: RemoteCommand, repo: string, message: string) {
+export function sendRemoteAction(command: RemoteCommand, repo: string, message: string) {
   if (selectedRepo.value !== repo) {
     closeDialog();
     return;
@@ -56,6 +61,8 @@ function send(command: RemoteCommand, repo: string, message: string) {
   });
   vscode.postMessage({ ...command, repo });
 }
+
+const send = sendRemoteAction;
 
 /** Ignore a late result after the user changes repositories or opens another dialog. */
 export function acceptRemoteActionResult(message: ActionResponse): boolean {
@@ -102,7 +109,8 @@ export function handleLoadRemotes(message: QueryResult<"loadRemotes">) {
 
   const { repo, branchName, requestId, action } = pending;
   const upstream = message.upstream;
-  const preferred = action === "push" ? message.pushRemote : upstream?.remote;
+  const preferred =
+    action === "push" || action === "tagPush" ? message.pushRemote : upstream?.remote;
   const refRemote = message.remotes
     .filter((remote) => pending.remoteRef?.startsWith(remote + "/"))
     .toSorted((a, b) => b.length - a.length)[0];
@@ -115,7 +123,79 @@ export function handleLoadRemotes(message: QueryResult<"loadRemotes">) {
   const options = message.remotes.map((name) => ({ label: name, value: name }));
   const source = branchName === "" ? null : `ref:head:${branchName}`;
 
-  if (action === "fetch") {
+  if (action === "checkout") {
+    const remoteRef = pending.remoteRef!;
+    openFormDialog({
+      message: format(window.l10n.dialogCheckoutRemoteTitle, <b>{remoteRef}</b>),
+      inputs: [
+        { kind: "ref", value: remoteRef.slice(remote.length + 1) },
+        { kind: "checkbox", label: window.l10n.fetchBeforeCheckout, value: true }
+      ],
+      action: window.l10n.checkoutBranch,
+      source: `ref:remote:${remoteRef}`,
+      onSubmit: ([localBranch, fetch]) =>
+        send(
+          {
+            command: "checkoutBranch",
+            requestId,
+            branchName: localBranch,
+            remoteBranch: remoteRef,
+            fetch
+          },
+          repo,
+          window.l10n.runningGitAction
+        )
+    });
+  } else if (action === "tagPush" || action === "tagDelete" || action === "branchDelete") {
+    const name =
+      action === "branchDelete" ? pending.remoteRef!.slice(remote.length + 1) : branchName;
+    const label =
+      action === "tagPush"
+        ? window.l10n.pushTag
+        : action === "tagDelete"
+          ? window.l10n.deleteRemoteTag
+          : window.l10n.deleteRemoteBranch;
+    openFormDialog({
+      message: (
+        <>
+          {label}: <b>{name}</b>
+        </>
+      ),
+      inputs: [{ kind: "select", label: window.l10n.remote, value: remote, options }],
+      action: label,
+      source: null,
+      onSubmit: ([destination]) => {
+        if (action === "tagPush") {
+          send(
+            { command: "pushTag", requestId, remote: destination, tagName: name },
+            repo,
+            window.l10n.pushingTag
+          );
+        } else {
+          openFormDialog({
+            message: format(
+              window.l10n.deleteRemoteRefConfirm,
+              <b>{name}</b>,
+              <b>{destination}</b>
+            ),
+            inputs: [],
+            action: label,
+            source: null,
+            onSubmit: () =>
+              sendRepositoryAction(
+                {
+                  kind: "deleteRemoteRef",
+                  remote: destination,
+                  name,
+                  refType: action === "tagDelete" ? "tag" : "branch"
+                },
+                repo
+              )
+          });
+        }
+      }
+    });
+  } else if (action === "fetch") {
     openFormDialog({
       message: window.l10n.dialogFetchTitle,
       inputs: [
@@ -142,23 +222,47 @@ export function handleLoadRemotes(message: QueryResult<"loadRemotes">) {
       inputs: [
         { kind: "select", label: window.l10n.remote, value: remote, options },
         { kind: "ref", label: window.l10n.remoteBranch, value: remoteBranch },
-        { kind: "checkbox", label: window.l10n.setUpstream, value: upstream === null }
+        { kind: "checkbox", label: window.l10n.setUpstream, value: upstream === null },
+        { kind: "checkbox", label: window.l10n.forceWithLease, value: false }
       ],
       action: window.l10n.pushBranch,
       source,
-      onSubmit: ([selectedRemote, destination, setUpstream]) =>
-        send(
-          {
-            command: "pushBranch",
-            requestId,
-            branchName,
-            remote: selectedRemote,
-            remoteBranch: destination,
-            setUpstream
+      onSubmit: ([selectedRemote, destination, setUpstream, force]) => {
+        const command = {
+          command: "pushBranch" as const,
+          requestId,
+          branchName,
+          remote: selectedRemote,
+          remoteBranch: destination,
+          setUpstream
+        };
+        if (!force) {
+          send(command, repo, window.l10n.pushingBranch);
+          return;
+        }
+        requestRepositoryQuery(
+          { kind: "lease", remote: selectedRemote, branch: destination },
+          (data) => {
+            if (data.kind !== "lease") {
+              return;
+            }
+            openFormDialog({
+              message: format(
+                window.l10n.forcePushConfirm,
+                <b>{destination}</b>,
+                <b>{selectedRemote}</b>,
+                <code>{data.hash.slice(0, 12)}</code>
+              ),
+              inputs: [],
+              action: window.l10n.pushBranch,
+              source,
+              onSubmit: () =>
+                send({ ...command, expectedRemoteHash: data.hash }, repo, window.l10n.pushingBranch)
+            });
           },
-          repo,
-          window.l10n.pushingBranch
-        )
+          repo
+        );
+      }
     });
   } else {
     openFormDialog({

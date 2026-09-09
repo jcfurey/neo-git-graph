@@ -2,8 +2,11 @@ import type { ActionResponse } from "@/backend/types";
 import type { LocalizedStrings } from "@/old-extension/l10n/webviewL10n";
 import { closeDialog, openErrorDialog, refresh } from "@/webview/lib/actions";
 import { acceptRemoteActionResult } from "@/webview/lib/remote-actions";
+import { requestRepositoryState } from "@/webview/lib/repository-actions";
+import { selectedRepo } from "@/webview/lib/stores";
 
 const ERROR_KEY: Record<ActionResponse["command"], keyof LocalizedStrings> = {
+  repositoryAction: "unableToRunGitAction",
   addTag: "unableToAddTag",
   checkoutBranch: "unableToCheckoutBranch",
   checkoutCommit: "unableToCheckoutCommit",
@@ -24,6 +27,9 @@ const ERROR_KEY: Record<ActionResponse["command"], keyof LocalizedStrings> = {
 
 /** Every git command answers the same way, so one handler serves them all. */
 export function handleActionResult(msg: ActionResponse) {
+  if (msg.repo === undefined || msg.repo === selectedRepo.value) {
+    requestRepositoryState();
+  }
   if (!acceptRemoteActionResult(msg)) {
     return;
   }

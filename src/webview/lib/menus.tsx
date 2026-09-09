@@ -2,7 +2,10 @@ import type { ComponentChildren } from "preact";
 
 import type { GitCommitNode, GitRef, GitResetMode } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
-import { openFormDialog, openRunningDialog, runAction } from "@/webview/lib/actions";
+import { openInteractiveRebase, openRebase } from "@/webview/components/repository/RebaseEditor";
+import { openTracking } from "@/webview/components/repository/RemoteManager";
+import { openAddWorktree } from "@/webview/components/repository/WorktreeManager";
+import { openFormDialog, runAction } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
 import type { ContextMenuEntry } from "@/webview/types";
@@ -223,6 +226,10 @@ export function commitMenu(
     },
     null,
     {
+      title: `${window.l10n.interactiveRebase}…`,
+      onClick: () => openInteractiveRebase(hash)
+    },
+    {
       title: window.l10n.copyCommitHash,
       onClick: () => copyToClipboard(window.l10n.typeCommitHash, hash)
     }
@@ -243,14 +250,7 @@ export function checkoutBranchAction(gitRef: GitRef) {
     return;
   }
 
-  openFormDialog({
-    message: format(window.l10n.dialogCheckoutRemoteTitle, <Name>{gitRef.name}</Name>),
-    inputs: [{ kind: "ref", value: gitRef.name.slice(gitRef.name.indexOf("/") + 1) }],
-    action: window.l10n.checkoutBranch,
-    source: refMenuSource(gitRef),
-    onSubmit: ([branchName]) =>
-      runAction({ command: "checkoutBranch", branchName, remoteBranch: gitRef.name })
-  });
+  openRemoteAction("checkout", "", gitRef.name);
 }
 
 function tagMenu(gitRef: GitRef): Array<ContextMenuEntry> {
@@ -274,17 +274,11 @@ function tagMenu(gitRef: GitRef): Array<ContextMenuEntry> {
     },
     {
       title: `${window.l10n.pushTag}…`,
-      onClick: () =>
-        openFormDialog({
-          message: format(window.l10n.dialogPushTagConfirm, <Name>{gitRef.name}</Name>),
-          inputs: [],
-          action: window.l10n.dialogYes,
-          source,
-          onSubmit: () => {
-            runAction({ command: "pushTag", tagName: gitRef.name });
-            openRunningDialog(window.l10n.pushingTag);
-          }
-        })
+      onClick: () => openRemoteAction("tagPush", gitRef.name)
+    },
+    {
+      title: `${window.l10n.deleteRemoteTag}…`,
+      onClick: () => openRemoteAction("tagDelete", gitRef.name)
     },
     null,
     {
@@ -297,8 +291,20 @@ function tagMenu(gitRef: GitRef): Array<ContextMenuEntry> {
 function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean): Array<ContextMenuEntry> {
   const source = refMenuSource(gitRef);
   const entries: Array<ContextMenuEntry> = [];
+  entries.push({
+    title: `${window.l10n.configureUpstream}…`,
+    onClick: () => openTracking(gitRef.name)
+  });
+  entries.push({
+    title: `${window.l10n.addWorktree}…`,
+    onClick: () => openAddWorktree(`refs/heads/${gitRef.name}`)
+  });
 
   if (!isHeadBranch) {
+    entries.push({
+      title: `${window.l10n.rebaseOnto}…`,
+      onClick: () => openRebase(`refs/heads/${gitRef.name}`)
+    });
     entries.push({
       title: window.l10n.checkoutBranch,
       onClick: () => checkoutBranchAction(gitRef)
@@ -380,6 +386,18 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean): Array<ContextMe
 
 function remoteBranchMenu(gitRef: GitRef): Array<ContextMenuEntry> {
   return [
+    {
+      title: `${window.l10n.rebaseOnto}…`,
+      onClick: () => openRebase(`refs/remotes/${gitRef.name}`)
+    },
+    {
+      title: `${window.l10n.addWorktree}…`,
+      onClick: () => openAddWorktree(`refs/remotes/${gitRef.name}`)
+    },
+    {
+      title: `${window.l10n.deleteRemoteBranch}…`,
+      onClick: () => openRemoteAction("branchDelete", "", gitRef.name)
+    },
     {
       title: `${window.l10n.fetch}…`,
       onClick: () => openRemoteAction("fetch", "", gitRef.name)

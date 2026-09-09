@@ -10,7 +10,7 @@ import { dialog } from "@/webview/lib/stores";
 import type { DialogInput, DialogState } from "@/webview/types";
 import { hasInvalidRefChars } from "@/webview/utils/ref";
 
-const FOCUSABLE = "input:not([disabled]), select, button:not([disabled])";
+const FOCUSABLE = "input:not([disabled]), textarea, select, button:not([disabled])";
 
 const PANEL_CLASS = [
   "fixed left-1/2 top-1/2 z-40 max-h-4/5 w-dialog",
@@ -149,6 +149,16 @@ function Field({
         onChange={onChange}
         aria-labelledby={named}
       />
+    ) : input.kind === "textarea" ? (
+      <textarea
+        id={id}
+        rows={4}
+        class={INPUT_CLASS}
+        value={String(value)}
+        placeholder={input.placeholder}
+        aria-labelledby={named}
+        onInput={(event) => onChange(event.currentTarget.value)}
+      />
     ) : (
       <input
         id={id}
@@ -281,7 +291,17 @@ export function Dialog() {
 
   return (
     <Panel key={state.token} labelledBy={labelledBy}>
-      {state.kind === "form" ? (
+      {state.kind === "content" ? (
+        <>
+          <h2 id={labelledBy} class="mb-3 font-bold">
+            {state.message}
+          </h2>
+          {state.content}
+          <div class="mt-3">
+            <Button onClick={closeDialog}>{window.l10n.close}</Button>
+          </div>
+        </>
+      ) : state.kind === "form" ? (
         <FormBody state={state} labelledBy={labelledBy} />
       ) : (
         <MessageBody state={state} labelledBy={labelledBy} />

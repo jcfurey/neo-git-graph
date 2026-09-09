@@ -7,6 +7,7 @@ import { handleLoadCommits } from "./handler/load-commits";
 import { handleRefresh } from "./handler/refresh";
 import { handleViewDiff } from "./handler/view-diff";
 import { handleLoadRemotes } from "./remote-actions";
+import { handleRepositoryQuery } from "./repository-actions";
 
 type Command = ResponseMessage["command"];
 
@@ -15,6 +16,8 @@ type Handlers = {
 };
 
 const handlers: Handlers = {
+  repositoryAction: handleActionResult,
+  repositoryQuery: handleRepositoryQuery,
   addTag: handleActionResult,
   checkoutBranch: handleActionResult,
   checkoutCommit: handleActionResult,

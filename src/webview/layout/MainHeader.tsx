@@ -1,4 +1,7 @@
 import type { GitRepo } from "@/types";
+import { openRemotes } from "@/webview/components/repository/RemoteManager";
+import { openStashes } from "@/webview/components/repository/StashManager";
+import { openWorktrees } from "@/webview/components/repository/WorktreeManager";
 import { Button } from "@/webview/components/ui/Button";
 import { Checkbox } from "@/webview/components/ui/Checkbox";
 import { Dropdown } from "@/webview/components/ui/Dropdown";
@@ -34,6 +37,9 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
         </Icon>
         {window.l10n.refresh}
       </Button>
+      <Button onClick={openRemotes}>{window.l10n.manageRemotes}</Button>
+      <Button onClick={openStashes}>{window.l10n.stashes}</Button>
+      <Button onClick={openWorktrees}>{window.l10n.worktrees}</Button>
       <Button
         aria-label={window.l10n.fetch}
         title={window.l10n.fetch}

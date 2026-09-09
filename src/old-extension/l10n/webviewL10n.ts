@@ -1,5 +1,7 @@
 import * as vscode from "vscode";
 
+import { getRepositoryLocalizedStrings } from "./repositoryL10n";
+
 /**
  * Localized strings for the webview (main.ts, dropdown.ts).
  * The webview cannot access vscode.l10n directly, so the strings are resolved
@@ -9,6 +11,7 @@ import * as vscode from "vscode";
  */
 export function getWebviewLocalizedStrings() {
   return {
+    ...getRepositoryLocalizedStrings(),
     // UI labels
     repo: vscode.l10n.t("Repo"),
     branch: vscode.l10n.t("Branch"),

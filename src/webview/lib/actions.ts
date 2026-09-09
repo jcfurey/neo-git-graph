@@ -1,8 +1,10 @@
 import { batch } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 
-import type { ActionRequest, GitFileChange } from "@/backend/types";
+import type { GitFileChange } from "@/backend/types";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
+import { sendRemoteAction } from "@/webview/lib/remote-actions";
+import { requestRepositoryState, resetRepositoryState } from "@/webview/lib/repository-actions";
 import {
   branchList,
   commitDetails,
@@ -71,10 +73,13 @@ export function selectRepo(repo: string) {
     headBranch.value = null;
     selectedBranch.value = undefined;
     clearCommits();
+    resetRepositoryState();
+    closeDialog();
   });
 
   vscode.postMessage({ command: "selectRepo", repo });
   requestBranches(repo);
+  requestRepositoryState();
 }
 
 export function selectBranch(branch: CommitBranchType) {
@@ -161,6 +166,7 @@ export function refresh() {
   }
 
   requestBranches(repo);
+  requestRepositoryState();
   const branch = selectedBranch.value;
   if (branch !== undefined) {
     requestCommits(repo, branch);
@@ -213,15 +219,20 @@ export function closeContextMenu() {
 }
 
 /** Open a dialog. The context menu that asked for it closes. */
+let nextDialogToken = 0;
 function openDialog(body: DialogBody) {
   batch(() => {
     contextMenu.value = null;
-    dialog.value = { ...body, token: (dialog.value?.token ?? 0) + 1 };
+    dialog.value = { ...body, token: ++nextDialogToken };
   });
 }
 
 export function closeDialog() {
   dialog.value = null;
+}
+
+export function openContentDialog(message: string, content: ComponentChildren) {
+  openDialog({ kind: "content", message, content });
 }
 
 type FormDialog<T extends ReadonlyArray<DialogInput>> = {
@@ -245,12 +256,19 @@ export function openFormDialog<const T extends ReadonlyArray<DialogInput>>({
   source,
   onSubmit
 }: FormDialog<T>) {
+  const repo = selectedRepo.value;
   openDialog({
     kind: "form",
     message,
     inputs: [...inputs],
     action,
-    onSubmit: onSubmit as (values: Array<string | boolean>) => void,
+    onSubmit: (values) => {
+      if (selectedRepo.value === repo) {
+        onSubmit(values as DialogValues<T>);
+      } else {
+        closeDialog();
+      }
+    },
     source
   });
 }
@@ -266,13 +284,18 @@ export function openRunningDialog(message: string) {
 }
 
 /** Ask the editor to run a git command on the selected repo. */
+let nextActionRequest = 0;
 export function runAction(command: ActionCommand) {
   const repo = selectedRepo.value;
   if (repo === undefined) {
     return;
   }
 
-  vscode.postMessage({ ...command, repo } as ActionRequest);
+  sendRemoteAction(
+    { ...command, requestId: `action-${++nextActionRequest}` },
+    repo,
+    window.l10n.runningGitAction
+  );
 }
 
 /** Ask the editor to open the diff of a file of a commit. */
