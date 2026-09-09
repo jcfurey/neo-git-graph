@@ -51,7 +51,7 @@ suite("History documents", () => {
       assert.deepStrictEqual(contents, ["repository 0", "repository 1"]);
     } finally {
       provider.dispose();
-      fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await fs.promises.rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 });

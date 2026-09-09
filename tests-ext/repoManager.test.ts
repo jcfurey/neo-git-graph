@@ -207,9 +207,14 @@ suite("repoManager", () => {
       repo = makeRepo();
     });
 
-    teardown(() => {
+    teardown(async () => {
       if (fs.existsSync(repo)) {
-        fs.rmSync(repo, { recursive: true, force: true });
+        await fs.promises.rm(repo, {
+          recursive: true,
+          force: true,
+          maxRetries: 10,
+          retryDelay: 100
+        });
       }
     });
 
@@ -221,7 +226,7 @@ suite("repoManager", () => {
     });
 
     test("returns true and removes repos that no longer exist", async () => {
-      fs.rmSync(repo, { recursive: true, force: true });
+      await fs.promises.rm(repo, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
       const { manager, store } = makeManager({ [repo]: { columnWidths: null } });
       const changed = await manager.checkReposExist();
       assert.strictEqual(changed, true);
@@ -229,7 +234,7 @@ suite("repoManager", () => {
     });
 
     test("calls sendRepos when repos are removed", async () => {
-      fs.rmSync(repo, { recursive: true, force: true });
+      await fs.promises.rm(repo, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
       const { manager } = makeManager({ [repo]: { columnWidths: null } });
       let called = false;
       manager.registerViewCallback(() => {

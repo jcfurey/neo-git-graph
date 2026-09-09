@@ -267,7 +267,7 @@ suite("Git Graph workflow UI", function () {
       connection.ws.close();
     }
     for (const dir of dirs) {
-      fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      await fs.promises.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
