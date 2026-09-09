@@ -4,6 +4,7 @@ import * as path from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import type { InitExtension } from "@/extension/initExtension";
 import { watchForRepos } from "@/extension/watchForRepos";
 
@@ -144,7 +145,7 @@ describe("watchForRepos", () => {
       await vi.waitFor(() => expect(onReposFound).toHaveBeenCalledOnce());
       expect(onReposFound).toHaveBeenCalledWith(
         ctx,
-        expect.arrayContaining([repoDir]),
+        expect.arrayContaining([normalizeRepoPath(repoDir)]),
         mockStatusBarItem
       );
     });
@@ -170,7 +171,7 @@ describe("watchForRepos", () => {
       await vi.waitFor(() => expect(onReposFound).toHaveBeenCalledOnce());
       expect(onReposFound).toHaveBeenCalledWith(
         ctx,
-        expect.arrayContaining([repoDir]),
+        expect.arrayContaining([normalizeRepoPath(repoDir)]),
         mockStatusBarItem
       );
     });

@@ -626,14 +626,23 @@ suite("Git Graph workflow UI", function () {
     await finished();
     assert.equal(git(["rev-list", "--count", fixBase + "..HEAD"], fix), "2");
     assert.equal(fs.readFileSync(path.join(fix, "a"), "utf8"), "corrected");
+    const rebasedHead = git(["rev-parse", "HEAD"], fix);
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('tr[data-commit-hash]')?.dataset.commitHash === ${JSON.stringify(rebasedHead)}`
+        ),
+      "refreshed rebase history"
+    );
     await graph.evaluate(
       `(() => { const row=document.querySelector('tr[data-commit-hash]'); row.focus(); row.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true})); })()`
     );
-    assert.equal(
-      await graph.evaluate(
-        'document.activeElement === document.querySelectorAll("tr[data-commit-hash]")[1]'
-      ),
-      true
+    await until(
+      () =>
+        graph.evaluate(
+          'document.activeElement === document.querySelectorAll("tr[data-commit-hash]")[1]'
+        ),
+      "keyboard focus on the next commit"
     );
     await button("Repository Tools ▾");
     await menu("Git Activity");
@@ -961,6 +970,20 @@ suite("Git Graph workflow UI", function () {
       Buffer.from(screenshot.data, "base64")
     );
     await button("Close");
+    await contextCommit("bisect revision 8");
+    await graph.evaluate(
+      `document.querySelector('[role=menu]').dispatchEvent(new KeyboardEvent('keydown',{key:'End',bubbles:true}))`
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          `(() => {const menu=document.querySelector('[role=menu]');if(!menu)return false;const active=document.getElementById(menu.getAttribute('aria-activedescendant'));return active && active.getBoundingClientRect().bottom<=menu.getBoundingClientRect().bottom;})()`
+        ),
+      "long menu keyboard scrolling"
+    );
+    await graph.evaluate(
+      `document.querySelector('[role=menu]').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))`
+    );
     await page.call("Emulation.setDeviceMetricsOverride", {
       width: 1440,
       height: 1000,
