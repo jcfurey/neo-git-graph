@@ -1,4 +1,6 @@
 import type { ResponseMessage } from "@/types";
+import { openFileHistory } from "@/webview/components/history/HistoryTools";
+import { selectRepo } from "@/webview/lib/actions";
 
 import { handleActionResult } from "./handler/action-result";
 import { handleCommitDetails } from "./handler/commit-details";
@@ -6,6 +8,8 @@ import { handleLoadBranches } from "./handler/load-branches";
 import { handleLoadCommits } from "./handler/load-commits";
 import { handleRefresh } from "./handler/refresh";
 import { handleViewDiff } from "./handler/view-diff";
+import { handleLoadRemotes } from "./remote-actions";
+import { handleRepositoryQuery } from "./repository-actions";
 
 type Command = ResponseMessage["command"];
 
@@ -14,6 +18,12 @@ type Handlers = {
 };
 
 const handlers: Handlers = {
+  fileHistory: (message) => {
+    selectRepo(message.repo);
+    openFileHistory(message.path);
+  },
+  repositoryAction: handleActionResult,
+  repositoryQuery: handleRepositoryQuery,
   addTag: handleActionResult,
   checkoutBranch: handleActionResult,
   checkoutCommit: handleActionResult,
@@ -24,6 +34,10 @@ const handlers: Handlers = {
   mergeBranch: handleActionResult,
   mergeCommit: handleActionResult,
   pushTag: handleActionResult,
+  pushBranch: handleActionResult,
+  pullBranch: handleActionResult,
+  fetchRemote: handleActionResult,
+  loadRemotes: handleLoadRemotes,
   renameBranch: handleActionResult,
   resetToCommit: handleActionResult,
   revertCommit: handleActionResult,

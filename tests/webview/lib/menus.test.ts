@@ -3,11 +3,13 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { GitCommitNode } from "@/backend/types";
+import { handleLoadRemotes } from "@/webview/lib/remote-actions";
 
 import { vscodeApi } from "@tests/webview/setup";
 import { setupWebviewTest } from "@tests/webview/test-utils";
 
 let commitMenu: typeof import("@/webview/lib/menus").commitMenu;
+let checkoutBranchAction: typeof import("@/webview/lib/menus").checkoutBranchAction;
 let stores: typeof import("@/webview/lib/stores");
 
 const commit: GitCommitNode = {
@@ -23,7 +25,7 @@ const commit: GitCommitNode = {
 beforeAll(async () => {
   setupWebviewTest();
 
-  ({ commitMenu } = await import("@/webview/lib/menus"));
+  ({ commitMenu, checkoutBranchAction } = await import("@/webview/lib/menus"));
   stores = await import("@/webview/lib/stores");
 });
 
@@ -62,6 +64,7 @@ describe.each(["cherrypickCommit", "revertCommit"] as const)("%s menu", (command
     expect(vscodeApi.postMessage).toHaveBeenCalledWith({
       command,
       repo: "repo",
+      requestId: expect.any(String),
       commitHash: "commit",
       parentIndex: 0
     });
@@ -84,8 +87,44 @@ describe.each(["cherrypickCommit", "revertCommit"] as const)("%s menu", (command
     expect(vscodeApi.postMessage).toHaveBeenCalledWith({
       command,
       repo: "repo",
+      requestId: expect.any(String),
       commitHash: "commit",
       parentIndex: 2
+    });
+  });
+});
+
+describe("remote branch checkout", () => {
+  it.each([
+    ["origin/main", "main"],
+    ["origin/feature/navigation", "feature/navigation"],
+    ["team/origin/feature/navigation", "feature/navigation"]
+  ])("suggests the full local branch name for %s", (remoteBranch, branchName) => {
+    checkoutBranchAction({ type: "remote", name: remoteBranch, hash: "commit" });
+    const request = vscodeApi.postMessage.mock.lastCall![0];
+    handleLoadRemotes({
+      ...request,
+      remotes: ["origin", "team", "team/origin"],
+      upstream: null,
+      pushRemote: null,
+      status: null
+    });
+    const form = stores.dialog.value;
+    if (form?.kind !== "form") {
+      throw new Error("Expected a checkout dialog");
+    }
+    expect(form.inputs).toEqual([
+      { kind: "ref", value: branchName },
+      { kind: "checkbox", label: "fetchBeforeCheckout", value: true }
+    ]);
+    form.onSubmit([branchName, true]);
+    expect(vscodeApi.postMessage).toHaveBeenCalledWith({
+      command: "checkoutBranch",
+      repo: "repo",
+      requestId: request.requestId,
+      branchName,
+      remoteBranch,
+      fetch: true
     });
   });
 });

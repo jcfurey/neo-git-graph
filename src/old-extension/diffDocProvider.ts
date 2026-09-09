@@ -1,17 +1,20 @@
+import { sep } from "node:path";
+
 import * as vscode from "vscode";
 
 import type { GitInstance } from "@/backend/gitClient";
-import { getPathFromStr } from "@/backend/utils/path";
 
 export class DiffDocProvider implements vscode.TextDocumentContentProvider {
   public static scheme = "neo-git-graph";
   private gitClient: GitInstance;
+  private forRepo: ((repo: string) => ReturnType<GitInstance>) | undefined;
   private onDidChangeEventEmitter = new vscode.EventEmitter<vscode.Uri>();
   private docs = new Map<string, DiffDocument>();
   private subscriptions: vscode.Disposable;
 
-  constructor(gitClient: GitInstance) {
+  constructor(gitClient: GitInstance, forRepo?: (repo: string) => ReturnType<GitInstance>) {
     this.gitClient = gitClient;
+    this.forRepo = forRepo;
     this.subscriptions = vscode.workspace.onDidCloseTextDocument((doc) =>
       this.docs.delete(doc.uri.toString())
     );
@@ -37,8 +40,7 @@ export class DiffDocProvider implements vscode.TextDocumentContentProvider {
     if (request.repo === undefined || request.commit === undefined) {
       return "";
     }
-    return this.gitClient()
-      .cwd(request.repo)
+    return (this.forRepo?.(request.repo) ?? this.gitClient().cwd(request.repo))
       .show([`${request.commit}:${request.filePath}`])
       .catch(() => "")
       .then((data) => {
@@ -62,15 +64,11 @@ class DiffDocument {
 }
 
 export function encodeDiffDocUri(repo: string, path: string, commit: string): vscode.Uri {
-  return vscode.Uri.parse(
-    DiffDocProvider.scheme +
-      ":" +
-      getPathFromStr(path) +
-      "?commit=" +
-      encodeURIComponent(commit) +
-      "&repo=" +
-      encodeURIComponent(repo)
-  );
+  return vscode.Uri.from({
+    scheme: DiffDocProvider.scheme,
+    path: sep === "\\" ? path.replaceAll("\\", "/") : path,
+    query: "commit=" + encodeURIComponent(commit) + "&repo=" + encodeURIComponent(repo)
+  });
 }
 
 export function decodeDiffDocUri(uri: vscode.Uri) {

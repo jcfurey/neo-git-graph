@@ -22,7 +22,9 @@ export function createMessageProtocol(ctx: vscode.ExtensionContext) {
     }),
     vscode.workspace.registerTextDocumentContentProvider(
       DiffDocProvider.scheme,
-      new DiffDocProvider(gitClient.getInstance)
+      new DiffDocProvider(gitClient.getInstance, (repo) =>
+        gitClientFactory(repo, config.gitPath()).getInstance()
+      )
     )
   );
 
@@ -33,7 +35,7 @@ export function createMessageProtocol(ctx: vscode.ExtensionContext) {
       const bridge: WebviewBridge = webviewBridgeFactory(panel.webview);
       avatarManager.registerBridge(bridge.post);
 
-      const { onPanelShown } = registerMessageHandlers(bridge, {
+      const { onPanelShown, dispose: disposeQueries } = registerMessageHandlers(bridge, {
         config,
         gitClient,
         repoManager,
@@ -57,6 +59,7 @@ export function createMessageProtocol(ctx: vscode.ExtensionContext) {
             return;
           }
           disposed = true;
+          disposeQueries();
           bridge.dispose();
           viewStateListener.dispose();
           avatarManager.deregisterBridge();

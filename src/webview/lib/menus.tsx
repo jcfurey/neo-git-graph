@@ -2,8 +2,14 @@ import type { ComponentChildren } from "preact";
 
 import type { GitCommitNode, GitRef, GitResetMode } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
-import { openFormDialog, openRunningDialog, runAction } from "@/webview/lib/actions";
+import { openCompare, openFixup } from "@/webview/components/history/HistoryTools";
+import { chooseBisectCommit } from "@/webview/components/repository/BisectView";
+import { openInteractiveRebase, openRebase } from "@/webview/components/repository/RebaseEditor";
+import { openTracking } from "@/webview/components/repository/RemoteManager";
+import { openAddWorktree } from "@/webview/components/repository/WorktreeManager";
+import { openFormDialog, runAction } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
+import { openRemoteAction } from "@/webview/lib/remote-actions";
 import type { ContextMenuEntry } from "@/webview/types";
 import { format } from "@/webview/utils/format";
 
@@ -222,6 +228,14 @@ export function commitMenu(
     },
     null,
     {
+      title: `${window.l10n.interactiveRebase}…`,
+      onClick: () => openInteractiveRebase(hash)
+    },
+    { title: window.l10n.createFixup + "…", onClick: () => openFixup(hash) },
+    { title: window.l10n.compareWith, onClick: () => openCompare("HEAD", hash) },
+    { title: window.l10n.bisectChooseGood, onClick: () => chooseBisectCommit("good", hash) },
+    { title: window.l10n.bisectChooseBad, onClick: () => chooseBisectCommit("bad", hash) },
+    {
       title: window.l10n.copyCommitHash,
       onClick: () => copyToClipboard(window.l10n.typeCommitHash, hash)
     }
@@ -230,7 +244,7 @@ export function commitMenu(
 
 /**
  * Check out a branch. A local branch is checked out as it is. A remote branch
- * needs a name for the local branch that tracks it.
+ * uses a new or existing local branch, fast-forwarding an existing branch when possible.
  */
 export function checkoutBranchAction(gitRef: GitRef) {
   if (gitRef.type === "head") {
@@ -242,14 +256,7 @@ export function checkoutBranchAction(gitRef: GitRef) {
     return;
   }
 
-  openFormDialog({
-    message: format(window.l10n.dialogCreateBranchTitle, <Name>{gitRef.name}</Name>),
-    inputs: [{ kind: "ref", value: gitRef.name.split("/").findLast(Boolean) ?? gitRef.name }],
-    action: window.l10n.checkoutBranch,
-    source: refMenuSource(gitRef),
-    onSubmit: ([branchName]) =>
-      runAction({ command: "checkoutBranch", branchName, remoteBranch: gitRef.name })
-  });
+  openRemoteAction("checkout", "", gitRef.name);
 }
 
 function tagMenu(gitRef: GitRef): Array<ContextMenuEntry> {
@@ -273,17 +280,11 @@ function tagMenu(gitRef: GitRef): Array<ContextMenuEntry> {
     },
     {
       title: `${window.l10n.pushTag}…`,
-      onClick: () =>
-        openFormDialog({
-          message: format(window.l10n.dialogPushTagConfirm, <Name>{gitRef.name}</Name>),
-          inputs: [],
-          action: window.l10n.dialogYes,
-          source,
-          onSubmit: () => {
-            runAction({ command: "pushTag", tagName: gitRef.name });
-            openRunningDialog(window.l10n.pushingTag);
-          }
-        })
+      onClick: () => openRemoteAction("tagPush", gitRef.name)
+    },
+    {
+      title: `${window.l10n.deleteRemoteTag}…`,
+      onClick: () => openRemoteAction("tagDelete", gitRef.name)
     },
     null,
     {
@@ -296,11 +297,34 @@ function tagMenu(gitRef: GitRef): Array<ContextMenuEntry> {
 function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean): Array<ContextMenuEntry> {
   const source = refMenuSource(gitRef);
   const entries: Array<ContextMenuEntry> = [];
+  entries.push({
+    title: `${window.l10n.configureUpstream}…`,
+    onClick: () => openTracking(gitRef.name)
+  });
+  entries.push({
+    title: `${window.l10n.addWorktree}…`,
+    onClick: () => openAddWorktree(`refs/heads/${gitRef.name}`)
+  });
 
   if (!isHeadBranch) {
     entries.push({
+      title: `${window.l10n.rebaseOnto}…`,
+      onClick: () => openRebase(`refs/heads/${gitRef.name}`)
+    });
+    entries.push({
       title: window.l10n.checkoutBranch,
       onClick: () => checkoutBranchAction(gitRef)
+    });
+  }
+
+  entries.push({
+    title: `${window.l10n.pushBranch}…`,
+    onClick: () => openRemoteAction("push", gitRef.name)
+  });
+  if (isHeadBranch) {
+    entries.push({
+      title: `${window.l10n.pullBranch}…`,
+      onClick: () => openRemoteAction("pull", gitRef.name)
     });
   }
 
@@ -369,6 +393,22 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean): Array<ContextMe
 function remoteBranchMenu(gitRef: GitRef): Array<ContextMenuEntry> {
   return [
     {
+      title: `${window.l10n.rebaseOnto}…`,
+      onClick: () => openRebase(`refs/remotes/${gitRef.name}`)
+    },
+    {
+      title: `${window.l10n.addWorktree}…`,
+      onClick: () => openAddWorktree(`refs/remotes/${gitRef.name}`)
+    },
+    {
+      title: `${window.l10n.deleteRemoteBranch}…`,
+      onClick: () => openRemoteAction("branchDelete", "", gitRef.name)
+    },
+    {
+      title: `${window.l10n.fetch}…`,
+      onClick: () => openRemoteAction("fetch", "", gitRef.name)
+    },
+    {
       title: `${window.l10n.checkoutBranch}…`,
       onClick: () => checkoutBranchAction(gitRef)
     },
@@ -382,13 +422,17 @@ function remoteBranchMenu(gitRef: GitRef): Array<ContextMenuEntry> {
 
 /** `isHeadBranch` tells that this ref is the branch that is checked out. */
 export function refMenu(gitRef: GitRef, isHeadBranch: boolean): Array<ContextMenuEntry> {
+  const comparison: ContextMenuEntry = {
+    title: window.l10n.compareWith,
+    onClick: () => openCompare("HEAD", gitRef.hash)
+  };
   if (gitRef.type === "tag") {
-    return tagMenu(gitRef);
+    return [comparison, null, ...tagMenu(gitRef)];
   }
 
   if (gitRef.type === "head") {
-    return localBranchMenu(gitRef, isHeadBranch);
+    return [comparison, null, ...localBranchMenu(gitRef, isHeadBranch)];
   }
 
-  return remoteBranchMenu(gitRef);
+  return [comparison, null, ...remoteBranchMenu(gitRef)];
 }

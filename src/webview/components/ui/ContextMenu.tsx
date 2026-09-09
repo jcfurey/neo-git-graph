@@ -65,21 +65,32 @@ function Menu({ state }: { state: ContextMenuState }) {
       }
     };
     const dismiss = () => closeContextMenu();
+    const dismissScroll = (event: Event) => {
+      if (!ref.current?.contains(event.target as Node)) {
+        dismiss();
+      }
+    };
 
     document.addEventListener("pointerdown", dismissOutside, true);
     document.addEventListener("contextmenu", dismissOutside, true);
-    window.addEventListener("scroll", dismiss, true);
+    window.addEventListener("scroll", dismissScroll, true);
     window.addEventListener("resize", dismiss);
     window.addEventListener("blur", dismiss);
 
     return () => {
       document.removeEventListener("pointerdown", dismissOutside, true);
       document.removeEventListener("contextmenu", dismissOutside, true);
-      window.removeEventListener("scroll", dismiss, true);
+      window.removeEventListener("scroll", dismissScroll, true);
       window.removeEventListener("resize", dismiss);
       window.removeEventListener("blur", dismiss);
     };
   }, []);
+
+  useLayoutEffect(() => {
+    if (active >= 0) {
+      document.getElementById(`${id}-item-${active}`)?.scrollIntoView({ block: "nearest" });
+    }
+  }, [active, id]);
 
   function move(step: number) {
     setActive((current) => (current + step + count) % count);
@@ -125,7 +136,7 @@ function Menu({ state }: { state: ContextMenuState }) {
       role="menu"
       tabIndex={-1}
       aria-activedescendant={active === -1 ? undefined : `${id}-item-${active}`}
-      class="fixed z-20 w-max rounded-md border border-line bg-menu py-1 text-menu-fg shadow-md outline-none"
+      class="fixed z-20 max-h-[calc(100vh-1rem)] w-max max-w-[calc(100vw-1rem)] overflow-auto rounded-md border border-line bg-menu py-1 text-menu-fg shadow-md outline-none"
       style={
         position === null
           ? "opacity: 0; left: 0; top: 0"
@@ -142,7 +153,7 @@ function Menu({ state }: { state: ContextMenuState }) {
             key={entry.title}
             id={`${id}-item-${item}`}
             role="menuitem"
-            class={`cursor-pointer whitespace-nowrap px-5 py-1.5 ${
+            class={`cursor-pointer break-words px-5 py-1.5 ${
               item === active ? "bg-menu-active text-menu-active-fg" : ""
             }`}
             onPointerMove={() => setActive(item)}

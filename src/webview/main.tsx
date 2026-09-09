@@ -11,6 +11,7 @@ import { loadRepoList, repoListError } from "./lib/load-repos";
 import { rpcClient } from "./lib/rpc/rpc-client";
 import { initializeStores, selectedRepo } from "./lib/stores";
 import { repoListStore } from "./lib/stores/repo-list.store";
+import { vscode } from "./lib/vscode";
 import { initializeWebviewConfig } from "./lib/webview-config";
 import { LoadingPage } from "./pages/LoadingPage";
 import { NoRepoPage } from "./pages/NoRepoPage";
@@ -38,6 +39,7 @@ async function main() {
 
   render(<Root />, root);
   await loadRepoList();
+  vscode.postMessage({ command: "viewReady" });
 }
 
 function Root() {
@@ -45,17 +47,18 @@ function Root() {
   const error = repoListError.value;
 
   useEffect(() => {
-    if (repos === undefined) {
+    const currentRepos = repoListStore.get();
+    if (currentRepos === undefined) {
       return;
     }
 
-    if (repos.length === 0) {
+    if (currentRepos.length === 0) {
       selectedRepo.value = undefined;
       return;
     }
 
-    const firstRepo = repos[0];
-    if (firstRepo !== undefined && !repos.some((repo) => repo.path === selectedRepo.value)) {
+    const firstRepo = currentRepos[0];
+    if (firstRepo !== undefined && !currentRepos.some((repo) => repo.path === selectedRepo.value)) {
       selectRepo(firstRepo.path);
     }
   }, [repos]);

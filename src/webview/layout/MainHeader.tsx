@@ -1,71 +1,121 @@
 import type { GitRepo } from "@/types";
-import { Button } from "@/webview/components/ui/Button";
-import { Checkbox } from "@/webview/components/ui/Checkbox";
-import { Dropdown } from "@/webview/components/ui/Dropdown";
-import { Icon } from "@/webview/components/ui/Icons";
-import { SHOW_ALL_BRANCHES } from "@/webview/constants";
-import { refresh, selectBranch, selectRepo, setShowRemoteBranch } from "@/webview/lib/actions";
+import { ActivityIndicator, openActivity } from "@/webview/components/history/ActivityView";
 import {
-  branchList,
-  commitHead,
-  commitList,
-  selectedBranch,
-  selectedRepo,
-  showRemoteBranch
-} from "@/webview/lib/stores";
-
-function repoOption(repo: GitRepo) {
-  return { label: repo.name, value: repo.path };
-}
-
-function branchOption(value: string) {
-  return { label: value.startsWith("remotes/") ? value.slice(8) : value, value };
-}
+  openCompare,
+  openFileHistory,
+  openReflog
+} from "@/webview/components/history/HistoryTools";
+import { openCleanup, openWorkspaceSync } from "@/webview/components/history/WorkflowTools";
+import { openBisect } from "@/webview/components/repository/BisectView";
+import { openRemotes } from "@/webview/components/repository/RemoteManager";
+import { openStashes } from "@/webview/components/repository/StashManager";
+import { openWorktrees } from "@/webview/components/repository/WorktreeManager";
+import { Button } from "@/webview/components/ui/Button";
+import { Dropdown } from "@/webview/components/ui/Dropdown";
+import { SHOW_ALL_BRANCHES } from "@/webview/constants";
+import {
+  openContextMenu,
+  openFormDialog,
+  refresh,
+  selectBranch,
+  selectRepo,
+  setShowRemoteBranch
+} from "@/webview/lib/actions";
+import { selectedCommits, toggleWorkspace, workspaceVisible } from "@/webview/lib/navigation";
+import { openRemoteAction } from "@/webview/lib/remote-actions";
+import { branchList, selectedBranch, selectedRepo, showRemoteBranch } from "@/webview/lib/stores";
 
 export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
-  const noCommits = commitList.value?.length === 0 && commitHead.value === null;
-
+  const repo = selectedRepo.value;
+  const choices =
+    repo && !repos.some((entry) => entry.path === repo)
+      ? [...repos, { path: repo, name: repo.split("/").at(-1) ?? repo }]
+      : repos;
   return (
-    <header class="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 border-b border-line py-4">
-      <Button aria-label={window.l10n.refresh} title={window.l10n.refresh} onClick={refresh}>
-        <Icon>
-          <path d="M3 8C3 5.23858 5.23858 3 8 3C9.63527 3 11.0878 3.78495 12.0005 5H10C9.72386 5 9.5 5.22386 9.5 5.5C9.5 5.77614 9.72386 6 10 6H12.8904C12.8973 6.00014 12.9041 6.00014 12.911 6H13C13.2761 6 13.5 5.77614 13.5 5.5V2.5C13.5 2.22386 13.2761 2 13 2C12.7239 2 12.5 2.22386 12.5 2.5V4.03138C11.4009 2.78613 9.79253 2 8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14C11.1301 14 13.6999 11.6035 13.9756 8.54488C14.0003 8.26985 13.7975 8.0268 13.5225 8.00202C13.2474 7.97723 13.0044 8.1801 12.9796 8.45512C12.75 11.003 10.6079 13 8 13C5.23858 13 3 10.7614 3 8Z" />
-        </Icon>
-        {window.l10n.refresh}
+    <header class="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-line-soft bg-editor px-3 py-2 text-ui">
+      <Button
+        aria-expanded={workspaceVisible.value}
+        onClick={toggleWorkspace}
+        class={workspaceVisible.value ? "bg-row-selected" : ""}
+      >
+        {window.l10n.workspaceOverview}
       </Button>
-      {(repos.length > 1 || !noCommits) && (
-        <div class="flex flex-wrap items-center justify-center gap-4">
-          {repos.length > 1 && (
-            <Dropdown
-              label={window.l10n.repo}
-              class="max-w-48"
-              options={repos.map(repoOption)}
-              value={selectedRepo.value}
-              onChange={selectRepo}
-            />
-          )}
-          {!noCommits && (
-            <>
-              <Dropdown
-                label={window.l10n.branch}
-                class="max-w-64"
-                options={[
-                  { label: window.l10n.showAll, value: SHOW_ALL_BRANCHES },
-                  ...(branchList.value ?? []).map(branchOption)
-                ]}
-                value={selectedBranch.value}
-                onChange={selectBranch}
-                disabled={branchList.value === undefined}
-              />
-              <Checkbox
-                label={window.l10n.showRemoteBranches}
-                checked={showRemoteBranch.value}
-                onInput={(e) => setShowRemoteBranch(e.currentTarget.checked)}
-              />
-            </>
-          )}
-        </div>
-      )}
+      <Dropdown
+        label={window.l10n.repo}
+        class="max-w-56"
+        options={choices.map((entry) => ({ label: entry.name, value: entry.path }))}
+        value={repo}
+        onChange={selectRepo}
+      />
+      <Dropdown
+        label={window.l10n.branch}
+        class="max-w-56"
+        options={[
+          { label: window.l10n.showAll, value: SHOW_ALL_BRANCHES },
+          ...(branchList.value ?? []).map((value) => ({
+            label: value.replace(/^remotes\//, ""),
+            value
+          }))
+        ]}
+        value={selectedBranch.value}
+        onChange={selectBranch}
+        disabled={branchList.value === undefined}
+      />
+      <div class="ml-auto flex flex-wrap items-center gap-2">
+        <ActivityIndicator />
+        <Button aria-label={window.l10n.refresh} onClick={refresh}>
+          ↻ {window.l10n.refresh}
+        </Button>
+        <Button disabled={!repo} onClick={() => openRemoteAction("fetch")}>
+          {window.l10n.fetch}
+        </Button>
+        <Button
+          disabled={!repo}
+          onClick={() =>
+            openCompare(
+              selectedCommits.value[0]?.hash ?? "HEAD",
+              selectedCommits.value[1]?.hash ?? "HEAD"
+            )
+          }
+        >
+          {window.l10n.compareSubmit}
+        </Button>
+        <Button
+          disabled={!repo}
+          aria-haspopup="menu"
+          onClick={(event) =>
+            openContextMenu(event, "repository-tools", [
+              { title: window.l10n.manageRemotes, onClick: openRemotes },
+              { title: window.l10n.stashes, onClick: openStashes },
+              { title: window.l10n.worktrees, onClick: openWorktrees },
+              { title: window.l10n.workspaceSync, onClick: openWorkspaceSync },
+              { title: window.l10n.cleanupBranches, onClick: openCleanup },
+              { title: window.l10n.bisectTitle, onClick: openBisect },
+              null,
+              { title: window.l10n.reflog, onClick: openReflog },
+              {
+                title: window.l10n.fileHistory,
+                onClick: () =>
+                  openFormDialog({
+                    message: window.l10n.fileHistory,
+                    inputs: [{ kind: "text", label: window.l10n.historyPath, value: "" }],
+                    action: window.l10n.fileHistory,
+                    source: null,
+                    onSubmit: ([file]) => openFileHistory(file)
+                  })
+              },
+              { title: window.l10n.operationActivity, onClick: openActivity },
+              null,
+              {
+                title: (showRemoteBranch.value ? "✓ " : "") + window.l10n.showRemoteBranches,
+                onClick: () => setShowRemoteBranch(!showRemoteBranch.value)
+              }
+            ])
+          }
+        >
+          {window.l10n.repositoryTools} ▾
+        </Button>
+      </div>
     </header>
   );
 }

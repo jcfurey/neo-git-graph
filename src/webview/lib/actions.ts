@@ -1,8 +1,16 @@
 import { batch } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 
-import type { ActionRequest, GitFileChange } from "@/backend/types";
+import type { GitFileChange } from "@/backend/types";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
+import { captureFocus, restoreFocus } from "@/webview/lib/focus";
+import { enterNavigation, leaveNavigation } from "@/webview/lib/navigation";
+import { sendRemoteAction } from "@/webview/lib/remote-actions";
+import {
+  repositoryRevision,
+  requestRepositoryState,
+  resetRepositoryState
+} from "@/webview/lib/repository-actions";
 import {
   branchList,
   commitDetails,
@@ -65,16 +73,21 @@ export function selectRepo(repo: string) {
     return;
   }
 
+  leaveNavigation(selectedRepo.value);
   batch(() => {
     selectedRepo.value = repo;
+    enterNavigation(repo);
     branchList.value = undefined;
     headBranch.value = null;
     selectedBranch.value = undefined;
     clearCommits();
+    resetRepositoryState();
+    closeDialog();
   });
 
   vscode.postMessage({ command: "selectRepo", repo });
   requestBranches(repo);
+  requestRepositoryState();
 }
 
 export function selectBranch(branch: CommitBranchType) {
@@ -161,6 +174,8 @@ export function refresh() {
   }
 
   requestBranches(repo);
+  repositoryRevision.value++;
+  requestRepositoryState();
   const branch = selectedBranch.value;
   if (branch !== undefined) {
     requestCommits(repo, branch);
@@ -205,23 +220,32 @@ export function openContextMenu(
 ) {
   event.preventDefault();
   event.stopPropagation();
+  captureFocus(event.target);
   contextMenu.value = { x: event.clientX, y: event.clientY, entries, source };
 }
 
 export function closeContextMenu() {
   contextMenu.value = null;
+  restoreFocus();
 }
 
 /** Open a dialog. The context menu that asked for it closes. */
+let nextDialogToken = 0;
 function openDialog(body: DialogBody) {
+  captureFocus();
   batch(() => {
     contextMenu.value = null;
-    dialog.value = { ...body, token: (dialog.value?.token ?? 0) + 1 };
+    dialog.value = { ...body, token: ++nextDialogToken };
   });
 }
 
 export function closeDialog() {
   dialog.value = null;
+  restoreFocus();
+}
+
+export function openContentDialog(message: string, content: ComponentChildren, wide = false) {
+  openDialog({ kind: "content", message, content, wide });
 }
 
 type FormDialog<T extends ReadonlyArray<DialogInput>> = {
@@ -245,12 +269,19 @@ export function openFormDialog<const T extends ReadonlyArray<DialogInput>>({
   source,
   onSubmit
 }: FormDialog<T>) {
+  const repo = selectedRepo.value;
   openDialog({
     kind: "form",
     message,
     inputs: [...inputs],
     action,
-    onSubmit: onSubmit as (values: Array<string | boolean>) => void,
+    onSubmit: (values) => {
+      if (selectedRepo.value === repo) {
+        onSubmit(values as DialogValues<T>);
+      } else {
+        closeDialog();
+      }
+    },
     source
   });
 }
@@ -261,18 +292,26 @@ export function openErrorDialog(message: string, reason: string | null = null) {
 }
 
 /** Report a command that runs longer than the others. The response replaces it. */
-export function openRunningDialog(message: string) {
-  openDialog({ kind: "running", message });
+export function openRunningDialog(
+  message: string,
+  context: { detail: string; started: number } | undefined = undefined
+) {
+  openDialog({ kind: "running", message, ...context });
 }
 
 /** Ask the editor to run a git command on the selected repo. */
+let nextActionRequest = 0;
 export function runAction(command: ActionCommand) {
   const repo = selectedRepo.value;
   if (repo === undefined) {
     return;
   }
 
-  vscode.postMessage({ ...command, repo } as ActionRequest);
+  sendRemoteAction(
+    { ...command, requestId: `action-${++nextActionRequest}` },
+    repo,
+    window.l10n.runningGitAction
+  );
 }
 
 /** Ask the editor to open the diff of a file of a commit. */

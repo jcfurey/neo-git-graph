@@ -45,6 +45,7 @@
     "clean": "node -e \"require('fs').rmSync('out',{recursive:true,force:true})\"",
     "compile": "pnpm run clean && node esbuild.js",
     "test": "vitest run --project backend && vitest run --project extension && vitest run --project webview",
+    "benchmark": "node scripts/benchmark.mjs",
     "test:ext": "pnpm run compile && pnpm run compile-tests && vscode-test",
     "compile-tests": "tsc -p tests-ext/tsconfig.json && tsc-alias -p tests-ext/tsconfig.json",
     "watch:esbuild": "node esbuild.js --watch",
@@ -98,6 +99,11 @@
         "category": "(neo) Git Graph",
         "command": "neo-git-graph.clearAvatarCache",
         "title": "%command.clearAvatarCache%"
+      },
+      {
+        "category": "(neo) Git Graph",
+        "command": "neo-git-graph.fileHistory",
+        "title": "%command.fileHistory%"
       }
     ],
     "menus": {
@@ -106,6 +112,20 @@
           "command": "neo-git-graph.view",
           "group": "navigation",
           "when": "scmProvider == git"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "neo-git-graph.fileHistory",
+          "group": "git",
+          "when": "!explorerResourceIsFolder && (resourceScheme == file || resourceScheme == vscode-remote)"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "neo-git-graph.fileHistory",
+          "group": "git",
+          "when": "!explorerResourceIsFolder && (resourceScheme == file || resourceScheme == vscode-remote)"
         }
       ]
     },

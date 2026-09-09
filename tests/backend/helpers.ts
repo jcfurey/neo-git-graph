@@ -7,7 +7,7 @@ export function git(args: string[], cwd: string) {
 }
 
 export function makeRepo(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ngg-test-"));
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-test-")));
   try {
     git(["init", "-b", "main"], dir);
   } catch {

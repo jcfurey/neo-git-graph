@@ -41,14 +41,32 @@ This fork:
 
 ## Features
 
+- Review push/pull commits, fetch across workspace repositories, and apply reviewed fast-forward updates.
+- Compare and stage submodule pointers, clean up merged local branches, and find regressions with guided Git bisect.
+
+- **Workspace overview**: Inspect branches, local changes, ahead/behind counts, and submodule revisions; initialize, sync, or update nested submodules
+- **History search**: Search all repository history by message, SHA, author, date, or path, follow file renames, and save filters per repository
+- **Compare and restore**: Compare revisions or changes since their common ancestor, inspect unique commits and file diffs, and restore historical file contents while preserving staged changes
+- **Reflog recovery**: Find older branch/HEAD positions, jump to their graph context, and create recovery branches
+- **Ordered commit actions**: Select multiple commits for cherry-pick or revert, create staged fixups, and arrange fixup/squash commits in the interactive rebase editor
+- **Navigation and activity**: Keyboard navigation, per-repository scroll and filters, compact repository tools, and operation progress with copyable errors
+- **Repository tools**: Configure remotes and upstreams, inspect ahead/behind status, and manage worktrees
+- **Recovery and stashes**: Continue, abort or skip interrupted operations; inspect and resolve conflicts; save, inspect, apply, pop and drop stashes
+- **Rebase**: Preserve merges when rebasing onto another branch, or reorder, reword, squash and drop commits in a linear interactive plan
+- **Remote ref management**: Choose a remote for tag pushes, delete remote branches/tags with confirmation, and push rewritten history with an explicit force-with-lease check
+- **Remote actions**: Push local branches to a chosen remote, set upstream tracking, pull the current branch with fast-forward only, and fetch updates with optional pruning
+- **Remote branch checkout**: Reuse and fast-forward an existing local branch, or create a new tracking branch
 - **Graph view**: See branches, tags, and uncommitted changes in one graph
 - **Commit details**: Click a commit to see message, files, and diffs
 - **Branch actions**: Create, checkout, rename, delete, and merge
 - **Tag actions**: Create, delete, and push tags
 - **Commit actions**: Checkout, cherry-pick, revert, and reset
 - **Avatar support (deprecated in v0.6.0)**: Optional avatars from GitHub, GitLab, or Gravatar
-- **Multi-repo**: Work with multiple repositories in one workspace
+- **Multi-repo**: Work with multiple repositories in one workspace, including initialized submodules and their nested submodules
+- **Repository selection**: Click a repository's Git Graph button in Source Control to open its graph or switch the existing graph to that repository
 - **Devcontainer support**: Works in remote and container environments
+
+See [Working from the graph](docs/git-actions.md) for the available actions and their behavior.
 
 ## Installation
 

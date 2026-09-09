@@ -66,6 +66,8 @@ export type ResponseRefresh = {
 };
 
 export type RequestMessage =
+  | { command: "cancelRepositoryQuery"; repo: string; requestId: string }
+  | { command: "viewReady" }
   | ActionRequest
   | QueryRequest
   | RequestFetchAvatar
@@ -74,6 +76,7 @@ export type RequestMessage =
   | RequestViewDiff;
 
 export type ResponseMessage =
+  | { command: "fileHistory"; repo: string; path: string }
   | ActionResponse
   | QueryResponse
   | ResponseFetchAvatar

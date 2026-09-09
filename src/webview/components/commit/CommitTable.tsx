@@ -1,7 +1,7 @@
 import { Fragment } from "preact";
 import { useMemo } from "preact/hooks";
 
-import type { GitCommitNode } from "@/backend/types";
+import type { HistoryEntry } from "@/backend/types";
 import { CommitDetails } from "@/webview/components/commit/CommitDetails";
 import { CommitGraph } from "@/webview/components/commit/CommitGraph";
 import { CommitRow } from "@/webview/components/commit/CommitRow";
@@ -18,10 +18,11 @@ import { branchColour } from "@/webview/graph/palette";
 import type { GraphExpansion } from "@/webview/graph/types";
 import { graphWidth } from "@/webview/graph/utils";
 import { toggleCommitDetails } from "@/webview/lib/actions";
+import { focusedCommit } from "@/webview/lib/navigation";
 import { columnWidths, commitDetails, expandedCommit } from "@/webview/lib/stores";
 
 type CommitTableProps = {
-  commits: Array<GitCommitNode>;
+  commits: Array<HistoryEntry>;
   head: string | null;
   headBranch: string | null;
 };
@@ -97,6 +98,7 @@ export function CommitTable({ commits, head, headBranch }: CommitTableProps) {
         <CommitGraph layout={layout} expansion={expansion} />
       </div>
       <table
+        aria-label={window.l10n.graphKeyboardHint}
         class={`w-full cursor-default border-collapse text-ui select-none ${
           sized ? "table-fixed" : ""
         }`}
@@ -126,6 +128,12 @@ export function CommitTable({ commits, head, headBranch }: CommitTableProps) {
             <Fragment key={commit.hash}>
               <CommitRow
                 commit={commit}
+                rows={commits}
+                tabStop={
+                  focusedCommit.value === commit.hash ||
+                  (!commits.some((row) => row.hash === focusedCommit.value) &&
+                    commit === commits.find((row) => row.hash !== UNCOMMITTED_CHANGES))
+                }
                 isHead={commit.hash === head}
                 headBranch={headBranch}
                 messages={messages}

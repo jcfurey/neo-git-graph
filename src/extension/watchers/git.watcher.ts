@@ -2,6 +2,7 @@ import path from "node:path";
 
 import * as vscode from "vscode";
 
+import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { rpcNotify } from "@/extension/rpc/rpc-notify";
 import { createDebouncer, type FsWatcherEvent } from "@/extension/util/debounce";
 import { logger } from "@/extension/util/logger";
@@ -20,7 +21,7 @@ export function watchGitDir(): vscode.Disposable {
 
 async function processGitDir(type: FsWatcherEvent, uri: vscode.Uri) {
   logger.info(`Git directory ${type}: ${uri.fsPath}`);
-  const repoPath = path.dirname(uri.fsPath);
+  const repoPath = normalizeRepoPath(path.dirname(uri.fsPath));
 
   if (type === "created") {
     await rpcNotify.notify("repo.changed", {

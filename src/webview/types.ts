@@ -23,6 +23,7 @@ export type ContextMenuState = {
 export type DialogInput =
   | { kind: "text"; label?: string; value: string; placeholder?: string }
   | { kind: "ref"; label?: string; value: string }
+  | { kind: "textarea"; label?: string; value: string; placeholder?: string }
   | {
       kind: "select";
       label?: string;
@@ -40,6 +41,7 @@ export type DialogValues<T extends ReadonlyArray<DialogInput>> = {
 };
 
 export type DialogBody =
+  | { kind: "content"; message: string; content: ComponentChildren; wide?: boolean }
   | {
       kind: "form";
       message: ComponentChildren;
@@ -50,7 +52,7 @@ export type DialogBody =
       /** Context menu key of the element the dialog belongs to, or `null`. */
       source: string | null;
     }
-  | { kind: "running"; message: string }
+  | { kind: "running"; message: string; detail?: string; started?: number }
   | { kind: "error"; message: string; reason: string | null };
 
 /** Adds the field to every member of a union, so it stays discriminated. */

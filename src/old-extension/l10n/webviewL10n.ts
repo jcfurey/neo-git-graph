@@ -1,5 +1,9 @@
 import * as vscode from "vscode";
 
+import { getHistoryLocalizedStrings } from "./historyL10n";
+import { getRepositoryLocalizedStrings } from "./repositoryL10n";
+import { getWorkflowLocalizedStrings } from "./workflowL10n";
+
 /**
  * Localized strings for the webview (main.ts, dropdown.ts).
  * The webview cannot access vscode.l10n directly, so the strings are resolved
@@ -9,6 +13,9 @@ import * as vscode from "vscode";
  */
 export function getWebviewLocalizedStrings() {
   return {
+    ...getRepositoryLocalizedStrings(),
+    ...getHistoryLocalizedStrings(),
+    ...getWorkflowLocalizedStrings(),
     // UI labels
     repo: vscode.l10n.t("Repo"),
     branch: vscode.l10n.t("Branch"),
@@ -53,6 +60,30 @@ export function getWebviewLocalizedStrings() {
     unableToRevert: vscode.l10n.t("Unable to Revert Commit"),
     invalidCharacters: vscode.l10n.t("Unable to {0}, one or more invalid characters entered."),
 
+    // Remote actions
+    fetch: vscode.l10n.t("Fetch"),
+    pushBranch: vscode.l10n.t("Push Branch"),
+    pullBranch: vscode.l10n.t("Pull Branch"),
+    remote: vscode.l10n.t("Remote"),
+    remoteBranch: vscode.l10n.t("Remote Branch"),
+    allRemotes: vscode.l10n.t("All Remotes"),
+    setUpstream: vscode.l10n.t("Set as upstream branch"),
+    pruneRemoteBranches: vscode.l10n.t("Prune deleted remote branches"),
+    loadingRemotes: vscode.l10n.t("Loading remotes"),
+    fetching: vscode.l10n.t("Fetching"),
+    pushingBranch: vscode.l10n.t("Pushing branch"),
+    pullingBranch: vscode.l10n.t("Pulling branch"),
+    unableToLoadRemotes: vscode.l10n.t("Unable to load remotes"),
+    unableToFetch: vscode.l10n.t("Unable to fetch"),
+    unableToPushBranch: vscode.l10n.t("Unable to push branch"),
+    unableToPullBranch: vscode.l10n.t("Unable to pull branch"),
+    noRemotesConfigured: vscode.l10n.t(
+      "No remotes configured. Add a remote to this repository first."
+    ),
+    dialogFetchTitle: vscode.l10n.t("Fetch updates from a remote:"),
+    dialogPushBranchTitle: vscode.l10n.t("Push branch {0} to a remote:"),
+    dialogPullBranchTitle: vscode.l10n.t("Pull into branch {0} (fast-forward only):"),
+
     // Actions
     addTag: vscode.l10n.t("Add Tag"),
     createBranch: vscode.l10n.t("Create Branch"),
@@ -90,6 +121,9 @@ export function getWebviewLocalizedStrings() {
     dialogAddTagSubmit: vscode.l10n.t("Add Tag"),
     dialogCreateBranchTitle: vscode.l10n.t("Enter the name of the branch {0}"),
     dialogCreateBranchSubmit: vscode.l10n.t("Create Branch"),
+    dialogCheckoutRemoteTitle: vscode.l10n.t(
+      "Enter a local branch name for {0}. Existing branches will be fast-forwarded when possible:"
+    ),
     dialogCheckoutConfirm: vscode.l10n.t(
       "Are you sure you want to checkout commit {0}? This will result in a 'detached HEAD' state."
     ),

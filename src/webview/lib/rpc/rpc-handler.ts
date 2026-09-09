@@ -1,5 +1,5 @@
 import type { RpcNotification, RpcResponse } from "@/types";
-import { refresh } from "@/webview/lib/actions";
+import { refresh, selectRepo } from "@/webview/lib/actions";
 import { loadRepoList } from "@/webview/lib/load-repos";
 import { selectedRepo } from "@/webview/lib/stores";
 import { repoListStore } from "@/webview/lib/stores/repo-list.store";
@@ -40,6 +40,10 @@ function handleRpcResponse(message: RpcResponse, requests: Map<string, PendingRp
 
 function handleRpcNotification(message: RpcNotification): void {
   switch (message.name) {
+    case "repo.select":
+      repoListStore.apply({ type: "created", repo: message.message });
+      selectRepo(message.message.path);
+      return;
     case "repo.changed":
       repoListStore.apply(message.message);
       return;
