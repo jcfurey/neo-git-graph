@@ -28,7 +28,10 @@ suite("Git actions in the extension host", () => {
     git(["config", "rerere.enabled", "false"]);
     commit("f", "base");
   });
-  teardown(() => fs.rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  teardown(
+    async () =>
+      await fs.promises.rm(repo, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+  );
 
   test("runs interactive rebase editors using the VS Code executable as Node", async () => {
     const base = git(["rev-parse", "HEAD"]);
