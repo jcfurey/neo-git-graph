@@ -7,9 +7,11 @@ import { join, resolve as resolvePath } from "node:path";
 import { defineConfig } from "@vscode/test-cli";
 
 // Each run gets a disposable repository and a free debugger port, including on CI.
-const workspaceFolder = realpathSync(mkdtempSync(join(tmpdir(), "ngg-extension-tests-")));
+const workspaceFolder = realpathSync.native(mkdtempSync(join(tmpdir(), "ngg-extension-tests-")));
 execFileSync("git", ["init", "-b", "main", workspaceFolder], { stdio: "pipe" });
-process.once("exit", () => rmSync(workspaceFolder, { recursive: true, force: true }));
+process.once("exit", () =>
+  rmSync(workspaceFolder, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+);
 const server = createServer();
 await new Promise((resolve, reject) => {
   server.once("error", reject);

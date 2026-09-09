@@ -20,7 +20,7 @@ suite("Git actions in the extension host", () => {
   };
 
   setup(() => {
-    repo = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-host-actions-")));
+    repo = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-host-actions-")));
     git(["init", "-b", "main"]);
     git(["config", "user.name", "Git Graph Test"]);
     git(["config", "user.email", "test@example.com"]);
@@ -28,7 +28,7 @@ suite("Git actions in the extension host", () => {
     git(["config", "rerere.enabled", "false"]);
     commit("f", "base");
   });
-  teardown(() => fs.rmSync(repo, { recursive: true, force: true }));
+  teardown(() => fs.rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
   test("runs interactive rebase editors using the VS Code executable as Node", async () => {
     const base = git(["rev-parse", "HEAD"]);

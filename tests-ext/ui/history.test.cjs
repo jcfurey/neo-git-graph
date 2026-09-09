@@ -9,6 +9,8 @@ const vscode = require("vscode");
 const port = Number(process.env.NGG_CDP_PORT);
 const artifacts = process.env.NGG_ARTIFACTS || path.join(os.tmpdir(), "ngg-ui-artifacts");
 fs.mkdirSync(artifacts, { recursive: true });
+const repoKey = (value) =>
+  value.replaceAll("\\", "/").replace(/^[A-Z]:/, (drive) => drive.toLowerCase());
 const connections = [];
 const dirs = [];
 let graph;
@@ -17,7 +19,7 @@ function git(args, cwd = repo) {
   return cp.execFileSync("git", args, { cwd, stdio: "pipe" }).toString().trim();
 }
 function directory() {
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-ui-")));
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-ui-")));
   dirs.push(dir);
   return dir;
 }
@@ -259,12 +261,13 @@ suite("Git Graph workflow UI", function () {
       } catch {}
     }
   });
-  suiteTeardown(() => {
+  suiteTeardown(async () => {
+    await vscode.commands.executeCommand("workbench.action.closeAllEditors");
     for (const connection of connections) {
       connection.ws.close();
     }
     for (const dir of dirs) {
-      fs.rmSync(dir, { recursive: true, force: true });
+      fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   });
 
@@ -677,7 +680,7 @@ suite("Git Graph workflow UI", function () {
     await until(
       () =>
         graph.evaluate(
-          `(() => { const b=document.querySelector('aside button[title=${JSON.stringify(module.replaceAll("\\", "/"))}]'); if(!b)return false;b.click();return true; })()`
+          `(() => { const b=document.querySelector('aside button[title=${JSON.stringify(repoKey(module))}]'); if(!b)return false;b.click();return true; })()`
         ),
       "submodule sidebar switch"
     );
@@ -689,7 +692,7 @@ suite("Git Graph workflow UI", function () {
     await until(
       () =>
         graph.evaluate(
-          `!!document.querySelector('aside button[title=${JSON.stringify(parent.replaceAll("\\", "/"))}]')`
+          `!!document.querySelector('aside button[title=${JSON.stringify(repoKey(parent))}]')`
         ),
       "parent remains in workspace after switching"
     );
@@ -846,7 +849,7 @@ suite("Git Graph workflow UI", function () {
       await until(
         () =>
           graph.evaluate(
-            `(() => {const label=[...document.querySelectorAll('[role=dialog] label')].find(e=>e.textContent.trim()===${JSON.stringify(dir.replaceAll("\\", "/"))});if(!label)return false;label.querySelector('input').click();return true;})()`
+            `(() => {const label=[...document.querySelectorAll('[role=dialog] label')].find(e=>e.textContent.trim()===${JSON.stringify(repoKey(dir))});if(!label)return false;label.querySelector('input').click();return true;})()`
           ),
         "workspace selection"
       );

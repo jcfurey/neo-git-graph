@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { findGitRepos } from "@/backend/queries/repoSearch";
 import { getSubmodulePaths } from "@/backend/utils/git";
+import { normalizeRepoPath } from "@/backend/utils/repoPath";
 
 import { git, makeRepo } from "@tests/backend/helpers";
 
@@ -16,7 +17,7 @@ let nested: string;
 let uninitialized: string;
 
 beforeAll(() => {
-  parent = makeRepo();
+  parent = normalizeRepoPath(makeRepo());
   childSource = makeRepo();
   nestedSource = makeRepo();
 
@@ -37,9 +38,9 @@ beforeAll(() => {
   );
   git(["submodule", "deinit", "--force", "--", uninitializedPath], parent);
 
-  child = path.join(parent, childPath).split(path.sep).join("/");
+  child = normalizeRepoPath(path.join(parent, childPath));
   nested = child + "/nested module";
-  uninitialized = path.join(parent, uninitializedPath).split(path.sep).join("/");
+  uninitialized = normalizeRepoPath(path.join(parent, uninitializedPath));
 });
 
 afterAll(() => {

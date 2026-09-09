@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { runRepositoryAction } from "@/backend/actions/repository";
 import { gitClientFactory } from "@/backend/gitClient";
-import { loadBisect } from "@/backend/queries/bisect";
+import { bisectResult, loadBisect } from "@/backend/queries/bisect";
 import { repositoryQuery } from "@/backend/queries/repository";
 import {
   loadCleanupPlan,
@@ -42,7 +42,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   for (const dir of dirs) {
-    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });
 
@@ -184,6 +184,13 @@ describe("merged branch cleanup", () => {
 });
 
 describe("guided bisect", () => {
+  it("recognizes current and older Git completion logs, including custom terms", () => {
+    const hash = "a".repeat(40);
+    expect(bisectResult(`# first bad commit: [${hash}] regression`, "bad")).toBe(hash);
+    expect(bisectResult(`# first 'bad' commit: [${hash}] regression`, "bad")).toBe(hash);
+    expect(bisectResult(`# first 'broken' commit: [${hash}] regression`, "broken")).toBe(hash);
+    expect(bisectResult(`# possible first 'bad' commit: [${hash}] regression`, "bad")).toBeNull();
+  });
   it("finds the first bad commit and restores the original branch after reset", async () => {
     const good = read(["rev-parse", "HEAD"]);
     const hashes = [good];

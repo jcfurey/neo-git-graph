@@ -7,6 +7,18 @@ import { gitDirectory, readOptional } from "@/backend/queries/repository";
 import type { BisectState } from "@/backend/types";
 import { resolveCommit } from "@/backend/utils/validation";
 
+/** Git 2.55 quotes custom/default terms; older Git logs leave them unquoted. */
+export function bisectResult(log: string | null | undefined, badTerm: string) {
+  const line = log
+    ?.split("\n")
+    .findLast(
+      (entry) =>
+        entry.startsWith(`# first '${badTerm}' commit: [`) ||
+        entry.startsWith(`# first ${badTerm} commit: [`)
+    );
+  return line?.match(/\[([a-f0-9]{40,64})\]/)?.[1] ?? null;
+}
+
 export async function loadBisect(git: SimpleGit): Promise<BisectState | null> {
   const directory = await gitDirectory(git);
   const [original, log, termsFile] = await Promise.all(
@@ -40,7 +52,8 @@ export async function loadBisect(git: SimpleGit): Promise<BisectState | null> {
       : remaining;
   // Skipped commits can be ancestors of the bad commit; excluding their ancestry
   // is insufficient to identify ambiguity. Git records the definitive result.
-  const firstBad = log?.match(/# first bad commit: \[([a-f0-9]{40,64})\]/)?.[1] ?? null;
+  const result = bisectResult(log, badTerm);
+  const firstBad = result === bad ? result : null;
   const ambiguous =
     firstBad === null &&
     remaining > 1 &&
@@ -52,7 +65,7 @@ export async function loadBisect(git: SimpleGit): Promise<BisectState | null> {
       .digest("hex"),
     original: original.trim(),
     head,
-    subject: (await git.raw(["show", "-s", "--format=%s", head])).trimEnd(),
+    subject: (await git.raw(["show", "-s", "--format=%s", firstBad ?? head])).trimEnd(),
     good,
     bad,
     skipped,

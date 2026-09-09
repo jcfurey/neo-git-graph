@@ -29,7 +29,7 @@ const read = (args: string[], cwd = repo) =>
   execFileSync("git", args, { cwd, stdio: "pipe" }).toString().trim();
 const run = (action: RepositoryAction) => runRepositoryAction(simpleGit(repo), action);
 function directory() {
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-workflow-")));
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-workflow-")));
   dirs.push(dir);
   return dir;
 }
@@ -64,7 +64,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   for (const dir of dirs) {
-    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });
 

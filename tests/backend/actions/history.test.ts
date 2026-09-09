@@ -50,7 +50,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
   for (const dir of dirs) {
-    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });
 
