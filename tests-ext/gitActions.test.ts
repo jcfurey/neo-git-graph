@@ -20,7 +20,7 @@ suite("Git actions in the extension host", () => {
   };
 
   setup(() => {
-    repo = fs.mkdtempSync(path.join(os.tmpdir(), "ngg-host-actions-"));
+    repo = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-host-actions-")));
     git(["init", "-b", "main"]);
     git(["config", "user.name", "Git Graph Test"]);
     git(["config", "user.email", "test@example.com"]);

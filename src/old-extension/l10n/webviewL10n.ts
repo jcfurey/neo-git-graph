@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 
 import { getHistoryLocalizedStrings } from "./historyL10n";
 import { getRepositoryLocalizedStrings } from "./repositoryL10n";
+import { getWorkflowLocalizedStrings } from "./workflowL10n";
 
 /**
  * Localized strings for the webview (main.ts, dropdown.ts).
@@ -14,6 +15,7 @@ export function getWebviewLocalizedStrings() {
   return {
     ...getRepositoryLocalizedStrings(),
     ...getHistoryLocalizedStrings(),
+    ...getWorkflowLocalizedStrings(),
     // UI labels
     repo: vscode.l10n.t("Repo"),
     branch: vscode.l10n.t("Branch"),

@@ -35,7 +35,7 @@ export function createMessageProtocol(ctx: vscode.ExtensionContext) {
       const bridge: WebviewBridge = webviewBridgeFactory(panel.webview);
       avatarManager.registerBridge(bridge.post);
 
-      const { onPanelShown } = registerMessageHandlers(bridge, {
+      const { onPanelShown, dispose: disposeQueries } = registerMessageHandlers(bridge, {
         config,
         gitClient,
         repoManager,
@@ -59,6 +59,7 @@ export function createMessageProtocol(ctx: vscode.ExtensionContext) {
             return;
           }
           disposed = true;
+          disposeQueries();
           bridge.dispose();
           viewStateListener.dispose();
           avatarManager.deregisterBridge();

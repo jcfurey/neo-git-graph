@@ -19,6 +19,7 @@ import {
   repositoryQuery
 } from "@/backend/queries/repository";
 import type { RepositoryAction } from "@/backend/types";
+import { normalizeRepoPath } from "@/backend/utils/repoPath";
 
 import { makeRepo } from "@tests/backend/helpers";
 
@@ -28,7 +29,7 @@ const read = (args: string[], cwd = repo) =>
   execFileSync("git", args, { cwd, stdio: "pipe" }).toString().trim();
 const run = (action: RepositoryAction) => runRepositoryAction(simpleGit(repo), action);
 function directory() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ngg-workflow-"));
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-workflow-")));
   dirs.push(dir);
   return dir;
 }
@@ -384,7 +385,10 @@ describe("interactive rebase", () => {
 
 describe("worktrees", () => {
   it("creates and opens a linked worktree, reports occupancy, and removes only clean worktrees", async () => {
-    const folder = path.join(directory(), "work tree\nwith newline");
+    const folder = path.join(
+      directory(),
+      process.platform === "win32" ? "work tree with spaces" : "work tree\nwith newline"
+    );
     await run({
       kind: "addWorktree",
       path: folder,
@@ -395,10 +399,10 @@ describe("worktrees", () => {
     const entry = (await loadWorktrees(simpleGit(repo))).find(
       (item) => item.branch === "feature/worktree"
     )!;
-    expect(entry.path).toBe(folder);
+    expect(entry.path).toBe(normalizeRepoPath(folder));
     expect(await run({ kind: "openWorktree", path: folder })).toEqual({
       kind: "worktree",
-      path: folder
+      path: normalizeRepoPath(folder)
     });
     const second = path.join(directory(), "second");
     await expect(

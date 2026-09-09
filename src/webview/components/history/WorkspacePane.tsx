@@ -1,6 +1,7 @@
 import { useState } from "preact/hooks";
 
 import type { RepositoryAction, WorkspaceEntry } from "@/backend/types";
+import { openSubmodule, openWorkspaceSync } from "@/webview/components/history/WorkflowTools";
 import { Button } from "@/webview/components/ui/Button";
 import { Checkbox } from "@/webview/components/ui/Checkbox";
 import { openContextMenu, selectRepo } from "@/webview/lib/actions";
@@ -18,6 +19,7 @@ function changed(entry: WorkspaceEntry) {
     entry.ahead > 0 ||
     entry.behind > 0 ||
     (entry.recorded !== null && entry.head !== entry.recorded) ||
+    entry.recorded !== entry.committed ||
     entry.error !== null
   );
 }
@@ -90,6 +92,7 @@ function RepoRow({ entry, depth }: { entry: WorkspaceEntry; depth: number }) {
                       }
                     ]
                   : [
+                      { title: window.l10n.submoduleChanges, onClick: () => openSubmodule(entry) },
                       {
                         title: window.l10n.updateSubmodule,
                         onClick: () => submoduleAction(entry, "update")
@@ -126,20 +129,24 @@ function RepoRow({ entry, depth }: { entry: WorkspaceEntry; depth: number }) {
         </div>
       )}
       {mismatch && (
-        <p
-          class="mt-1 text-xs text-git-modified"
+        <button
+          class="mt-1 cursor-pointer text-left text-xs text-git-modified hover:underline"
+          disabled={!entry.initialized}
+          onClick={() => openSubmodule(entry)}
           title={window.l10n.indexRevision.replace("{0}", entry.recorded ?? "")}
         >
           {window.l10n.submoduleMoved}
-        </p>
+        </button>
       )}
       {staged && entry.submodulePath && (
-        <p
-          class="mt-1 text-xs text-git-added"
+        <button
+          class="mt-1 cursor-pointer text-left text-xs text-git-added hover:underline"
+          disabled={!entry.initialized}
+          onClick={() => openSubmodule(entry, true)}
           title={window.l10n.parentRevision.replace("{0}", entry.committed ?? "∅")}
         >
           {window.l10n.submoduleStaged}
-        </p>
+        </button>
       )}
       {entry.error && <p class="mt-1 break-words text-xs text-git-deleted">{entry.error}</p>}
     </div>
@@ -177,7 +184,7 @@ export function WorkspacePane() {
   return (
     <aside
       aria-label={window.l10n.workspaceOverview}
-      class="sticky top-12 h-[calc(100vh-3rem)] w-72 max-w-[40vw] shrink-0 self-start overflow-y-auto border-r border-line-soft bg-editor text-ui"
+      class="w-full max-h-72 shrink-0 self-start overflow-y-auto border-r border-line-soft bg-editor text-ui md:sticky md:top-12 md:h-[calc(100vh-3rem)] md:max-h-none md:w-72 md:max-w-[40vw]"
     >
       <div class="space-y-3 border-b border-line-soft p-3">
         <div class="flex items-center justify-between">
@@ -204,6 +211,7 @@ export function WorkspacePane() {
           checked={onlyChanged}
           onInput={(event) => setOnlyChanged(event.currentTarget.checked)}
         />
+        <Button onClick={openWorkspaceSync}>{window.l10n.workspaceSync}</Button>
       </div>
       <QueryStatus {...query} />
       {entries

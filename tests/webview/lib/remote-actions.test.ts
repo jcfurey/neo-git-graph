@@ -6,7 +6,11 @@ import type { QueryResult } from "@/backend/types";
 import { closeDialog, openErrorDialog } from "@/webview/lib/actions";
 import { handleActionResult } from "@/webview/lib/handler/action-result";
 import { refMenu } from "@/webview/lib/menus";
-import { handleLoadRemotes, openRemoteAction } from "@/webview/lib/remote-actions";
+import {
+  handleLoadRemotes,
+  openRemoteAction,
+  sendRemoteAction
+} from "@/webview/lib/remote-actions";
 import { dialog, selectedRepo } from "@/webview/lib/stores";
 
 const mocks = vi.hoisted(() => {
@@ -61,32 +65,18 @@ function prepare(
 }
 
 describe("remote action dialogs", () => {
-  it("publishes the clicked branch to the chosen remote and destination with upstream tracking", () => {
-    const { form, request } = prepare("push");
+  it("opens a review before publishing the clicked branch", () => {
+    const { form } = prepare("push");
     expect(form.inputs.map((input) => input.value)).toEqual([
       "origin",
       "feature/navigation",
       true,
       false
     ]);
-    form.onSubmit(["upstream", "review/navigation", true]);
-    expect(mocks.postMessage).toHaveBeenLastCalledWith({
-      command: "pushBranch",
-      repo: "/repo",
-      requestId: request.requestId,
-      branchName: "feature/navigation",
-      remote: "upstream",
-      remoteBranch: "review/navigation",
-      setUpstream: true
-    });
-    expect(dialog.value?.kind).toBe("running");
-    handleActionResult({
-      command: "pushBranch",
-      repo: "/repo",
-      requestId: request.requestId,
-      status: null
-    });
-    expect(dialog.value).toBeNull();
+    mocks.postMessage.mockClear();
+    form.onSubmit(["upstream", "review/navigation", true, false]);
+    expect(dialog.value).toMatchObject({ kind: "content", message: "syncPreview" });
+    expect(mocks.postMessage).not.toHaveBeenCalled();
   });
 
   it("uses an existing upstream name and preserves tracking by default", () => {
@@ -115,20 +105,24 @@ describe("remote action dialogs", () => {
     ]);
   });
 
-  it("pulls the clicked current branch from its configured upstream", () => {
-    const { form, request } = prepare("pull", {
+  it("fetches the chosen upstream before offering a pull preview", async () => {
+    const { form } = prepare("pull", {
       upstream: { remote: "upstream", branchName: "release/stable" }
     });
     expect(form.inputs.map((input) => input.value)).toEqual(["upstream", "release/stable"]);
     form.onSubmit(["upstream", "release/stable"]);
-    expect(mocks.postMessage).toHaveBeenLastCalledWith({
-      command: "pullBranch",
+    const request = mocks.postMessage.mock.lastCall![0];
+    expect(request).toMatchObject({
+      command: "repositoryAction",
       repo: "/repo",
-      requestId: request.requestId,
-      branchName: "feature/navigation",
-      remote: "upstream",
-      remoteBranch: "release/stable"
+      action: { kind: "fetch", remote: "upstream" }
     });
+    handleActionResult({ ...request, status: null });
+    await Promise.resolve();
+    expect(dialog.value).toMatchObject({ kind: "content", message: "syncPreview" });
+    expect(mocks.postMessage.mock.calls.some(([message]) => message.action?.kind === "sync")).toBe(
+      false
+    );
   });
 
   it("offers fetch for all remotes with explicit pruning", () => {
@@ -171,8 +165,12 @@ describe("remote action dialogs", () => {
   });
 
   it("does not let a late action result replace another repository's dialog", () => {
-    const { form, request } = prepare("push");
-    form.onSubmit(["origin", "feature/navigation", true]);
+    const { request } = prepare("push");
+    sendRemoteAction(
+      { command: "fetchRemote", requestId: request.requestId, remote: null, prune: false },
+      "/repo",
+      "fetch"
+    );
     selectedRepo.value = "/another-repo";
     openErrorDialog("new dialog");
     const current = dialog.value;
@@ -187,10 +185,18 @@ describe("remote action dialogs", () => {
 
   it("does not let an older result close a newer action in the same repository", () => {
     const first = prepare("push");
-    first.form.onSubmit(["origin", "feature/navigation", true]);
+    sendRemoteAction(
+      { command: "fetchRemote", requestId: first.request.requestId, remote: null, prune: false },
+      "/repo",
+      "fetch"
+    );
     closeDialog();
     const second = prepare("push");
-    second.form.onSubmit(["origin", "feature/navigation", true]);
+    sendRemoteAction(
+      { command: "fetchRemote", requestId: second.request.requestId, remote: null, prune: false },
+      "/repo",
+      "fetch"
+    );
     const current = dialog.value;
     handleActionResult({
       command: "pushBranch",

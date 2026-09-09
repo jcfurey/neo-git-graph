@@ -5,10 +5,10 @@ import { repositoryRevision, requestPanelQuery } from "@/webview/lib/repository-
 import { selectedRepo } from "@/webview/lib/stores";
 
 export function useRepositoryQuery<K extends RepositoryQuery["kind"]>(
-  query: Extract<RepositoryQuery, { kind: K }> | null
+  query: Extract<RepositoryQuery, { kind: K }> | null,
+  repo = selectedRepo.value
 ) {
   type Data = Extract<RepositoryQueryData, { kind: K }>;
-  const repo = selectedRepo.value;
   const revision = repositoryRevision.value;
   const baseKey = JSON.stringify([repo, query]);
   const key = JSON.stringify([baseKey, revision]);

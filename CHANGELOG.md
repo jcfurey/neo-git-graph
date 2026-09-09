@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Added
+
+- Submodule commit comparisons and parent pointer staging/unstaging.
+- Workspace fetch with individual results and reviewed fast-forward updates.
+- Push/pull commit previews, selected merged-branch cleanup, and guided Git bisect.
+- Portable workflow UI checks, three-platform CI, and a large-history benchmark.
+
+### Changed
+
+- Cancel superseded repository queries, restore focus after dialogs, and adapt controls to narrow windows.
+
+### Fixed
+
+- Include staged-only submodule pointer changes in the workspace filter.
+
 ## [0.6.0] - 2026-08-25
 
 ### Added

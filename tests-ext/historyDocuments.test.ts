@@ -22,7 +22,7 @@ suite("History documents", () => {
   });
 
   test("loads simultaneous comparisons from their own repositories", async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "ngg-document-"));
+    const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-document-")));
     const file = "file # with spaces.txt";
     const repos = [path.join(root, "first"), path.join(root, "second")];
     const provider = new DiffDocProvider(

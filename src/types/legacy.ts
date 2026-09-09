@@ -66,6 +66,7 @@ export type ResponseRefresh = {
 };
 
 export type RequestMessage =
+  | { command: "cancelRepositoryQuery"; repo: string; requestId: string }
   | { command: "viewReady" }
   | ActionRequest
   | QueryRequest

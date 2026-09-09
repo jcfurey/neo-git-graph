@@ -17,7 +17,7 @@ function git(args, cwd = repo) {
   return cp.execFileSync("git", args, { cwd, stdio: "pipe" }).toString().trim();
 }
 function directory() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ngg-ui-"));
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-ui-")));
   dirs.push(dir);
   return dir;
 }
@@ -696,6 +696,274 @@ suite("Git Graph workflow UI", function () {
     const page = connections[0];
     const screenshot = await page.call("Page.captureScreenshot");
     fs.writeFileSync(path.join(artifacts, "workspace.png"), Buffer.from(screenshot.data, "base64"));
+  });
+
+  test("reviews submodule commits and stages only the parent pointer", async () => {
+    const child = directory();
+    init(child);
+    commit("f", "pointer base", child);
+    const parent = directory();
+    init(parent);
+    commit("f", "pointer parent", parent);
+    git(["-c", "protocol.file.allow=always", "submodule", "add", child, "module"], parent);
+    git(["commit", "-am", "record pointer"], parent);
+    const module = path.join(parent, "module");
+    git(["config", "user.name", "UI Test"], module);
+    git(["config", "user.email", "ui@test"], module);
+    commit("a", "pointer update", module);
+    fs.writeFileSync(path.join(parent, "other"), "staged unrelated");
+    git(["add", "other"], parent);
+    await openRepo(module);
+    await openRepo(parent);
+    if (!(await graph.evaluate('!!document.querySelector("aside")'))) {
+      await button("Workspace");
+    }
+    await button("Different from parent revision", 'document.querySelector("aside")');
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("pointer update")'
+        ),
+      "child commit preview"
+    );
+    await button("Stage Submodule Pointer");
+    await finished();
+    assert.equal(
+      git(["diff", "--cached", "--name-only"], parent),
+      "module\nother".replace("\\n", "\n")
+    );
+    await button("Parent has a staged revision change", 'document.querySelector("aside")');
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("pointer update")'
+        ),
+      "staged pointer comparison"
+    );
+    await button("Unstage Submodule Pointer");
+    await finished();
+    assert.equal(git(["diff", "--cached", "--name-only"], parent), "other");
+  });
+
+  test("previews pushes and fast-forward pulls and removes only selected merged branches", async () => {
+    const local = directory();
+    init(local);
+    commit("f", "sync base", local);
+    const bare = directory();
+    git(["clone", "--bare", local, bare]);
+    git(["remote", "add", "origin", bare], local);
+    git(["fetch", "origin"], local);
+    git(["branch", "--set-upstream-to=origin/main"], local);
+    const original = git(["rev-parse", "HEAD"], bare);
+    commit("out", "outgoing preview", local);
+    await openRepo(local);
+    await contextRef("main");
+    await menu("Push Branch…");
+    await button("Preview Push");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("outgoing preview")'
+        ),
+      "outgoing commits"
+    );
+    assert.equal(git(["rev-parse", "HEAD"], bare), original);
+    await button("Push Branch");
+    await finished();
+    assert.equal(git(["rev-parse", "HEAD"], bare), git(["rev-parse", "HEAD"], local));
+    const peer = directory();
+    git(["clone", bare, peer]);
+    git(["config", "user.name", "UI Test"], peer);
+    git(["config", "user.email", "ui@test"], peer);
+    commit("in", "incoming preview", peer);
+    git(["push", "origin", "main"], peer);
+    await contextRef("main");
+    await menu("Pull Branch…");
+    await button("Fetch & Preview Pull");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]")?.innerText.includes("incoming preview")'
+        ),
+      "incoming commits"
+    );
+    assert.equal(fs.existsSync(path.join(local, "in")), false);
+    await button("Apply Reviewed Fast-forward");
+    await finished();
+    assert.equal(fs.readFileSync(path.join(local, "in"), "utf8"), "incoming preview");
+    git(["branch", "merged-cleanup"], local);
+    git(["checkout", "-b", "unmerged-keep"], local);
+    commit("keep", "unmerged work", local);
+    git(["checkout", "main"], local);
+    await button("Refresh");
+    await delay(400);
+    await button("Repository Tools ▾");
+    await menu("Clean Up Merged Branches");
+    await until(
+      () =>
+        graph.evaluate(
+          `(() => {const label=[...document.querySelectorAll('[role=dialog] label')].find(e=>e.textContent.includes('merged-cleanup'));if(!label)return false;label.querySelector('input').click();return true;})()`
+        ),
+      "merged branch candidate"
+    );
+    assert.equal(
+      await graph.evaluate(
+        'document.querySelector("[role=dialog]").innerText.includes("unmerged-keep")'
+      ),
+      false
+    );
+    await button("Delete Selected Branches");
+    await button("Delete Selected Branches");
+    await finished();
+    assert.equal(git(["branch", "--list", "merged-cleanup"], local), "");
+    assert.match(git(["branch", "--list", "unmerged-keep"], local), /unmerged-keep/);
+  });
+
+  test("fetches selected workspace repositories and keeps independent failure results", async () => {
+    const local = directory();
+    init(local);
+    commit("f", "workspace sync base", local);
+    const bare = directory();
+    git(["clone", "--bare", local, bare]);
+    git(["remote", "add", "origin", bare], local);
+    git(["fetch", "origin"], local);
+    git(["branch", "--set-upstream-to=origin/main"], local);
+    const peer = directory();
+    git(["clone", bare, peer]);
+    git(["config", "user.name", "UI Test"], peer);
+    git(["config", "user.email", "ui@test"], peer);
+    commit("new", "workspace incoming", peer);
+    git(["push", "origin", "main"], peer);
+    const broken = directory();
+    init(broken);
+    commit("f", "workspace failure", broken);
+    git(["remote", "add", "origin", path.join(broken, "missing-remote")], broken);
+    await openRepo(broken);
+    await openRepo(local);
+    await button("Repository Tools ▾");
+    await menu("Workspace Fetch & Update");
+    for (const dir of [local, broken]) {
+      await until(
+        () =>
+          graph.evaluate(
+            `(() => {const label=[...document.querySelectorAll('[role=dialog] label')].find(e=>e.textContent.trim()===${JSON.stringify(dir.replaceAll("\\", "/"))});if(!label)return false;label.querySelector('input').click();return true;})()`
+          ),
+        "workspace selection"
+      );
+    }
+    await button("Fetch Selected Repositories");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("Failed") && document.querySelector("[role=dialog]").innerText.includes("Review Update")'
+        ),
+      "independent fetch results"
+    );
+    await button("Close");
+    await button("Repository Tools ▾");
+    await menu("Workspace Fetch & Update");
+    assert.equal(
+      await graph.evaluate('document.querySelector("[role=dialog]").innerText.includes("Failed")'),
+      true
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          `(() => {const b=[...document.querySelectorAll('[role=dialog] button')].find(e=>e.textContent.startsWith('Review Update'));if(!b)return false;b.click();return true;})()`
+        ),
+      "review workspace update"
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("workspace incoming")'
+        ),
+      "workspace incoming preview"
+    );
+    await button("Apply Reviewed Fast-forward");
+    await until(() => fs.existsSync(path.join(local, "new")), "workspace fast-forward");
+    await button("Close");
+  });
+
+  test("guides bisect to a regression, restores the branch, and restores keyboard focus", async () => {
+    const history = directory();
+    init(history);
+    commit("f", "bisect good", history);
+    const hashes = [git(["rev-parse", "HEAD"], history)];
+    for (let i = 1; i <= 8; i++) {
+      git(["commit", "--allow-empty", "-m", "bisect revision " + i], history);
+      hashes.push(git(["rev-parse", "HEAD"], history));
+    }
+    await openRepo(history);
+    await contextCommit("bisect good");
+    await menu("Use as Good Bisect Commit");
+    await button("Start Bisect");
+    await finished();
+    for (let step = 0; step < 5; step++) {
+      await button("Find a Regression (Bisect)");
+      await until(
+        () =>
+          graph.evaluate(
+            'document.querySelector("[role=dialog]").innerText.includes("Original checkout")'
+          ),
+        "bisect candidate"
+      );
+      if (
+        await graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("First bad commit")'
+        )
+      ) {
+        break;
+      }
+      const head = git(["rev-parse", "HEAD"], history);
+      await button(hashes.indexOf(head) >= 4 ? "Mark Bad" : "Mark Good");
+      await finished();
+    }
+    assert.equal(
+      await graph.evaluate(
+        `document.querySelector('[role=dialog]').innerText.includes(${JSON.stringify(hashes[4])})`
+      ),
+      true
+    );
+    await button("Reset Bisect");
+    await button("Reset Bisect");
+    await finished();
+    assert.equal(git(["branch", "--show-current"], history), "main");
+    assert.equal(git(["rev-parse", "HEAD"], history), hashes[8]);
+    await graph.evaluate(
+      `(() => {const b=[...document.querySelectorAll('header button')].find(e=>e.textContent.trim()==='Compare');b.focus();b.click();})()`
+    );
+    await button("Close");
+    await until(
+      () => graph.evaluate('document.activeElement.textContent.trim()==="Compare"'),
+      "focus returns to toolbar"
+    );
+    const page = connections[0];
+    await page.call("Emulation.setDeviceMetricsOverride", {
+      width: 520,
+      height: 850,
+      deviceScaleFactor: 1,
+      mobile: false
+    });
+    await button("Compare", 'document.querySelector("header")');
+    assert.equal(
+      await graph.evaluate(
+        '(() => {const r=document.querySelector("[role=dialog]").getBoundingClientRect();return r.left>=0 && r.right<=innerWidth;})()'
+      ),
+      true
+    );
+    const screenshot = await page.call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "narrow-window.png"),
+      Buffer.from(screenshot.data, "base64")
+    );
+    await button("Close");
+    await page.call("Emulation.setDeviceMetricsOverride", {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false
+    });
   });
 });
 

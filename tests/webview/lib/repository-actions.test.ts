@@ -155,7 +155,7 @@ describe("repository dialogs", () => {
     });
   });
 
-  it("captures a lease and confirms it before sending a history-rewrite push", () => {
+  it("reviews a lease and sends only the accepted history-rewrite plan", () => {
     openRemoteAction("push", "feature");
     handleLoadRemotes({
       ...lastRequest(),
@@ -164,16 +164,35 @@ describe("repository dialogs", () => {
       pushRemote: null,
       status: null
     });
-    form().onSubmit(["backup", "review", false, true]);
-    expect(lastRequest().query).toEqual({ kind: "lease", remote: "backup", branch: "review" });
-    respond({ kind: "lease", hash: "a".repeat(40) });
-    expect(lastRequest().command).toBe("repositoryQuery");
-    form().onSubmit([]);
-    expect(lastRequest()).toMatchObject({
-      command: "pushBranch",
+    act(() => {
+      form().onSubmit(["backup", "review", false, true]);
+      render(h(Dialog, {}), container);
+    });
+    expect(lastRequest().query).toEqual({
+      kind: "syncPlan",
+      branch: "feature",
+      remote: "backup",
+      remoteBranch: "review"
+    });
+    const plan = {
+      branch: "feature",
       remote: "backup",
       remoteBranch: "review",
-      expectedRemoteHash: "a".repeat(40)
+      local: "b".repeat(40),
+      remoteHead: "a".repeat(40),
+      incoming: { entries: [], more: false },
+      outgoing: { entries: [], more: false },
+      ahead: 1,
+      behind: 1,
+      canFastForward: false
+    };
+    respond({ kind: "syncPlan", plan });
+    expect(lastRequest().command).toBe("repositoryQuery");
+    click("pushBranch");
+    expect(lastRequest()).toMatchObject({
+      command: "repositoryAction",
+      repo: "/repo",
+      action: { kind: "sync", operation: "push", force: true, setUpstream: false, plan }
     });
   });
 

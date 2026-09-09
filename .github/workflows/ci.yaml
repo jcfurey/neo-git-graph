@@ -78,6 +78,18 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
 
+      - name: Benchmark large histories and workspaces
+        if: runner.os == 'Linux'
+        run: pnpm run benchmark
+
+      - name: Collect benchmark results
+        if: runner.os == 'Linux' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark
+          path: test-results/benchmark.json
+          if-no-files-found: ignore
+
       - name: Build installable extension
         if: runner.os == 'Linux'
         run: pnpm exec vsce package --no-dependencies --out neo-git-graph.vsix

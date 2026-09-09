@@ -125,7 +125,7 @@ function Menu({ state }: { state: ContextMenuState }) {
       role="menu"
       tabIndex={-1}
       aria-activedescendant={active === -1 ? undefined : `${id}-item-${active}`}
-      class="fixed z-20 w-max rounded-md border border-line bg-menu py-1 text-menu-fg shadow-md outline-none"
+      class="fixed z-20 max-h-[calc(100vh-1rem)] w-max max-w-[calc(100vw-1rem)] overflow-auto rounded-md border border-line bg-menu py-1 text-menu-fg shadow-md outline-none"
       style={
         position === null
           ? "opacity: 0; left: 0; top: 0"
