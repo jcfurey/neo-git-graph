@@ -25,5 +25,20 @@
   "config.tabIconColourTheme": "Specifies the colour theme of the icon displayed on the Git Graph tab.",
   "config.tabIconColourTheme.colour": "Show a colour icon which suits most Visual Studio Code colour themes",
   "config.tabIconColourTheme.grey": "Show a grey icon which suits Visual Studio Code colour themes that are predominantly grayscale",
-  "command.fileHistory": "View File History"
+  "command.fileHistory": "View File History",
+  "command.showBranches": "Show the Branches Pane",
+  "command.openDocumentation": "Open Documentation",
+  "command.openWalkthrough": "Open Getting Started Walkthrough",
+  "walkthrough.title": "Get started with (neo) Git Graph",
+  "walkthrough.description": "Open the graph, read it, act on commits and branches, and recover from mistakes.",
+  "walkthrough.openGraph.title": "Open the graph",
+  "walkthrough.openGraph.description": "Click the Git Graph button in the Source Control view or the status bar, or run the command.\n[Open Git Graph](command:neo-git-graph.view)",
+  "walkthrough.readGraph.title": "Read the graph",
+  "walkthrough.readGraph.description": "Each row is a commit. Labels show branches, tags and remotes, the checked-out branch is bold, and uncommitted changes sit on top.",
+  "walkthrough.actOnCommit.title": "Act on a commit",
+  "walkthrough.actOnCommit.description": "Right-click a commit or click its ⋯ button for checkout, cherry-pick, revert, tag, branch and more. Every change asks for confirmation first.",
+  "walkthrough.branchesPane.title": "Use the Branches pane",
+  "walkthrough.branchesPane.description": "Browse branches, remotes, tags and stashes beside the graph, with checkout, fetch and apply one click away.\n[Show the Branches pane](command:neo-git-graph.showBranches)",
+  "walkthrough.recover.title": "Recover from a mistake",
+  "walkthrough.recover.description": "The status strip offers Continue and Abort during merges and rebases, Git Activity keeps every error, and Recover lost commits finds old branch positions.\n[Open the documentation](command:neo-git-graph.openDocumentation)"
 }

@@ -76,6 +76,8 @@ Search for `neo-git-graph` in Extensions, or install from:
 - [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=asispts.neo-git-graph)
 - [Open VSX Registry](https://open-vsx.org/extension/asispts/neo-git-graph)
 
+After installing, the **Get started with (neo) Git Graph** walkthrough appears on the Welcome page. Reopen it any time with the **Getting Started** entry in the graph's settings cog.
+
 ## Roadmap
 
 - **v0.6.0 (latest):**

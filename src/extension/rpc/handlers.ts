@@ -1,6 +1,7 @@
 import { copyToClipboard } from "@/extension/handlers/clipboard";
 import { webviewInitialize } from "@/extension/handlers/initialize";
 import { initializeRepo } from "@/extension/handlers/initialize-repo";
+import { runCommand } from "@/extension/handlers/onboarding";
 import { openExtensionSettings } from "@/extension/handlers/open-settings";
 import { scanRepos } from "@/extension/handlers/scan-repo";
 import type { RpcMethod, RpcMethodMap } from "@/types";
@@ -16,5 +17,7 @@ export const rpcHandlers = {
   "webview.initialize": async () => webviewInitialize(),
   "git.init": () => initializeRepo(),
   "repo.scan": () => scanRepos(),
-  "settings.open": () => openExtensionSettings()
+  "settings.open": () => openExtensionSettings(),
+  "docs.open": () => runCommand("neo-git-graph.openDocumentation"),
+  "walkthrough.open": () => runCommand("neo-git-graph.openWalkthrough")
 } satisfies RpcHandlers;

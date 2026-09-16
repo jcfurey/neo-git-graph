@@ -9,8 +9,15 @@ export function getSourceControlRepo(sourceControl?: Pick<vscode.SourceControl, 
     : undefined;
 }
 
-/** Retain the latest SCM button click until the webview can receive the selection. */
-export function createRepoSelection(webview: vscode.Webview, send: (repo: string) => void) {
+/**
+ * Retain the latest SCM button click until the webview can receive the selection.
+ * `onReady` runs once the webview reports that it listens.
+ */
+export function createRepoSelection(
+  webview: vscode.Webview,
+  send: (repo: string) => void,
+  onReady?: () => void
+) {
   let ready = false;
   let pendingRepo: string | undefined;
 
@@ -30,6 +37,7 @@ export function createRepoSelection(webview: vscode.Webview, send: (repo: string
       message.command === "viewReady"
     ) {
       ready = true;
+      onReady?.();
       flush();
     }
   });

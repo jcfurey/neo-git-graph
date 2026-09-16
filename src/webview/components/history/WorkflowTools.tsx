@@ -278,12 +278,15 @@ export function SyncReview({
         <p role="status">{window.l10n.cannotFastForward}</p>
       )}
       {options.force && (
-        <p class="text-git-modified">
-          {window.l10n.forcePushConfirm
-            .replace("{0}", plan.remoteBranch)
-            .replace("{1}", plan.remote)
-            .replace("{2}", plan.remoteHead?.slice(0, 12) ?? "∅")}
-        </p>
+        <>
+          <p class="text-git-modified">
+            {window.l10n.forcePushConfirm
+              .replace("{0}", plan.remoteBranch)
+              .replace("{1}", plan.remote)
+              .replace("{2}", plan.remoteHead?.slice(0, 12) ?? "∅")}
+          </p>
+          <p class="text-xs text-muted">{window.l10n.explainForcePush}</p>
+        </>
       )}
       <Button
         variant="primary"

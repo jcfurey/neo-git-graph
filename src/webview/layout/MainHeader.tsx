@@ -12,7 +12,7 @@ import { openStashes } from "@/webview/components/repository/StashManager";
 import { openWorktrees } from "@/webview/components/repository/WorktreeManager";
 import { Button } from "@/webview/components/ui/Button";
 import { Dropdown } from "@/webview/components/ui/Dropdown";
-import { GearIcon, RefreshIcon } from "@/webview/components/ui/Icons";
+import { GearIcon, RefreshIcon, SearchIcon } from "@/webview/components/ui/Icons";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
 import {
   openContextMenu,
@@ -22,10 +22,13 @@ import {
   selectRepo,
   setShowRemoteBranch
 } from "@/webview/lib/actions";
+import { focusSearch } from "@/webview/lib/focus";
 import {
   refsVisible,
+  searchVisible,
   selectedCommits,
   toggleRefs,
+  toggleSearch,
   toggleWorkspace,
   workspaceVisible
 } from "@/webview/lib/navigation";
@@ -78,6 +81,15 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
       />
       <div class="ml-auto flex flex-wrap items-center gap-2">
         <ActivityIndicator />
+        <Button
+          aria-label={window.l10n.historySearch}
+          title={window.l10n.historySearch}
+          aria-expanded={searchVisible.value}
+          class={searchVisible.value ? "bg-row-selected" : ""}
+          onClick={() => (searchVisible.value ? toggleSearch() : focusSearch())}
+        >
+          <SearchIcon class="size-4" />
+        </Button>
         <Button onClick={refresh}>
           <RefreshIcon class="size-3.5" />
           {window.l10n.refresh}
@@ -127,6 +139,14 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
               {
                 title: (showRemoteBranch.value ? "✓ " : "") + window.l10n.showRemoteBranches,
                 onClick: () => setShowRemoteBranch(!showRemoteBranch.value)
+              },
+              {
+                title: window.l10n.gettingStarted,
+                onClick: () => void rpcClient.request("walkthrough.open", null)
+              },
+              {
+                title: window.l10n.learnMore,
+                onClick: () => void rpcClient.request("docs.open", null)
               },
               {
                 title: window.l10n.openSettings,

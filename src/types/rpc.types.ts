@@ -31,11 +31,23 @@ export type RpcMethodMap = {
     params: null;
     result: boolean;
   };
+  "docs.open": {
+    params: null;
+    result: boolean;
+  };
+  "walkthrough.open": {
+    params: null;
+    result: boolean;
+  };
 };
 
 export type RpcMethod = keyof RpcMethodMap;
 
+/** A pane beside the graph that a command can open. */
+export type SidebarPane = "refs" | "workspace";
+
 export type RpcNotificationMap = {
+  "view.showPane": { pane: SidebarPane };
   "repo.select": GitRepo;
   "repo.changed": RepoChange;
   "repo.rescan": null;

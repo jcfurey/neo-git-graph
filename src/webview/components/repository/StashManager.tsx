@@ -1,5 +1,6 @@
 import type { StashDetails } from "@/backend/types";
 import { Button } from "@/webview/components/ui/Button";
+import { Explain } from "@/webview/components/ui/Explain";
 import { openContentDialog, openFormDialog } from "@/webview/lib/actions";
 import {
   confirmRepositoryAction,
@@ -46,7 +47,10 @@ export function applyStash(operation: "apply" | "pop", stash: StashDetails, repo
 
 export function dropStash(stash: StashDetails, repo: string) {
   confirmRepositoryAction(
-    format(window.l10n.dropStashConfirm, <b>{stash.message}</b>),
+    <>
+      {format(window.l10n.dropStashConfirm, <b>{stash.message}</b>)}
+      <Explain>{window.l10n.explainDropStash}</Explain>
+    </>,
     window.l10n.dropStash,
     { kind: "stash", operation: "drop", stash, reinstateIndex: false },
     repo

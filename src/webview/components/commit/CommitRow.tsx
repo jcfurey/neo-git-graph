@@ -2,6 +2,7 @@ import type { HistoryEntry, GitRef } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
 import { RefLabel } from "@/webview/components/commit/RefLabel";
 import { fileContextMenu } from "@/webview/components/history/file-menu";
+import { KebabIcon } from "@/webview/components/ui/Icons";
 import { UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { openContextMenu } from "@/webview/lib/actions";
 import type { CommitMessages } from "@/webview/lib/menus";
@@ -60,7 +61,7 @@ function rowBackground(isHead: boolean, expanded: boolean, menuOpen: boolean) {
 }
 
 function rowClass(isHead: boolean, expanded: boolean, selectable: boolean, menuOpen: boolean) {
-  return [rowBackground(isHead, expanded, menuOpen), selectable ? "cursor-pointer" : ""]
+  return ["group", rowBackground(isHead, expanded, menuOpen), selectable ? "cursor-pointer" : ""]
     .filter(Boolean)
     .join(" ");
 }
@@ -191,6 +192,23 @@ export function CommitRow({
           >
             {isHead || uncommitted ? <b>{message}</b> : message}
           </span>
+          {!uncommitted && (
+            <button
+              type="button"
+              tabIndex={-1}
+              class={`ml-1 h-5 shrink-0 cursor-pointer items-center rounded px-1 hover:bg-btn-hover ${
+                menuOpen ? "flex" : "hidden group-hover:flex"
+              }`}
+              aria-label={window.l10n.commitActions.replace("{0}", abbrevCommit(commit.hash))}
+              aria-haspopup="menu"
+              onClick={(event) => {
+                event.stopPropagation();
+                openContextMenu(event, source, menu());
+              }}
+            >
+              <KebabIcon class="size-3.5" />
+            </button>
+          )}
         </div>
       </td>
       <td class={CELL_CLASS} title={date.title}>

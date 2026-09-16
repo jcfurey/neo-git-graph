@@ -10,14 +10,14 @@ import { Dialog } from "./components/ui/Dialog";
 import { ScrollShadow } from "./components/ui/ScrollShadow";
 import { GraphView } from "./layout/GraphView";
 import { MainHeader } from "./layout/MainHeader";
-import { refsVisible, workspaceVisible } from "./lib/navigation";
+import { historyActive, refsVisible, searchVisible, workspaceVisible } from "./lib/navigation";
 
 export function App({ repos }: { repos: Array<GitRepo> }) {
   const sidebar = refsVisible.value || workspaceVisible.value;
   return (
-    <div class="flex min-h-screen flex-col">
+    <div data-git-graph class="flex min-h-screen flex-col">
       <MainHeader repos={repos} />
-      <SearchBar />
+      {(searchVisible.value || historyActive.value) && <SearchBar />}
       <RepositoryStatus />
       <div class="flex min-w-0 flex-1 flex-col items-start md:flex-row">
         {sidebar && (

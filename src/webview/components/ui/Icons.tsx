@@ -137,3 +137,12 @@ export function RemoteIcon(props: IconProps) {
     </Icon>
   );
 }
+
+export function SearchIcon(props: IconProps) {
+  return (
+    <Icon {...props} {...STROKE}>
+      <circle cx="6.5" cy="6.5" r="4" />
+      <path d="M9.5 9.5L14 14" />
+    </Icon>
+  );
+}

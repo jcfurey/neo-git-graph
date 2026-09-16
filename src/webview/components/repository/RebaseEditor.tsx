@@ -47,6 +47,7 @@ export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string })
         <b>{plan.branch}</b> · {plan.base.slice(0, 12)} → {plan.head.slice(0, 12)}
       </p>
       <p>{window.l10n.rebasePlanDescription}</p>
+      <p class="text-xs text-muted">{window.l10n.explainInteractiveRebase}</p>
       <Button
         onClick={() => setEntries(autosquashPlan({ ...plan, entries }, plan.entries).entries)}
       >

@@ -62,11 +62,11 @@ export function getRepositoryLocalizedStrings() {
     prunableWorktree: vscode.l10n.t("Missing worktree"),
     currentWorktree: vscode.l10n.t("Current worktree"),
     detachedHead: vscode.l10n.t("Detached HEAD"),
-    rebaseOnto: vscode.l10n.t("Rebase current branch onto this"),
+    rebaseOnto: vscode.l10n.t("Move the current branch onto this (rebase)"),
     rebaseConfirm: vscode.l10n.t(
       "Rebase {0} onto {1}? This rewrites commits on the current branch and preserves merge structure. Commit or stash your changes first."
     ),
-    interactiveRebase: vscode.l10n.t("Rebase Commits After This"),
+    interactiveRebase: vscode.l10n.t("Edit commits after this (interactive rebase)"),
     rebasePlanTitle: vscode.l10n.t("Interactive Rebase"),
     rebasePlanDescription: vscode.l10n.t(
       "Commits run from top to bottom. Squash combines a commit with the previous retained commit. Reword edits its message. Drop removes it from this branch."
@@ -120,6 +120,32 @@ export function getRepositoryLocalizedStrings() {
     applyShort: vscode.l10n.t("Apply"),
     popShort: vscode.l10n.t("Pop"),
     settingsTools: vscode.l10n.t("Settings & Tools"),
-    openSettings: vscode.l10n.t("Open Extension Settings")
+    openSettings: vscode.l10n.t("Open Extension Settings"),
+    gettingStarted: vscode.l10n.t("Getting Started"),
+    learnMore: vscode.l10n.t("Learn more"),
+
+    // Guidance
+    commitMenuHint: vscode.l10n.t(
+      "Right-click a commit, or use its ⋯ button, for actions. On the keyboard, press Shift+F10."
+    ),
+    commitActions: vscode.l10n.t("Actions for commit {0}"),
+    explainReset: vscode.l10n.t(
+      "Soft and mixed keep your files. Hard discards uncommitted changes. The previous position stays in the reflog, so Recover lost commits can bring it back."
+    ),
+    explainDetachedHead: vscode.l10n.t(
+      "You can build and test here. Create a branch from this commit to keep new work, or check out a branch to return."
+    ),
+    explainDeleteBranch: vscode.l10n.t(
+      "The commits stay in the repository for a while. Recover lost commits lists the branch tip if you need it back."
+    ),
+    explainForcePush: vscode.l10n.t(
+      "Anyone who already fetched the old history has to rebase their work onto the new one."
+    ),
+    explainInteractiveRebase: vscode.l10n.t(
+      "Nothing changes until you start the rebase. If it stops on a conflict, the status strip offers Continue and Abort, and Abort restores the branch as it was."
+    ),
+    explainDropStash: vscode.l10n.t(
+      "A dropped stash is hard to recover. Apply it first if you are not sure."
+    )
   };
 }

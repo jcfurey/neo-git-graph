@@ -25,5 +25,20 @@
   "config.tabIconColourTheme": "指定 Git 图形选项卡上显示的图标的颜色主题。",
   "config.tabIconColourTheme.colour": "显示适合大多数 Visual Studio Code 颜色主题的彩色图标",
   "config.tabIconColourTheme.grey": "显示适合以灰度为主的 Visual Studio Code 颜色主题的灰色图标",
-  "command.fileHistory": "查看文件历史"
+  "command.fileHistory": "查看文件历史",
+  "command.showBranches": "显示分支面板",
+  "command.openDocumentation": "打开文档",
+  "command.openWalkthrough": "打开入门指南",
+  "walkthrough.title": "开始使用 (neo) Git Graph",
+  "walkthrough.description": "打开分支图，读懂它，对提交和分支执行操作，并从错误中恢复。",
+  "walkthrough.openGraph.title": "打开分支图",
+  "walkthrough.openGraph.description": "点击源代码管理视图或状态栏中的 Git Graph 按钮，或运行该命令。\n[打开 Git Graph](command:neo-git-graph.view)",
+  "walkthrough.readGraph.title": "读懂分支图",
+  "walkthrough.readGraph.description": "每一行是一个提交。标签显示分支、标签和远程仓库；已检出的分支为粗体，未提交的更改位于顶部。",
+  "walkthrough.actOnCommit.title": "对提交执行操作",
+  "walkthrough.actOnCommit.description": "右键点击提交或点击其 ⋯ 按钮，即可检出、拣选、还原、打标签、创建分支等。每次更改都会先请求确认。",
+  "walkthrough.branchesPane.title": "使用分支面板",
+  "walkthrough.branchesPane.description": "在分支图旁浏览分支、远程仓库、标签和暂存记录，检出、获取和应用只需一次点击。\n[显示分支面板](command:neo-git-graph.showBranches)",
+  "walkthrough.recover.title": "从错误中恢复",
+  "walkthrough.recover.description": "合并和变基期间，状态栏提供“继续”和“中止”；Git 活动会保留每个错误；“找回丢失的提交”可找到分支的旧位置。\n[打开文档](command:neo-git-graph.openDocumentation)"
 }

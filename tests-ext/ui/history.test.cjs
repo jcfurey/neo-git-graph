@@ -137,7 +137,7 @@ async function findGraph() {
           try {
             if (
               await connection.evaluate(
-                '!!document.querySelector("header") && !!document.querySelector("[data-history-search]")',
+                '!!document.querySelector("header") && !!document.querySelector("[data-git-graph]")',
                 context
               )
             ) {
@@ -373,7 +373,7 @@ suite("Git Graph workflow UI", function () {
         ),
       "rebase base row"
     );
-    await menu("Rebase Commits After This…");
+    await menu("Edit commits after this (interactive rebase)…");
     await until(
       () => graph.evaluate('document.querySelectorAll("[role=dialog] select").length === 3'),
       "interactive plan"
@@ -419,6 +419,9 @@ suite("Git Graph workflow UI", function () {
       ),
       false
     );
+    if (!(await graph.evaluate('!!document.querySelector("[data-history-search]")'))) {
+      await button("Search history", 'document.querySelector("header")');
+    }
     await graph.evaluate(
       `(() => { const input = document.querySelector('[data-history-search]'); input.value = 'historical needle'; input.dispatchEvent(new Event('input', {bubbles:true})); })()`
     );
@@ -547,7 +550,7 @@ suite("Git Graph workflow UI", function () {
     await button("Refresh");
     await delay(400);
     await button("Settings & Tools");
-    await menu("Reflog & Recovery");
+    await menu("Recover lost commits (reflog)");
     await until(
       () =>
         graph.evaluate(
@@ -609,12 +612,12 @@ suite("Git Graph workflow UI", function () {
     git(["add", "a"], fix);
     await openRepo(fix);
     await contextCommit("fixup target");
-    await menu("Create Fixup Commit…");
+    await menu("Fold staged changes into this commit (fixup)…");
     await button("Create Fixup Commit");
     await finished();
     assert.equal(git(["log", "-1", "--format=%s"], fix), "fixup! fixup target");
     await contextCommit("fixup base");
-    await menu("Rebase Commits After This…");
+    await menu("Edit commits after this (interactive rebase)…");
     await button("Arrange Fixup / Squash Commits");
     assert.equal(
       await graph.evaluate(

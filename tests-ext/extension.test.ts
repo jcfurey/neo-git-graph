@@ -48,6 +48,26 @@ suite("GitGraphPanel", () => {
     assert.strictEqual(tabsAfter, tabsBefore, "Second invocation should not open a new tab");
   });
 
+  test("registers the onboarding commands and opens the panel for the branches pane", async () => {
+    const commands = await vscode.commands.getCommands(true);
+    for (const command of [
+      "neo-git-graph.showBranches",
+      "neo-git-graph.openDocumentation",
+      "neo-git-graph.openWalkthrough"
+    ]) {
+      assert.ok(commands.includes(command), command + " should be registered");
+    }
+    await vscode.commands.executeCommand("neo-git-graph.showBranches");
+    const deadline = Date.now() + 2000;
+    while (!isPanelOpen() && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 50)); // eslint-disable-line no-await-in-loop
+    }
+    assert.ok(isPanelOpen(), "Panel should open when the branches pane is requested");
+    // Both resolve only when the walkthrough id and the shipped guide are valid.
+    await vscode.commands.executeCommand("neo-git-graph.openWalkthrough");
+    await vscode.commands.executeCommand("neo-git-graph.openDocumentation");
+  });
+
   test("closing the panel and running view command opens a fresh panel", async () => {
     await openPanel();
     assert.ok(isPanelOpen());

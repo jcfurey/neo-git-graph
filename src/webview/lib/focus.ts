@@ -1,3 +1,4 @@
+import { showSearch } from "@/webview/lib/navigation";
 import { contextMenu, dialog } from "@/webview/lib/stores";
 
 let anchor: HTMLElement | null = null;
@@ -16,6 +17,16 @@ export function captureFocus(target?: EventTarget | null) {
   hash = anchor.closest<HTMLElement>("[data-commit-hash]")?.dataset.commitHash ?? null;
 }
 
+/** Open the search row and put the caret in it once it has rendered. */
+export function focusSearch() {
+  showSearch();
+  setTimeout(() => {
+    const input = document.querySelector<HTMLInputElement>("[data-history-search]");
+    input?.focus();
+    input?.select();
+  }, 0);
+}
+
 export function restoreFocus() {
   // A synchronous dialog transition retains its anchor; a real dismissal restores it.
   queueMicrotask(() => {
@@ -29,7 +40,8 @@ export function restoreFocus() {
             (row) => row.dataset.commitHash === hash
           )
         : null;
-    const focus = target ?? document.querySelector<HTMLElement>("[data-history-search]");
+    const focus =
+      target ?? document.querySelector<HTMLElement>("[data-history-search], header button");
     anchor = null;
     hash = null;
     focus?.focus({ preventScroll: true });

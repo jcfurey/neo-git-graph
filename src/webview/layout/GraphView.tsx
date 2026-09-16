@@ -6,6 +6,7 @@ import { PageControls, QueryStatus } from "@/webview/components/history/QueryCon
 import { Button } from "@/webview/components/ui/Button";
 import { Loading } from "@/webview/components/ui/Loading";
 import { loadMoreCommits } from "@/webview/lib/actions";
+import { commitMenuHintDismissed, dismissCommitMenuHint } from "@/webview/lib/hints";
 import {
   historyActive,
   historyFilter,
@@ -124,6 +125,21 @@ export function GraphView() {
       )}
       {active && commits.length === 0 && (
         <p class="p-6 text-muted">{window.l10n.noHistoryMatches}</p>
+      )}
+      {!active && !commitMenuHintDismissed.value && (
+        <div
+          class="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-3 py-1.5 text-xs text-muted"
+          role="note"
+        >
+          <span>{window.l10n.commitMenuHint}</span>
+          <button
+            type="button"
+            class="cursor-pointer rounded px-1.5 py-0.5 hover:bg-btn-hover focus:outline-1 focus:outline-focus"
+            onClick={dismissCommitMenuHint}
+          >
+            {window.l10n.dialogDismiss}
+          </button>
+        </div>
       )}
       <CommitTable commits={commits} head={commitHead.value} headBranch={headBranch.value} />
       {active && query.data && (

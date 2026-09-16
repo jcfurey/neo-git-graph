@@ -51,7 +51,7 @@ export function getHistoryLocalizedStrings() {
       "This file has local changes. Restoring will overwrite its current working contents."
     ),
     restoreSource: vscode.l10n.t("Historical source"),
-    reflog: vscode.l10n.t("Reflog & Recovery"),
+    reflog: vscode.l10n.t("Recover lost commits (reflog)"),
     reflogHint: vscode.l10n.t(
       "Local branch and HEAD movements. Create a recovery branch to keep an older commit."
     ),
@@ -70,6 +70,7 @@ export function getHistoryLocalizedStrings() {
     ),
     batchMainline: vscode.l10n.t("Mainline parent for merge commits"),
     createFixup: vscode.l10n.t("Create Fixup Commit"),
+    createFixupMenu: vscode.l10n.t("Fold staged changes into this commit (fixup)"),
     fixupPreview: vscode.l10n.t("Commit these staged changes as a fixup for {0}?"),
     fixupCommit: vscode.l10n.t("Fixup"),
     arrangeAutosquash: vscode.l10n.t("Arrange Fixup / Squash Commits"),

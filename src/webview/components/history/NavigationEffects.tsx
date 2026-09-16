@@ -1,5 +1,6 @@
 import { useEffect } from "preact/hooks";
 
+import { focusSearch } from "@/webview/lib/focus";
 import { leaveNavigation, restoreScroll } from "@/webview/lib/navigation";
 import { contextMenu, dialog, selectedRepo } from "@/webview/lib/stores";
 
@@ -27,9 +28,7 @@ export function NavigationEffects() {
         (!input && event.key === "/")
       ) {
         event.preventDefault();
-        const search = document.querySelector<HTMLInputElement>("[data-history-search]");
-        search?.focus();
-        search?.select();
+        focusSearch();
       }
     };
     window.addEventListener("scroll", scroll, { passive: true });

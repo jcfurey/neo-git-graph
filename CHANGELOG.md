@@ -10,6 +10,7 @@
 - Portable workflow UI checks, three-platform CI, and a large-history benchmark.
 - Branches pane beside the graph listing local branches, remotes, tags and stashes with inline actions and a toggle that hides remote branches.
 - Settings cog in the header that gathers the repository tools and opens the extension's settings.
+- Getting Started walkthrough, a Learn more entry that opens the shipped guide, a first-use hint above the graph, and a menu button on every commit row.
 
 ### Changed
 
@@ -18,6 +19,7 @@
 - Reuse the workspace repository scan between refreshes until a repository appears or vanishes.
 - Remove the unused pre-RPC activation path and its duplicate configuration module.
 - Share one field style between dialogs and pages, and replace the header's text glyphs with icons.
+- Open the search row on demand from the header or with `/`, give advanced menu items plain-language names, and explain how to undo in the reset, checkout, delete, drop, rebase and force-push dialogs.
 
 ### Fixed
 

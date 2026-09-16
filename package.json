@@ -105,6 +105,21 @@
         "category": "(neo) Git Graph",
         "command": "neo-git-graph.fileHistory",
         "title": "%command.fileHistory%"
+      },
+      {
+        "category": "(neo) Git Graph",
+        "command": "neo-git-graph.showBranches",
+        "title": "%command.showBranches%"
+      },
+      {
+        "category": "(neo) Git Graph",
+        "command": "neo-git-graph.openDocumentation",
+        "title": "%command.openDocumentation%"
+      },
+      {
+        "category": "(neo) Git Graph",
+        "command": "neo-git-graph.openWalkthrough",
+        "title": "%command.openWalkthrough%"
       }
     ],
     "menus": {
@@ -248,7 +263,65 @@
           "description": "%config.tabIconColourTheme%"
         }
       }
-    }
+    },
+    "walkthroughs": [
+      {
+        "id": "gettingStarted",
+        "title": "%walkthrough.title%",
+        "description": "%walkthrough.description%",
+        "steps": [
+          {
+            "id": "openGraph",
+            "title": "%walkthrough.openGraph.title%",
+            "description": "%walkthrough.openGraph.description%",
+            "media": {
+              "markdown": "walkthroughs/open-graph.md"
+            },
+            "completionEvents": [
+              "onCommand:neo-git-graph.view"
+            ]
+          },
+          {
+            "id": "readGraph",
+            "title": "%walkthrough.readGraph.title%",
+            "description": "%walkthrough.readGraph.description%",
+            "media": {
+              "markdown": "walkthroughs/read-graph.md"
+            }
+          },
+          {
+            "id": "actOnCommit",
+            "title": "%walkthrough.actOnCommit.title%",
+            "description": "%walkthrough.actOnCommit.description%",
+            "media": {
+              "markdown": "walkthroughs/act-on-commit.md"
+            }
+          },
+          {
+            "id": "branchesPane",
+            "title": "%walkthrough.branchesPane.title%",
+            "description": "%walkthrough.branchesPane.description%",
+            "media": {
+              "markdown": "walkthroughs/branches-pane.md"
+            },
+            "completionEvents": [
+              "onCommand:neo-git-graph.showBranches"
+            ]
+          },
+          {
+            "id": "recover",
+            "title": "%walkthrough.recover.title%",
+            "description": "%walkthrough.recover.description%",
+            "media": {
+              "markdown": "walkthroughs/recover.md"
+            },
+            "completionEvents": [
+              "onCommand:neo-git-graph.openDocumentation"
+            ]
+          }
+        ]
+      }
+    ]
   },
   "activationEvents": [
     "onStartupFinished"

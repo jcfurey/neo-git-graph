@@ -1,6 +1,7 @@
 import { computed, signal } from "@preact/signals";
 
 import type { HistoryEntry, HistoryFilter } from "@/backend/types";
+import type { SidebarPane } from "@/types";
 import { selectedRepo } from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
 
@@ -22,6 +23,8 @@ type NavigationState = {
   refs?: boolean;
   /** Sections of the branches pane the user collapsed. */
   collapsed?: string[];
+  /** The search row is open. It also opens while a filter is active. */
+  search?: boolean;
 };
 const initial = vscode.getState() as { navigation?: NavigationState } | null;
 let saved: NavigationState = initial?.navigation ?? { repos: {}, workspace: false };
@@ -35,6 +38,7 @@ export const selectedCommits = signal<HistoryEntry[]>([]);
 export const workspaceVisible = signal(saved.workspace);
 export const refsVisible = signal(saved.refs ?? true);
 export const collapsedSections = signal<ReadonlySet<string>>(new Set(saved.collapsed ?? []));
+export const searchVisible = signal(saved.search ?? false);
 export const focusedCommit = signal<string | null>(null);
 export const restoreScroll = signal<number | null>(null);
 let selectionRows: HistoryEntry[] = [];
@@ -119,6 +123,35 @@ export function toggleWorkspace() {
 export function toggleRefs() {
   refsVisible.value = !refsVisible.value;
   saved.refs = refsVisible.value;
+  persist();
+}
+
+export function showPane(pane: SidebarPane) {
+  const visible = pane === "refs" ? refsVisible : workspaceVisible;
+  if (visible.value) {
+    return;
+  }
+  visible.value = true;
+  if (pane === "refs") {
+    saved.refs = true;
+  } else {
+    saved.workspace = true;
+  }
+  persist();
+}
+
+export function toggleSearch() {
+  searchVisible.value = !searchVisible.value;
+  saved.search = searchVisible.value;
+  persist();
+}
+
+export function showSearch() {
+  if (searchVisible.value) {
+    return;
+  }
+  searchVisible.value = true;
+  saved.search = true;
   persist();
 }
 

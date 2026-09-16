@@ -7,6 +7,7 @@ import { chooseBisectCommit } from "@/webview/components/repository/BisectView";
 import { openInteractiveRebase, openRebase } from "@/webview/components/repository/RebaseEditor";
 import { openTracking } from "@/webview/components/repository/RemoteManager";
 import { openAddWorktree } from "@/webview/components/repository/WorktreeManager";
+import { Explain } from "@/webview/components/ui/Explain";
 import { openFormDialog, runAction } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
@@ -148,7 +149,12 @@ export function commitMenu(
       title: `${window.l10n.checkout}…`,
       onClick: () =>
         openFormDialog({
-          message: format(window.l10n.dialogCheckoutConfirm, <Name>{shortHash}</Name>),
+          message: (
+            <>
+              {format(window.l10n.dialogCheckoutConfirm, <Name>{shortHash}</Name>)}
+              <Explain>{window.l10n.explainDetachedHead}</Explain>
+            </>
+          ),
           inputs: [],
           action: window.l10n.dialogYes,
           source,
@@ -200,10 +206,11 @@ export function commitMenu(
       title: `${window.l10n.reset}…`,
       onClick: () =>
         openFormDialog({
-          message: format(
-            window.l10n.dialogResetConfirm,
-            <CurrentBranch />,
-            <Name>{shortHash}</Name>
+          message: (
+            <>
+              {format(window.l10n.dialogResetConfirm, <CurrentBranch />, <Name>{shortHash}</Name>)}
+              <Explain>{window.l10n.explainReset}</Explain>
+            </>
           ),
           inputs: [
             {
@@ -231,7 +238,7 @@ export function commitMenu(
       title: `${window.l10n.interactiveRebase}…`,
       onClick: () => openInteractiveRebase(hash)
     },
-    { title: window.l10n.createFixup + "…", onClick: () => openFixup(hash) },
+    { title: window.l10n.createFixupMenu + "…", onClick: () => openFixup(hash) },
     { title: window.l10n.compareWith, onClick: () => openCompare("HEAD", hash) },
     { title: window.l10n.bisectChooseGood, onClick: () => chooseBisectCommit("good", hash) },
     { title: window.l10n.bisectChooseBad, onClick: () => chooseBisectCommit("bad", hash) },
@@ -347,10 +354,15 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean): Array<ContextMe
         title: `${window.l10n.deleteBranch}…`,
         onClick: () =>
           openFormDialog({
-            message: format(
-              window.l10n.dialogDeleteConfirm,
-              window.l10n.labelBranch,
-              <Name>{gitRef.name}</Name>
+            message: (
+              <>
+                {format(
+                  window.l10n.dialogDeleteConfirm,
+                  window.l10n.labelBranch,
+                  <Name>{gitRef.name}</Name>
+                )}
+                <Explain>{window.l10n.explainDeleteBranch}</Explain>
+              </>
             ),
             inputs: [
               { kind: "checkbox", label: window.l10n.dialogDeleteForceDelete, value: false }
