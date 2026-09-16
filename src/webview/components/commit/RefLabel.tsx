@@ -1,4 +1,5 @@
 import type { GitRef } from "@/backend/types";
+import { BranchFocusBadge } from "@/webview/components/commit/BranchFocusBadge";
 import { BranchIcon, TagIcon } from "@/webview/components/ui/Icons";
 import { openContextMenu } from "@/webview/lib/actions";
 import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menus";
@@ -21,6 +22,7 @@ export function RefLabel({ gitRef, active }: { gitRef: GitRef; active: boolean }
       : undefined;
   const title = [
     gitRef.name,
+    active ? window.l10n.labelCurrentBranch : null,
     tracking?.upstream,
     tracking?.gone ? window.l10n.upstreamGone : null,
     worktree ? window.l10n.worktreeAt.replace("{0}", worktree.path) : null
@@ -43,6 +45,11 @@ export function RefLabel({ gitRef, active }: { gitRef: GitRef; active: boolean }
     >
       {gitRef.type === "tag" ? <TagIcon class={ICON_CLASS} /> : <BranchIcon class={ICON_CLASS} />}
       <span class={`truncate ${active ? "font-bold" : ""}`}>{gitRef.name}</span>
+      {gitRef.type !== "tag" && (
+        <BranchFocusBadge
+          branch={gitRef.type === "remote" ? "remotes/" + gitRef.name : gitRef.name}
+        />
+      )}
       {tracking?.upstream && !tracking.gone && (tracking.ahead > 0 || tracking.behind > 0) && (
         <span class="ml-1 whitespace-nowrap">
           ↑{tracking.ahead} ↓{tracking.behind}

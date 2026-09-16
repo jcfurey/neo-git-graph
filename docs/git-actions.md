@@ -20,6 +20,10 @@ The **View** selector offers three ways to read a selected branch:
 
 Focus changes the view without checking out a branch. When enabled from **Show All**, it starts with the checked-out branch when available. Switching focus between branches keeps the rows and lanes in place. **Clear focus** restores full colour, and the view choice is remembered per repository. Hovering, keyboard focus, selection and the checked-out commit retain clear text and markers. Search still filters the visible commits; in focus views it searches across branches and colours matches using their actual ancestry, even when connecting commits are outside the page.
 
+Right-click a local or remote branch label in the graph, or a branch in the Branches pane, and choose **Focus this branch**. It enables direct-history focus or keeps your existing ancestor mode, and resumes focus if paused. A **Focus** badge marks the target in both places, separately from the bold checked-out branch.
+
+Use **Pause focus** to temporarily restore every branch's colours, then **Resume focus** to return to the same target and mode. The badge reads **Paused** while paused. **Dimming → Subtle / Strong** adjusts the graph lines and commit dots; text stays readable at either strength. The target, dimming strength and pause state are remembered per repository. **Clear focus** removes the target and its badges.
+
 Every row carries the same context menu as the matching label in the graph, reached by right-click or its trailing menu button. The most common action is also inline: **Checkout** on a branch, **Fetch** on a remote, **Show in Graph** on a tag, and **Apply** or **Pop** on a stash. The **+** buttons create a branch at HEAD, add a remote, or save a stash.
 
 The eye button on the remotes section hides remote branches from the graph. The remote rows stay listed but dimmed, and selecting one shows remote branches again. The settings cog in the header holds the remaining tools, the same toggle, and a shortcut to the extension's settings.

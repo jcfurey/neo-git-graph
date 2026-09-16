@@ -21,6 +21,7 @@ import { graphWidth } from "@/webview/graph/utils";
 import { toggleCommitDetails } from "@/webview/lib/actions";
 import { focusedCommit, selectedCommits } from "@/webview/lib/navigation";
 import { columnWidths, commitDetails, expandedCommit } from "@/webview/lib/stores";
+import type { FocusDimming } from "@/webview/types";
 
 type CommitTableProps = {
   commits: Array<HistoryEntry>;
@@ -28,6 +29,7 @@ type CommitTableProps = {
   headBranch: string | null;
   focus?: { direct: string[]; merged: string[] } | null;
   keepMergedBright?: boolean;
+  dimming?: FocusDimming;
 };
 
 const HEADER_CLASS =
@@ -77,7 +79,8 @@ export function CommitTable({
   head,
   headBranch,
   focus = null,
-  keepMergedBright = false
+  keepMergedBright = false,
+  dimming = "subtle"
 }: CommitTableProps) {
   const layout = useMemo(() => computeGraphLayout(commits, head), [commits, head]);
   const relations = useMemo(() => commitRelations(commits, focus), [commits, focus]);
@@ -124,6 +127,7 @@ export function CommitTable({
           relations={relations}
           relationForLine={(line) => lineRelation(line, commits, relations)}
           keepMergedBright={keepMergedBright}
+          dimming={dimming}
           revealed={revealed}
         />
       </div>

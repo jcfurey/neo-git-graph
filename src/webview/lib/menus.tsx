@@ -8,7 +8,7 @@ import { openInteractiveRebase, openRebase } from "@/webview/components/reposito
 import { openTracking } from "@/webview/components/repository/RemoteManager";
 import { openAddWorktree } from "@/webview/components/repository/WorktreeManager";
 import { Explain } from "@/webview/components/ui/Explain";
-import { openFormDialog, runAction } from "@/webview/lib/actions";
+import { focusBranchInGraph, openFormDialog, runAction } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
 import type { ContextMenuEntry } from "@/webview/types";
@@ -442,9 +442,15 @@ export function refMenu(gitRef: GitRef, isHeadBranch: boolean): Array<ContextMen
     return [comparison, null, ...tagMenu(gitRef)];
   }
 
+  const focus: ContextMenuEntry = {
+    title: window.l10n.focusThisBranch,
+    onClick: () =>
+      focusBranchInGraph(gitRef.type === "remote" ? "remotes/" + gitRef.name : gitRef.name)
+  };
+
   if (gitRef.type === "head") {
-    return [comparison, null, ...localBranchMenu(gitRef, isHeadBranch)];
+    return [focus, comparison, null, ...localBranchMenu(gitRef, isHeadBranch)];
   }
 
-  return [comparison, null, ...remoteBranchMenu(gitRef)];
+  return [focus, comparison, null, ...remoteBranchMenu(gitRef)];
 }

@@ -319,7 +319,22 @@ suite("Git Graph workflow UI", function () {
       vertices: [...document.querySelectorAll('svg[aria-hidden] circle[data-branch-relation]')].map(dot => [dot.getAttribute('cx'), dot.getAttribute('cy')])
     })`);
     const before = await geometry();
-    await headerChoice("View", "Focus direct history");
+    const graphColours = () =>
+      graph.evaluate(`({
+      dots: [...document.querySelectorAll('circle[data-branch-relation]')].map(dot => ({
+        relation: dot.dataset.branchRelation,
+        fill: getComputedStyle(dot).fill,
+        stroke: getComputedStyle(dot).stroke
+      })),
+      paths: [...document.querySelectorAll('path[data-branch-relation]')].map(line => ({
+        relation: line.dataset.branchRelation,
+        stroke: getComputedStyle(line).stroke
+      })),
+      text: getComputedStyle(document.querySelector('tr[data-commit-hash="${side}"]')).color
+    })`);
+    const fullColour = await graphColours();
+    await contextRef("main");
+    await menu("Focus this branch");
     await until(
       () =>
         graph.evaluate(`
@@ -330,6 +345,12 @@ suite("Git Graph workflow UI", function () {
       "three focus levels"
     );
     assert.deepEqual(await geometry(), before);
+    assert.equal(
+      await graph.evaluate(
+        `document.querySelectorAll('[data-focus-branch="main"][data-focus-paused="false"]').length`
+      ),
+      2
+    );
     assert.ok(
       await graph.evaluate(
         `!!document.querySelector('path[data-branch-relation="merged"][stroke^="color-mix"]')`
@@ -344,6 +365,47 @@ suite("Git Graph workflow UI", function () {
       true
     );
     await graph.evaluate(`document.querySelector('tr[data-commit-hash="${tip}"]').focus()`);
+    const subtle = await graphColours();
+    await graph.evaluate(`(() => {
+      const select = document.querySelector('select[aria-label="Dimming"]');
+      select.value = 'strong';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
+    await until(
+      async () =>
+        (await graphColours()).paths.some(
+          (line, index) =>
+            line.relation === "unrelated" && line.stroke !== subtle.paths[index].stroke
+        ),
+      "strong graph dimming"
+    );
+    const strong = await graphColours();
+    assert.equal(strong.text, subtle.text, "strong dimming preserves text readability");
+    for (let i = 0; i < strong.dots.length; i++) {
+      if (strong.dots[i].relation === "direct") {
+        assert.deepEqual(strong.dots[i], subtle.dots[i]);
+      } else {
+        assert.notEqual(strong.dots[i].fill, subtle.dots[i].fill);
+      }
+    }
+    await button("Pause focus");
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelectorAll('[data-focus-branch="main"][data-focus-paused="true"]').length === 2`
+        ),
+      "paused target markers"
+    );
+    const paused = await graphColours();
+    assert.deepEqual(paused.dots, fullColour.dots);
+    assert.deepEqual(paused.paths, fullColour.paths);
+    assert.deepEqual(await geometry(), before);
+    await button("Resume focus");
+    await until(
+      async () => (await graphColours()).paths.some((line) => line.relation === "unrelated"),
+      "resumed graph focus"
+    );
+    assert.deepEqual(await graphColours(), strong);
     const screenshot = await connections[0].call("Page.captureScreenshot");
     fs.writeFileSync(
       path.join(artifacts, "branch-focus.png"),
@@ -358,7 +420,8 @@ suite("Git Graph workflow UI", function () {
       "merged history stays bright"
     );
     assert.deepEqual(await geometry(), before);
-    await headerChoice("Branch", "side");
+    await contextRef("side");
+    await menu("Focus this branch");
     await until(
       () =>
         graph.evaluate(
@@ -367,6 +430,14 @@ suite("Git Graph workflow UI", function () {
       "focus another branch"
     );
     assert.deepEqual(await geometry(), before);
+    assert.equal(
+      await graph.evaluate(`document.querySelectorAll('[data-focus-branch="side"]').length`),
+      2
+    );
+    assert.equal(
+      await graph.evaluate(`document.querySelectorAll('[data-focus-branch="main"]').length`),
+      0
+    );
     assert.equal(git(["branch", "--show-current"], dir), "main");
     assert.equal(git(["rev-parse", "HEAD"], dir), tip);
     await button("Clear focus");
@@ -378,6 +449,10 @@ suite("Git Graph workflow UI", function () {
       "clear focus"
     );
     assert.deepEqual(await geometry(), before);
+    assert.equal(
+      await graph.evaluate(`document.querySelectorAll('[data-focus-branch]').length`),
+      0
+    );
     await headerChoice("Branch", "side");
     await headerChoice("View", "Filter to branch");
     await until(

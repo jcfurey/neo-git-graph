@@ -6,7 +6,8 @@ import type {
   BranchDisplay,
   CommitBranchType,
   ContextMenuState,
-  DialogState
+  DialogState,
+  FocusDimming
 } from "@/webview/types";
 import { isColumnWidths } from "@/webview/utils/columns";
 
@@ -61,6 +62,14 @@ export const columnWidths = computed(() => {
 
 export const selectedBranch = signal<CommitBranchType | undefined>(undefined);
 export const branchDisplay = signal<BranchDisplay>("filter");
+export const focusPaused = signal(false);
+export const focusDimming = signal<FocusDimming>("subtle");
+/** Keep the target while focus is paused, so resuming never changes the branch. */
+export const branchFocusTarget = computed(() =>
+  branchDisplay.value !== "filter" && selectedBranch.value !== "*"
+    ? selectedBranch.value
+    : undefined
+);
 
 /** Focus changes emphasis while keeping the same all-branches history. */
 export function displayedBranch(branch = selectedBranch.value): string {

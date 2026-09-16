@@ -3,6 +3,7 @@ import { useId, useState } from "preact/hooks";
 
 import type { BranchDetails, GitRef, RefDetails, RemoteDetails } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
+import { BranchFocusBadge } from "@/webview/components/commit/BranchFocusBadge";
 import { addRemote, remoteMenu } from "@/webview/components/repository/RemoteManager";
 import {
   applyStash,
@@ -323,6 +324,7 @@ export function RefsPane() {
                     .join("\n")}
                   badge={
                     <>
+                      <BranchFocusBadge branch={branch.name} />
                       <TrackingBadge branch={branch} />
                       {worktree && <span class="shrink-0 text-xs">↗</span>}
                     </>
@@ -429,6 +431,7 @@ export function RefsPane() {
                       icon={<BranchIcon class={ROW_ICON} />}
                       dimmed={!remotesShown}
                       active={selectedBranch.value === value}
+                      badge={<BranchFocusBadge branch={value} />}
                       onSelect={() => {
                         if (!remotesShown) {
                           setShowRemoteBranch(true);

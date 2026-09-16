@@ -5,6 +5,7 @@ import { branchStrokes } from "@/webview/graph/strokes";
 import type { BranchRelation, GraphExpansion, GraphLayout, GraphLine } from "@/webview/graph/types";
 import { expandOffset, graphHeight, graphWidth, laneX, rowY } from "@/webview/graph/utils";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
+import type { FocusDimming } from "@/webview/types";
 
 const SHADOW_CLASS = "fill-none stroke-editor/75 stroke-4";
 const LINE_CLASS = "fill-none stroke-2";
@@ -22,6 +23,7 @@ export function CommitGraph({
   relations,
   relationForLine,
   keepMergedBright,
+  dimming,
   revealed
 }: {
   layout: GraphLayout;
@@ -29,6 +31,7 @@ export function CommitGraph({
   relations: BranchRelation[];
   relationForLine: (line: GraphLine) => BranchRelation;
   keepMergedBright: boolean;
+  dimming: FocusDimming;
   revealed: ReadonlySet<number>;
 }) {
   const angular = getWebviewConfig().graphStyle === "angular";
@@ -52,7 +55,12 @@ export function CommitGraph({
             data-branch-relation={stroke.relation}
             stroke={
               stroke.isCommitted
-                ? focusColour(branchColour(stroke.colour), stroke.relation, keepMergedBright)
+                ? focusColour(
+                    branchColour(stroke.colour),
+                    stroke.relation,
+                    keepMergedBright,
+                    dimming
+                  )
                 : UNCOMMITTED_COLOUR
             }
           />
@@ -64,7 +72,8 @@ export function CommitGraph({
           ? focusColour(
               branchColour(vertex.colour),
               revealed.has(vertex.y) || vertex.isCurrent ? "normal" : relation,
-              keepMergedBright
+              keepMergedBright,
+              dimming
             )
           : UNCOMMITTED_COLOUR;
 

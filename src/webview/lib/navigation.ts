@@ -2,9 +2,15 @@ import { computed, signal } from "@preact/signals";
 
 import type { HistoryEntry, HistoryFilter } from "@/backend/types";
 import type { SidebarPane } from "@/types";
-import { branchDisplay, selectedRepo } from "@/webview/lib/stores";
+import {
+  branchDisplay,
+  branchFocusTarget,
+  focusDimming,
+  focusPaused,
+  selectedRepo
+} from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
-import type { BranchDisplay } from "@/webview/types";
+import type { BranchDisplay, FocusDimming } from "@/webview/types";
 
 export const emptyFilter = (): HistoryFilter => ({
   text: "",
@@ -21,6 +27,9 @@ type SavedRepo = {
   saved: SavedFilter[];
   scroll: number;
   branchDisplay?: BranchDisplay;
+  focusBranch?: string | undefined;
+  focusPaused?: boolean;
+  focusDimming?: FocusDimming;
 };
 type NavigationState = {
   repos: Record<string, SavedRepo>;
@@ -76,6 +85,9 @@ export function leaveNavigation(repo: string | undefined) {
     filter: historyFilter.value,
     saved: savedFilters.value,
     branchDisplay: branchDisplay.value,
+    focusBranch: branchFocusTarget.value,
+    focusPaused: focusPaused.value,
+    focusDimming: focusDimming.value,
     scroll: window.scrollY
   };
   persist();
@@ -84,12 +96,18 @@ export function leaveNavigation(repo: string | undefined) {
 export function enterNavigation(repo: string) {
   const state = saved.repos[repo];
   branchDisplay.value = state?.branchDisplay ?? "filter";
+  focusPaused.value = state?.focusPaused ?? false;
+  focusDimming.value = state?.focusDimming ?? "subtle";
   historyFilter.value = { ...emptyFilter(), ...state?.filter };
   savedFilters.value = state?.saved ?? [];
   historyOffset.value = 0;
   selectedCommits.value = [];
   focusedCommit.value = null;
   restoreScroll.value = state?.scroll ?? 0;
+}
+
+export function savedFocusBranch(repo: string) {
+  return saved.repos[repo]?.focusBranch;
 }
 
 export function setHistoryFilter(filter: HistoryFilter) {

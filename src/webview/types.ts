@@ -4,6 +4,7 @@ import type { ActionRequest } from "@/backend/types";
 
 export type CommitBranchType = "*" | (string & {});
 export type BranchDisplay = "filter" | "focus" | "ancestors";
+export type FocusDimming = "subtle" | "strong";
 
 /** One clickable row of a context menu. `null` renders a divider. */
 export type ContextMenuEntry = { title: string; onClick: () => void } | null;

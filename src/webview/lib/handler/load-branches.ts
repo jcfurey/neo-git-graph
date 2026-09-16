@@ -3,6 +3,7 @@ import { batch } from "@preact/signals";
 import type { ResponseMessage } from "@/types";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
 import { selectBranch } from "@/webview/lib/actions";
+import { savedFocusBranch } from "@/webview/lib/navigation";
 import {
   branchDisplay,
   branchList,
@@ -29,10 +30,16 @@ export function handleLoadBranches(msg: LoadBranchesMessage) {
   });
 
   if (!valid) {
+    const remembered =
+      current === undefined && branchDisplay.value !== "filter"
+        ? savedFocusBranch(msg.repo)
+        : undefined;
     const fallback =
-      branchDisplay.value !== "filter" || getWebviewConfig().showCurrentBranchByDefault
-        ? (msg.head ?? SHOW_ALL_BRANCHES)
-        : SHOW_ALL_BRANCHES;
+      remembered && msg.branches.includes(remembered)
+        ? remembered
+        : branchDisplay.value !== "filter" || getWebviewConfig().showCurrentBranchByDefault
+          ? (msg.head ?? SHOW_ALL_BRANCHES)
+          : SHOW_ALL_BRANCHES;
     selectBranch(fallback);
   }
 }

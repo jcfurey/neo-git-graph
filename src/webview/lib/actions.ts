@@ -14,6 +14,7 @@ import {
 import {
   branchList,
   branchDisplay,
+  branchFocusTarget,
   commitDetails,
   commitHead,
   commitList,
@@ -21,6 +22,8 @@ import {
   dialog,
   displayedBranch,
   expandedCommit,
+  focusDimming,
+  focusPaused,
   headBranch,
   maxCommits,
   moreCommitsAvailable,
@@ -39,7 +42,8 @@ import type {
   ContextMenuEntry,
   DialogBody,
   DialogInput,
-  DialogValues
+  DialogValues,
+  FocusDimming
 } from "@/webview/types";
 
 function requestBranches(repo: string) {
@@ -101,6 +105,9 @@ export function selectBranch(branch: CommitBranchType) {
   const previous = displayedBranch();
   batch(() => {
     selectedBranch.value = branch;
+    if (branch === SHOW_ALL_BRANCHES) {
+      focusPaused.value = false;
+    }
     if (previous !== displayedBranch()) {
       clearCommits();
     }
@@ -110,6 +117,7 @@ export function selectBranch(branch: CommitBranchType) {
   if (repo !== undefined && commitList.value === undefined) {
     requestCommits(repo, branch);
   }
+  leaveNavigation(repo);
 }
 
 export function setBranchDisplay(value: BranchDisplay) {
@@ -119,6 +127,7 @@ export function setBranchDisplay(value: BranchDisplay) {
   const previous = displayedBranch();
   batch(() => {
     branchDisplay.value = value;
+    focusPaused.value = false;
     if (value !== "filter" && selectedBranch.value === SHOW_ALL_BRANCHES) {
       selectedBranch.value = headBranch.value ?? branchList.value?.[0] ?? SHOW_ALL_BRANCHES;
     }
@@ -131,6 +140,48 @@ export function setBranchDisplay(value: BranchDisplay) {
     requestCommits(repo, selectedBranch.value);
   }
   leaveNavigation(repo);
+}
+
+/** A view action: it never checks out or modifies the selected branch. */
+export function focusBranchInGraph(branch: string) {
+  const previous = displayedBranch();
+  const revealRemote = branch.startsWith("remotes/") && !showRemoteBranch.value;
+  batch(() => {
+    if (branchDisplay.value === "filter") {
+      branchDisplay.value = "focus";
+    }
+    selectedBranch.value = branch;
+    focusPaused.value = false;
+    if (revealRemote) {
+      showRemoteBranch.value = true;
+    }
+    if (previous !== displayedBranch()) {
+      clearCommits();
+    }
+  });
+  const repo = selectedRepo.value;
+  if (repo !== undefined) {
+    if (revealRemote) {
+      requestBranches(repo);
+    }
+    if (revealRemote || commitList.value === undefined) {
+      requestCommits(repo, branch);
+    }
+  }
+  leaveNavigation(repo);
+}
+
+export function toggleBranchFocus() {
+  if (branchFocusTarget.value === undefined) {
+    return;
+  }
+  focusPaused.value = !focusPaused.value;
+  leaveNavigation(selectedRepo.value);
+}
+
+export function setFocusDimming(value: FocusDimming) {
+  focusDimming.value = value;
+  leaveNavigation(selectedRepo.value);
 }
 
 /** Resize the columns of the commit table, while the user drags a boundary. */

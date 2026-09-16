@@ -5,7 +5,13 @@ import { openBatch, openCompare } from "@/webview/components/history/HistoryTool
 import { PageControls, QueryStatus } from "@/webview/components/history/QueryControls";
 import { Button } from "@/webview/components/ui/Button";
 import { Loading } from "@/webview/components/ui/Loading";
-import { loadMoreCommits, selectBranch } from "@/webview/lib/actions";
+import { Select } from "@/webview/components/ui/Select";
+import {
+  loadMoreCommits,
+  selectBranch,
+  setFocusDimming,
+  toggleBranchFocus
+} from "@/webview/lib/actions";
 import { commitMenuHintDismissed, dismissCommitMenuHint } from "@/webview/lib/hints";
 import {
   historyActive,
@@ -18,15 +24,18 @@ import {
   commitHead,
   commitList,
   branchDisplay,
+  branchFocusTarget,
   displayedBranch,
+  focusPaused,
+  focusDimming,
   headBranch,
   maxCommits,
   moreCommitsAvailable,
-  selectedBranch,
   selectedRepo
 } from "@/webview/lib/stores";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 import { NoCommitsPage } from "@/webview/pages/NoCommitsPage";
+import type { FocusDimming } from "@/webview/types";
 
 export function GraphView() {
   const filter = historyFilter.value;
@@ -44,10 +53,7 @@ export function GraphView() {
       : null
   );
   const commits = active ? query.data?.page.entries : commitList.value;
-  const focusBranch =
-    branchDisplay.value !== "filter" && selectedBranch.value !== "*"
-      ? selectedBranch.value
-      : undefined;
+  const focusBranch = branchFocusTarget.value;
   const focus = useRepositoryQuery<"branchFocus">(
     focusBranch && commits?.length
       ? { kind: "branchFocus", branch: focusBranch, hashes: commits.map((commit) => commit.hash) }
@@ -96,17 +102,37 @@ export function GraphView() {
           role="status"
         >
           <span class="max-w-80 truncate" title={focusBranch}>
-            {window.l10n.branchFocus.replace("{0}", focusBranch.replace(/^remotes\//, ""))}
+            {(focusPaused.value ? window.l10n.branchFocusPaused : window.l10n.branchFocus).replace(
+              "{0}",
+              focusBranch.replace(/^remotes\//, "")
+            )}
           </span>
           <span class="text-muted">
-            {focus.error
-              ? window.l10n.branchFocusUnavailable
-              : focus.loading
-                ? window.l10n.loadingBranchFocus
-                : branchDisplay.value === "ancestors"
-                  ? window.l10n.focusAncestorsHint
-                  : window.l10n.focusDirectHint}
+            {focusPaused.value
+              ? window.l10n.focusPausedHint
+              : focus.error
+                ? window.l10n.branchFocusUnavailable
+                : focus.loading
+                  ? window.l10n.loadingBranchFocus
+                  : branchDisplay.value === "ancestors"
+                    ? window.l10n.focusAncestorsHint
+                    : window.l10n.focusDirectHint}
           </span>
+          <Button onClick={toggleBranchFocus}>
+            {focusPaused.value ? window.l10n.resumeBranchFocus : window.l10n.pauseBranchFocus}
+          </Button>
+          <label class="flex items-center gap-2">
+            {window.l10n.focusDimming}
+            <Select
+              aria-label={window.l10n.focusDimming}
+              options={[
+                { label: window.l10n.focusDimmingSubtle, value: "subtle" },
+                { label: window.l10n.focusDimmingStrong, value: "strong" }
+              ]}
+              value={focusDimming.value}
+              onChange={(value) => setFocusDimming(value as FocusDimming)}
+            />
+          </label>
           <Button onClick={() => selectBranch("*")}>{window.l10n.clearBranchFocus}</Button>
         </div>
       )}
@@ -175,8 +201,9 @@ export function GraphView() {
         commits={commits}
         head={commitHead.value}
         headBranch={headBranch.value}
-        focus={focus.loading || focus.error ? null : focus.data}
+        focus={focusPaused.value || focus.loading || focus.error ? null : focus.data}
         keepMergedBright={branchDisplay.value === "ancestors"}
+        dimming={focusDimming.value}
       />
       {active && query.data && (
         <div class="px-3">

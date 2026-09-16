@@ -1,5 +1,6 @@
 import type { GitCommitNode } from "@/backend/types";
 import type { BranchRelation, GraphLine } from "@/webview/graph/types";
+import type { FocusDimming } from "@/webview/types";
 
 export function commitRelations(
   commits: GitCommitNode[],
@@ -37,14 +38,20 @@ export function lineRelation(
 export function focusColour(
   colour: string | undefined,
   relation: BranchRelation,
-  keepMergedBright = false
+  keepMergedBright = false,
+  dimming: FocusDimming = "subtle"
 ): string {
   const base = colour ?? "var(--vscode-focusBorder)";
+  const gray = "var(--vscode-descriptionForeground, #808080)";
+  const muted =
+    dimming === "strong"
+      ? `color-mix(in srgb, ${gray} 45%, var(--vscode-editor-background))`
+      : gray;
   if (relation === "unrelated") {
-    return "var(--vscode-descriptionForeground, #808080)";
+    return muted;
   }
   if (relation === "merged" && !keepMergedBright) {
-    return `color-mix(in srgb, ${base} 40%, var(--vscode-descriptionForeground, #808080))`;
+    return `color-mix(in srgb, ${base} ${dimming === "strong" ? 25 : 40}%, ${muted})`;
   }
   return base;
 }

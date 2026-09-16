@@ -436,5 +436,15 @@
   "Loading branch focus…": "正在載入分支聚焦…",
   "Branch focus unavailable. Refresh or select another branch.": "無法聚焦分支。請重新整理或選擇其他分支。",
   "Direct history: full colour · Merged history: muted · Other commits: gray": "主線歷史：原色 · 已合併歷史：淡色 · 其他提交：灰色",
-  "All ancestors: full colour · Other commits: gray": "所有祖先提交：原色 · 其他提交：灰色"
+  "All ancestors: full colour · Other commits: gray": "所有祖先提交：原色 · 其他提交：灰色",
+  "Focus this branch": "聚焦此分支",
+  "Focus": "聚焦",
+  "Paused": "已暫停",
+  "Focus paused: {0}": "聚焦已暫停：{0}",
+  "All colours restored. Resume to focus the same branch.": "已恢復所有色彩。繼續後將聚焦同一分支。",
+  "Pause focus": "暫停聚焦",
+  "Resume focus": "繼續聚焦",
+  "Dimming": "淡化程度",
+  "Subtle": "輕微",
+  "Strong": "強烈"
 }
