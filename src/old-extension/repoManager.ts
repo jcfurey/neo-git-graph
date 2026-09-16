@@ -1,6 +1,3 @@
-import { isGitRepository } from "@/backend/utils/git";
-import { evalPromises } from "@/backend/utils/promise";
-import type { Config } from "@/old-extension/config";
 import { ExtensionState } from "@/old-extension/extensionState";
 import type { GitRepoSet, GitRepoState } from "@/types";
 
@@ -16,9 +13,9 @@ function sortRepos(repos: GitRepoSet) {
   return sorted;
 }
 
-export function createRepoManager(extensionState: ExtensionState, config: Config) {
+/** The repositories this workspace has seen, with the state the editor keeps for each. */
+export function createRepoManager(extensionState: ExtensionState) {
   let repos = extensionState.getRepos();
-  let viewCallback: ((repos: GitRepoSet) => void) | null = null;
 
   function setRepos(repoDirs: string[]) {
     const next: GitRepoSet = {};
@@ -33,34 +30,9 @@ export function createRepoManager(extensionState: ExtensionState, config: Config
     return sortRepos(repos);
   }
 
-  function sendRepos() {
-    const sorted = getRepos();
-    if (viewCallback !== null) {
-      viewCallback(sorted);
-    }
-  }
-
   function removeRepo(repo: string) {
     delete repos[repo];
     extensionState.saveRepos(repos);
-  }
-
-  function registerViewCallback(cb: (repos: GitRepoSet) => void) {
-    viewCallback = cb;
-  }
-
-  function deregisterViewCallback() {
-    viewCallback = null;
-  }
-
-  function isDirectoryWithinRepos(path: string) {
-    const repoPaths = Object.keys(repos);
-    for (let i = 0; i < repoPaths.length; i++) {
-      if (path === repoPaths[i] || path.startsWith(repoPaths[i] + "/")) {
-        return true;
-      }
-    }
-    return false;
   }
 
   function addRepo(repo: string) {
@@ -90,39 +62,13 @@ export function createRepoManager(extensionState: ExtensionState, config: Config
     extensionState.saveRepos(repos);
   }
 
-  function checkReposExist() {
-    return new Promise<boolean>((resolve) => {
-      const repoPaths = Object.keys(repos);
-      let changes = false;
-      evalPromises(repoPaths, 3, (path) => isGitRepository(path, config.gitPath())).then(
-        (results) => {
-          for (const [i, repoPath] of repoPaths.entries()) {
-            if (!results[i]) {
-              removeRepo(repoPath);
-              changes = true;
-            }
-          }
-          if (changes) {
-            sendRepos();
-          }
-          resolve(changes);
-        }
-      );
-    });
-  }
-
   return {
-    registerViewCallback,
-    deregisterViewCallback,
-    isDirectoryWithinRepos,
     getRepos,
-    sendRepos,
     setRepos,
     addRepo,
     removeRepo,
     removeReposWithinFolder,
-    setRepoState,
-    checkReposExist
+    setRepoState
   };
 }
 

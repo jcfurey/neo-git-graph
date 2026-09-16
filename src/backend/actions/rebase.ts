@@ -1,6 +1,7 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import { loadBisect } from "@/backend/queries/bisect";
@@ -16,10 +17,10 @@ import { requireCurrentBranch, resolveCommit } from "@/backend/utils/validation"
 
 export async function requireIdle(git: SimpleGit) {
   if ((await loadOperation(git)) !== null) {
-    throw new Error("Finish or abort the operation already in progress first.");
+    throw new Error(l10n.t("Finish or abort the operation already in progress first."));
   }
   if ((await loadBisect(git)) !== null) {
-    throw new Error("Reset the bisect session before starting another Git operation.");
+    throw new Error(l10n.t("Reset the bisect session before starting another Git operation."));
   }
 }
 
@@ -112,7 +113,7 @@ export async function interactiveRebase(git: SimpleGit, plan: RebasePlan, binary
         !["pick", "reword", "squash", "fixup", "drop"].includes(entry.action)
     )
   ) {
-    throw new Error("The rebase plan no longer matches the branch. Reload the plan.");
+    throw new Error(l10n.t("The rebase plan no longer matches the branch. Reload the plan."));
   }
   const retained = plan.entries.filter((entry) => entry.action !== "drop");
   if (
@@ -120,7 +121,9 @@ export async function interactiveRebase(git: SimpleGit, plan: RebasePlan, binary
     retained[0]?.action === "squash" ||
     retained[0]?.action === "fixup"
   ) {
-    throw new Error("Keep at least one commit. The first retained commit cannot be squashed.");
+    throw new Error(
+      l10n.t("Keep at least one commit. The first retained commit cannot be squashed.")
+    );
   }
   if (
     plan.entries.some(
@@ -128,10 +131,10 @@ export async function interactiveRebase(git: SimpleGit, plan: RebasePlan, binary
         entry.action === "reword" && (!entry.message.trim() || entry.message.includes("\0"))
     )
   ) {
-    throw new Error("Each reworded commit needs a nonempty message.");
+    throw new Error(l10n.t("Each reworded commit needs a nonempty message."));
   }
   if (!(await git.status()).isClean()) {
-    throw new Error("Commit or stash your changes before rebasing.");
+    throw new Error(l10n.t("Commit or stash your changes before rebasing."));
   }
   const directory = await helperDirectory(git);
   await mkdir(directory, { recursive: true });

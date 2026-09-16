@@ -4,13 +4,15 @@ import type { RepositoryAction, WorkspaceEntry } from "@/backend/types";
 import { openSubmodule, openWorkspaceSync } from "@/webview/components/history/WorkflowTools";
 import { Button } from "@/webview/components/ui/Button";
 import { Checkbox } from "@/webview/components/ui/Checkbox";
+import { KebabIcon } from "@/webview/components/ui/Icons";
+import { INPUT_CLASS } from "@/webview/components/ui/Input";
 import { openContextMenu, selectRepo } from "@/webview/lib/actions";
 import { confirmRepositoryAction, repositoryRevision } from "@/webview/lib/repository-actions";
 import { selectedRepo } from "@/webview/lib/stores";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 import { format } from "@/webview/utils/format";
 
-import { INPUT_CLASS, QueryStatus } from "./QueryControls";
+import { QueryStatus } from "./QueryControls";
 
 function changed(entry: WorkspaceEntry) {
   return (
@@ -80,7 +82,7 @@ function RepoRow({ entry, depth }: { entry: WorkspaceEntry; depth: number }) {
         </button>
         {entry.submodulePath && (
           <button
-            class="cursor-pointer rounded px-2 hover:bg-btn-hover focus:outline-1 focus:outline-focus"
+            class="flex cursor-pointer items-center rounded px-1.5 py-1 hover:bg-btn-hover focus:outline-1 focus:outline-focus"
             aria-label={label + " " + window.l10n.repositoryTools}
             onClick={(event) =>
               openContextMenu(event, "workspace:" + entry.path, [
@@ -102,7 +104,7 @@ function RepoRow({ entry, depth }: { entry: WorkspaceEntry; depth: number }) {
               ])
             }
           >
-            ⋯
+            <KebabIcon />
           </button>
         )}
       </div>

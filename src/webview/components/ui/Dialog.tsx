@@ -4,6 +4,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hook
 import { Button } from "@/webview/components/ui/Button";
 import { Checkbox } from "@/webview/components/ui/Checkbox";
 import { Icon } from "@/webview/components/ui/Icons";
+import { INPUT_CLASS } from "@/webview/components/ui/Input";
 import { Select } from "@/webview/components/ui/Select";
 import { closeDialog } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/copy";
@@ -18,9 +19,6 @@ const PANEL_CLASS = [
   "-translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-md border border-line",
   "bg-menu p-5 text-center text-menu-fg outline-none shadow-dialog"
 ].join(" ");
-
-const INPUT_CLASS =
-  "w-full rounded-sm bg-input px-2 py-1 text-input-fg outline-1 outline-line focus:outline-focus";
 
 /** Why the form cannot be submitted. Only a `ref` input can block it. */
 type RefProblem = "empty" | "invalid" | null;

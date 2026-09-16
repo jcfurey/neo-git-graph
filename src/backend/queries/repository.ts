@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import { loadBisect } from "@/backend/queries/bisect";
@@ -163,7 +164,7 @@ export async function loadRebasePlan(git: SimpleGit, baseRef: string): Promise<R
   const head = await resolveCommit(git, "HEAD");
   const branch = (await git.raw(["symbolic-ref", "--quiet", "--short", "HEAD"])).trim();
   if ((await git.raw(["merge-base", base, head])).trim() !== base) {
-    throw new Error("Choose an ancestor of the current branch for interactive rebase.");
+    throw new Error(l10n.t("Choose an ancestor of the current branch for interactive rebase."));
   }
   const rows = (
     await git.raw(["rev-list", "--reverse", "--topo-order", "--parents", `${base}..${head}`])
@@ -172,11 +173,13 @@ export async function loadRebasePlan(git: SimpleGit, baseRef: string): Promise<R
     .split("\n")
     .filter(Boolean);
   if (rows.length === 0) {
-    throw new Error("There are no commits after this commit on the current branch.");
+    throw new Error(l10n.t("There are no commits after this commit on the current branch."));
   }
   if (rows.some((row) => row.split(" ").length > 2)) {
     throw new Error(
-      "This range contains merge commits. Choose a linear range for interactive rebase, or use Rebase onto this branch to preserve merges."
+      l10n.t(
+        "This range contains merge commits. Choose a linear range for interactive rebase, or use Rebase onto this branch to preserve merges."
+      )
     );
   }
   return {

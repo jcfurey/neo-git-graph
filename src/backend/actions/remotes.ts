@@ -1,3 +1,4 @@
+import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import type { RepositoryAction } from "@/backend/types";
@@ -19,14 +20,14 @@ type RemoteAction = Extract<
 
 async function requireRemoteName(git: SimpleGit, name: string) {
   if (!name || name.startsWith("-") || name === ".") {
-    throw new Error("Enter a valid remote name.");
+    throw new Error(l10n.t("Enter a valid remote name."));
   }
   await git.raw(["check-ref-format", `refs/remotes/${name}/branch`]);
 }
 
 function requireUrl(url: string) {
   if (!url.trim() || /[\r\n\0]/.test(url) || url.startsWith("-")) {
-    throw new Error("Enter a nonempty remote URL without line breaks.");
+    throw new Error(l10n.t("Enter a nonempty remote URL without line breaks."));
   }
 }
 
@@ -72,7 +73,7 @@ export async function manageRemote(git: SimpleGit, action: RemoteAction) {
     case "editRemote":
       await requireRemote(git, action.name);
       if (action.fetchUrls.length === 0) {
-        throw new Error("A remote needs at least one fetch URL.");
+        throw new Error(l10n.t("A remote needs at least one fetch URL."));
       }
       [...action.fetchUrls, ...action.pushUrls].forEach(requireUrl);
       await replaceConfig(git, `remote.${action.name}.url`, action.fetchUrls);

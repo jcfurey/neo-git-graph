@@ -11,6 +11,9 @@ importers:
       '@preact/signals':
         specifier: ^2.11.1
         version: 2.11.1(preact@10.29.8)
+      '@vscode/l10n':
+        specifier: ^0.0.18
+        version: 0.0.18
       preact:
         specifier: ^10.29.8
         version: 10.29.8
@@ -1504,6 +1507,9 @@ packages:
     resolution: {integrity: sha512-s6uzBXsVDSL69Z85HSqpc5dfKswQkeucY8L00t1TWzGalw7wkLQUKMRwuzqTq+AMwQKrRd7Po14cMoTcd11iDw==}
     hasBin: true
 
+  '@vscode/l10n@0.0.18':
+    resolution: {integrity: sha512-KYSIHVmslkaCDyw013pphY+d7x1qV8IZupYfeIfzNA+nsaWHbn5uPuQRvdRFsa9zFzGeudPuoGoZ1Op4jrJXIQ==}
+
   '@vscode/test-cli@0.0.15':
     resolution: {integrity: sha512-nAxk2X79wuXS7aOhyFFhFcCqd7EBUoMesu7ZgsYE/4eFjyBMuyIweVE94BxdKH1RieN8eOz2SIrljrZt6Lk9fQ==}
     engines: {node: '>=22'}
@@ -2127,6 +2133,7 @@ packages:
   eslint@9.39.4:
     resolution: {integrity: sha512-XoMjdBOwe/esVgEvLmNsD3IRHkm7fbKIUGvrleloJXUZgDHig2IPWNniv+GwjyJXzuNqVjlr5+4yVUZjycJwfQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -5139,6 +5146,8 @@ snapshots:
       yargs: 17.7.3
     transitivePeerDependencies:
       - supports-color
+
+  '@vscode/l10n@0.0.18': {}
 
   '@vscode/test-cli@0.0.15':
     dependencies:

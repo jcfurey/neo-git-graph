@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import { gitClientFactory } from "@/backend/gitClient";
@@ -23,7 +24,9 @@ export async function loadSubmodulePlan(
 ): Promise<SubmodulePlan> {
   const link = (await submoduleLinks(git)).find((entry) => entry.path === file);
   if (!link) {
-    throw new Error("This submodule pointer changed or is conflicted. Refresh the workspace.");
+    throw new Error(
+      l10n.t("This submodule pointer changed or is conflicted. Refresh the workspace.")
+    );
   }
   const root = (await git.raw(["rev-parse", "--show-toplevel"])).replace(/\n$/, "");
   const child = normalizeRepoPath(path.join(root, link.path));
@@ -32,7 +35,7 @@ export async function loadSubmodulePlan(
     normalizeRepoPath((await childGit.raw(["rev-parse", "--show-toplevel"])).replace(/\n$/, "")) !==
     child
   ) {
-    throw new Error("Initialize the submodule before inspecting its commits.");
+    throw new Error(l10n.t("Initialize the submodule before inspecting its commits."));
   }
   return {
     path: file,
@@ -123,7 +126,7 @@ export async function loadUpstreamPlan(git: SimpleGit) {
     await git.raw(["for-each-ref", "--format=%(upstream)", `refs/heads/${branch}`])
   ).trim();
   if (!ref.startsWith("refs/remotes/")) {
-    throw new Error("Configure a remote upstream for the current branch first.");
+    throw new Error(l10n.t("Configure a remote upstream for the current branch first."));
   }
   const upstream = await splitRemoteRef(git, ref.slice("refs/remotes/".length));
   return loadSyncPlan(git, branch, upstream.remote, upstream.branch);

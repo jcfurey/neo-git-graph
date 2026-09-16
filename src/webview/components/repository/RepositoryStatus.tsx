@@ -39,7 +39,10 @@ export function RepositoryStatus() {
   const error = repositoryStateError.value;
   if (error !== null) {
     return (
-      <div class="flex flex-wrap items-center gap-2 border-b border-line p-2" role="status">
+      <div
+        class="flex flex-wrap items-center gap-2 border-b border-line-soft px-3 py-2 text-ui"
+        role="status"
+      >
         <span title={error}>{window.l10n.unableToLoadRepository}</span>
         <Button onClick={requestRepositoryState}>{window.l10n.refresh}</Button>
       </div>
@@ -52,7 +55,7 @@ export function RepositoryStatus() {
   const operation = state.operation;
   const repo = selectedRepo.value;
   return (
-    <div class="space-y-2 border-b border-line px-4 py-2 text-sm">
+    <div class="space-y-2 border-b border-line-soft px-3 py-2 text-ui">
       <BisectStatus />
       <div class="flex flex-wrap items-center gap-3" role="status">
         <b>{state.head || window.l10n.detachedHead}</b>

@@ -25,7 +25,7 @@
   --color-muted: var(--vscode-descriptionForeground);
   --color-dropdown: var(--vscode-dropdown-background);
   --color-dropdown-fg: var(--vscode-dropdown-foreground);
-  --color-dropdown-border: var(--vscode-dropdown-border);
+  --color-dropdown-border: var(--vscode-dropdown-border, rgba(128, 128, 128, 0.5));
   --color-menu: var(--vscode-menu-background, var(--vscode-dropdown-background));
   --color-menu-fg: var(--vscode-menu-foreground, var(--vscode-dropdown-foreground));
   --color-menu-active: var(
@@ -38,8 +38,9 @@
   );
   --color-input: var(--vscode-input-background);
   --color-input-fg: var(--vscode-input-foreground);
+  /* Themes may leave the border unset. The fallback keeps a field visible on a dialog. */
+  --color-input-border: var(--vscode-input-border, rgba(128, 128, 128, 0.5));
   --color-checkbox: var(--vscode-checkbox-background);
-  --color-checkbox-border: var(--vscode-checkbox-border, rgba(128, 128, 128, 0.5));
   --color-checkbox-checked: var(--vscode-button-background);
   --color-checkbox-check: var(--vscode-button-foreground);
   --color-focus: var(--vscode-focusBorder);

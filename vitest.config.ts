@@ -26,13 +26,13 @@ export default defineConfig({
             ...alias,
             {
               find: "vscode",
-              replacement: path.resolve(__dirname, "tests/old-extension/__mocks__/vscode.ts")
+              replacement: path.resolve(__dirname, "tests/extension/__mocks__/vscode.ts")
             }
           ]
         },
         test: {
           name: "extension",
-          include: ["tests/old-extension/**/*.test.ts", "tests/extension/**/*.test.ts"]
+          include: ["tests/extension/**/*.test.ts"]
         }
       },
       {

@@ -1,3 +1,4 @@
+import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import { requireIdle } from "@/backend/actions/rebase";
@@ -11,7 +12,7 @@ import { requireCurrentBranch, resolveCommit } from "@/backend/utils/validation"
 
 async function requireClean(git: SimpleGit) {
   if (!(await git.status()).isClean()) {
-    throw new Error("Commit or stash your changes before changing revisions.");
+    throw new Error(l10n.t("Commit or stash your changes before changing revisions."));
   }
 }
 
@@ -28,7 +29,9 @@ export async function runWorkflowAction(
       await requireIdle(git);
       const current = await loadSubmodulePlan(git, action.plan.path, binary);
       if (JSON.stringify(current) !== JSON.stringify(action.plan)) {
-        throw new Error("The submodule or parent revision changed. Review its pointer again.");
+        throw new Error(
+          l10n.t("The submodule or parent revision changed. Review its pointer again.")
+        );
       }
       const target = action.operation === "stage" ? current.head : current.committed;
       if (target === null) {
@@ -42,7 +45,7 @@ export async function runWorkflowAction(
       const { plan } = action;
       const current = await loadSyncPlan(git, plan.branch, plan.remote, plan.remoteBranch);
       if (current.local !== plan.local || current.remoteHead !== plan.remoteHead) {
-        throw new Error("The local or fetched remote branch changed. Refresh the preview.");
+        throw new Error(l10n.t("The local or fetched remote branch changed. Refresh the preview."));
       }
       if (action.operation === "pull") {
         await requireIdle(git);
@@ -50,14 +53,18 @@ export async function runWorkflowAction(
         await requireClean(git);
         if (!current.canFastForward || !current.remoteHead) {
           throw new Error(
-            "This branch cannot be fast-forwarded. Inspect its incoming and outgoing commits."
+            l10n.t(
+              "This branch cannot be fast-forwarded. Inspect its incoming and outgoing commits."
+            )
           );
         }
         // Merge the reviewed commit. A second fetch must not silently expand the plan.
         await git.raw(["merge", "--ff-only", "--no-autostash", current.remoteHead]);
       } else {
         if (action.force && !plan.remoteHead) {
-          throw new Error("Fetch and inspect the remote branch before a force-with-lease push.");
+          throw new Error(
+            l10n.t("Fetch and inspect the remote branch before a force-with-lease push.")
+          );
         }
         // An object ID fixes the exact source even if another Git client moves the branch.
         await git.raw([
@@ -95,7 +102,9 @@ export async function runWorkflowAction(
             )
         )
       ) {
-        throw new Error("The branch cleanup plan changed. Review the merged branches again.");
+        throw new Error(
+          l10n.t("The branch cleanup plan changed. Review the merged branches again.")
+        );
       }
       let deleted = 0;
       try {
@@ -110,7 +119,11 @@ export async function runWorkflowAction(
         }
       } catch (error) {
         throw new Error(
-          `Deleted ${deleted} branches before stopping: ${error instanceof Error ? error.message : String(error)}`,
+          l10n.t(
+            "Deleted {0} branches before stopping: {1}",
+            deleted,
+            error instanceof Error ? error.message : String(error)
+          ),
           { cause: error }
         );
       }
@@ -125,10 +138,10 @@ export async function runWorkflowAction(
         resolveCommit(git, action.bad)
       ]);
       if (head !== action.expectedHead) {
-        throw new Error("The checkout changed. Review the bisect range again.");
+        throw new Error(l10n.t("The checkout changed. Review the bisect range again."));
       }
       if (good === bad) {
-        throw new Error("Choose different good and bad commits.");
+        throw new Error(l10n.t("Choose different good and bad commits."));
       }
       await runGit(git, ["bisect", "start", bad, good, "--"], binary, {
         ...process.env,
@@ -139,14 +152,16 @@ export async function runWorkflowAction(
     case "bisectMark": {
       const current = await loadBisect(git);
       if (!current || current.id !== action.state.id) {
-        throw new Error("The bisect session changed. Refresh its status.");
+        throw new Error(l10n.t("The bisect session changed. Refresh its status."));
       }
       if ((await loadOperation(git)) !== null) {
-        throw new Error("Finish the Git operation in progress before continuing bisect.");
+        throw new Error(l10n.t("Finish the Git operation in progress before continuing bisect."));
       }
       await requireClean(git);
       if (action.mark !== "reset" && (current.firstBad || current.ambiguous)) {
-        throw new Error("This bisect is complete. Reset it to return to the original checkout.");
+        throw new Error(
+          l10n.t("This bisect is complete. Reset it to return to the original checkout.")
+        );
       }
       const mark =
         action.mark === "good" || action.mark === "bad" ? current.terms[action.mark] : action.mark;

@@ -2,15 +2,6 @@ import { simpleGit } from "simple-git";
 
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 
-export async function getGitVersion(gitPath: string): Promise<string | null> {
-  try {
-    const result = await simpleGit({ binary: gitPath }).version();
-    return `${result.major}.${result.minor}.${result.patch}`;
-  } catch {
-    return null;
-  }
-}
-
 export async function isGitRepository(repoPath: string, gitPath: string): Promise<boolean> {
   try {
     return await simpleGit({ baseDir: repoPath, binary: gitPath }).checkIsRepo();

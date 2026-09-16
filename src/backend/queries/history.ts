@@ -1,3 +1,4 @@
+import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import type {
@@ -48,14 +49,14 @@ export async function loadHistory(
         Number.isNaN(Date.parse(value)) ||
         new Date(value).toISOString().slice(0, 10) !== value)
     ) {
-      throw new Error("Enter dates as YYYY-MM-DD.");
+      throw new Error(l10n.t("Enter dates as YYYY-MM-DD."));
     }
     if (value) {
       args.push("--" + name + "=" + value + (name === "until" ? "T23:59:59" : "T00:00:00"));
     }
   }
   if (filter.since && filter.until && filter.since > filter.until) {
-    throw new Error("The start date must come before the end date.");
+    throw new Error(l10n.t("The start date must come before the end date."));
   }
   args.push("--fixed-strings", "--regexp-ignore-case");
   if (filter.author) {
@@ -112,7 +113,7 @@ export async function loadComparison(
   const [a, b] = await Promise.all([resolveCommit(git, left), resolveCommit(git, right)]);
   const base = mergeBase ? (await git.raw(["merge-base", a, b])).trim() : a;
   if (!base) {
-    throw new Error("These revisions do not have a common ancestor.");
+    throw new Error(l10n.t("These revisions do not have a common ancestor."));
   }
   const [changes, leftOnly, rightOnly] = await Promise.all([
     git.raw([
@@ -171,7 +172,7 @@ export async function sourceFile(git: SimpleGit, source: string, file: string) {
   const line = await git.raw(["ls-tree", "-z", hash, "--", literalPath(file)]);
   const match = /^(100644|100755|120000) blob ([a-f0-9]{40,64})\t/.exec(line);
   if (!match) {
-    throw new Error("This revision does not contain that file.");
+    throw new Error(l10n.t("This revision does not contain that file."));
   }
   return { hash, mode: match[1]!, blob: match[2]! };
 }
@@ -207,20 +208,20 @@ export async function loadRestorePlan(
 export async function loadStagedPlan(git: SimpleGit, target: string): Promise<StagedPlan> {
   const [head, hash] = await Promise.all([resolveCommit(git, "HEAD"), resolveCommit(git, target)]);
   if ((await git.raw(["merge-base", head, hash])).trim() !== hash) {
-    throw new Error("Choose a commit on the current branch to fix up.");
+    throw new Error(l10n.t("Choose a commit on the current branch to fix up."));
   }
   const files = (await git.raw(["diff", "--cached", "--name-only", "-z", "--"]))
     .split("\0")
     .filter(Boolean);
   if (files.length === 0) {
-    throw new Error("Stage the changes to include in the fixup commit first.");
+    throw new Error(l10n.t("Stage the changes to include in the fixup commit first."));
   }
   return { head, target: hash, tree: (await git.raw(["write-tree"])).trim(), files };
 }
 
 export async function loadBatchPlan(git: SimpleGit, hashes: string[]): Promise<BatchPlan> {
   if (hashes.length === 0 || hashes.length > 100 || new Set(hashes).size !== hashes.length) {
-    throw new Error("Select between 1 and 100 distinct commits.");
+    throw new Error(l10n.t("Select between 1 and 100 distinct commits."));
   }
   const entries = await Promise.all(
     hashes.map(

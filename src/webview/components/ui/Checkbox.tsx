@@ -12,7 +12,7 @@ export function Checkbox({ label, ...props }: CheckboxProps) {
       <span class="relative flex size-4 items-center justify-center">
         <input
           type="checkbox"
-          class="peer size-4 cursor-pointer appearance-none rounded-sm bg-checkbox outline-1 outline-checkbox-border checked:bg-checkbox-checked checked:outline-checkbox-checked focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus disabled:cursor-not-allowed"
+          class="peer size-4 cursor-pointer appearance-none rounded-sm bg-checkbox outline-1 outline-line checked:bg-checkbox-checked checked:outline-checkbox-checked focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus disabled:cursor-not-allowed"
           {...props}
         />
         <Icon class="pointer-events-none absolute size-3.5 text-checkbox-check opacity-0 peer-checked:opacity-100">

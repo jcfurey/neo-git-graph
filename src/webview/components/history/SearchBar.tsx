@@ -3,6 +3,7 @@ import { useEffect, useState } from "preact/hooks";
 import type { HistoryFilter } from "@/backend/types";
 import { Button } from "@/webview/components/ui/Button";
 import { Checkbox } from "@/webview/components/ui/Checkbox";
+import { INPUT_CLASS } from "@/webview/components/ui/Input";
 import { Select } from "@/webview/components/ui/Select";
 import { openFormDialog } from "@/webview/lib/actions";
 import {
@@ -15,7 +16,7 @@ import {
   setHistoryFilter
 } from "@/webview/lib/navigation";
 
-import { INPUT_CLASS, TextField } from "./QueryControls";
+import { TextField } from "./QueryControls";
 
 export function SearchBar() {
   const active = historyFilter.value;

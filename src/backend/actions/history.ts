@@ -2,6 +2,7 @@ import { lstat, mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import { requireIdle, withRecoveryEditor } from "@/backend/actions/rebase";
@@ -24,7 +25,7 @@ export async function runHistoryAction(
       const { plan } = action;
       const file = await sourceFile(git, plan.source, plan.sourcePath);
       if ((await fileSnapshot(git, plan.destination)) !== plan.snapshot) {
-        throw new Error("The file changed. Preview the restore again.");
+        throw new Error(l10n.t("The file changed. Preview the restore again."));
       }
       const destination = await checkedWorktreePath(git, plan.destination);
       return {
@@ -60,7 +61,9 @@ export async function runHistoryAction(
       await requireIdle(git);
       const selected = (await submoduleLinks(git)).find((item) => item.path === action.path);
       if (!selected || selected.recorded !== action.recorded) {
-        throw new Error("The recorded submodule revision changed. Refresh the workspace overview.");
+        throw new Error(
+          l10n.t("The recorded submodule revision changed. Refresh the workspace overview.")
+        );
       }
       repoFile(selected.path);
       if (action.operation !== "sync") {
@@ -84,7 +87,9 @@ export async function runHistoryAction(
       const { plan } = action;
       const file = await sourceFile(git, plan.source, plan.sourcePath);
       if ((await fileSnapshot(git, plan.destination)) !== plan.snapshot) {
-        throw new Error("The file or its staged version changed. Preview the restore again.");
+        throw new Error(
+          l10n.t("The file or its staged version changed. Preview the restore again.")
+        );
       }
       const directory = await mkdtemp(path.join(os.tmpdir(), "neo-git-graph-restore-"));
       const env = { ...process.env, GIT_INDEX_FILE: path.join(directory, "index") };
@@ -120,7 +125,9 @@ export async function runHistoryAction(
       await requireIdle(git);
       const current = await loadStagedPlan(git, action.plan.target);
       if (current.head !== action.plan.head || current.tree !== action.plan.tree) {
-        throw new Error("HEAD or the staged changes changed. Preview the fixup commit again.");
+        throw new Error(
+          l10n.t("HEAD or the staged changes changed. Preview the fixup commit again.")
+        );
       }
       await runGit(git, ["commit", "--fixup=" + current.target], binary);
       return;
@@ -129,7 +136,7 @@ export async function runHistoryAction(
       await requireIdle(git);
       await requireCurrentBranch(git, action.plan.branch, action.plan.head);
       if (!(await git.status()).isClean()) {
-        throw new Error("Commit or stash your changes before applying commits.");
+        throw new Error(l10n.t("Commit or stash your changes before applying commits."));
       }
       const current = await loadBatchPlan(
         git,
@@ -142,7 +149,7 @@ export async function runHistoryAction(
           action.mainline < 1 ||
           merges.some((entry) => entry.parentHashes.length < action.mainline))
       ) {
-        throw new Error("Choose a valid mainline parent for the selected merge commits.");
+        throw new Error(l10n.t("Choose a valid mainline parent for the selected merge commits."));
       }
       await withRecoveryEditor(
         git,

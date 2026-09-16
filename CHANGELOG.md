@@ -12,10 +12,16 @@
 ### Changed
 
 - Cancel superseded repository queries, restore focus after dialogs, and adapt controls to narrow windows.
+- Localize the backend's error messages through `@vscode/l10n`, with Simplified and Traditional Chinese translations.
+- Reuse the workspace repository scan between refreshes until a repository appears or vanishes.
+- Remove the unused pre-RPC activation path and its duplicate configuration module.
+- Share one field style between dialogs and pages, and replace the header's text glyphs with icons.
 
 ### Fixed
 
 - Include staged-only submodule pointer changes in the workspace filter.
+- Report a diff that VS Code cannot open instead of leaving the request pending.
+- Keep dialog fields and checkboxes visible on themes whose input and dialog backgrounds match.
 
 ## [0.6.0] - 2026-08-25
 

@@ -1,3 +1,4 @@
+import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import type { ActionPayload } from "@/backend/types";
@@ -11,7 +12,7 @@ export async function pushBranch(git: SimpleGit, input: ActionPayload<"pushBranc
     input.expectedRemoteHash !== undefined &&
     !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(input.expectedRemoteHash)
   ) {
-    throw new Error("Fetch and inspect the remote branch before a force-with-lease push.");
+    throw new Error(l10n.t("Fetch and inspect the remote branch before a force-with-lease push."));
   }
   await git.raw([
     "push",
@@ -41,7 +42,7 @@ export async function pullBranch(git: SimpleGit, input: ActionPayload<"pullBranc
   await requireBranchName(git, input.remoteBranch);
   const head = (await git.raw(["symbolic-ref", "--quiet", "HEAD"])).trim();
   if (head !== `refs/heads/${input.branchName}`) {
-    throw new Error(`Check out branch '${input.branchName}' before pulling it.`);
+    throw new Error(l10n.t("Check out branch '{0}' before pulling it.", input.branchName));
   }
   await git.raw([
     "pull",

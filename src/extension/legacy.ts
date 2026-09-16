@@ -1,8 +1,8 @@
 import * as vscode from "vscode";
 
 import { gitClientFactory } from "@/backend/gitClient";
+import { extConfig } from "@/extension/config";
 import { AvatarManager } from "@/old-extension/avatarManager";
-import { config } from "@/old-extension/config";
 import { DiffDocProvider } from "@/old-extension/diffDocProvider";
 import { ExtensionState } from "@/old-extension/extensionState";
 import { registerMessageHandlers } from "@/old-extension/messageHandler";
@@ -12,9 +12,9 @@ import type { WebviewBridge } from "@/old-extension/webviewBridge";
 
 export function createMessageProtocol(ctx: vscode.ExtensionContext) {
   const extensionState = new ExtensionState(ctx);
-  const avatarManager = new AvatarManager(config.gitPath, extensionState);
-  const gitClient = gitClientFactory(extensionState.getLastActiveRepo() ?? "", config.gitPath());
-  const repoManager = createRepoManager(extensionState, config);
+  const avatarManager = new AvatarManager(extConfig.gitPath, extensionState);
+  const gitClient = gitClientFactory(extensionState.getLastActiveRepo() ?? "", extConfig.gitPath());
+  const repoManager = createRepoManager(extensionState);
 
   ctx.subscriptions.push(
     vscode.commands.registerCommand("neo-git-graph.clearAvatarCache", () => {
@@ -23,7 +23,7 @@ export function createMessageProtocol(ctx: vscode.ExtensionContext) {
     vscode.workspace.registerTextDocumentContentProvider(
       DiffDocProvider.scheme,
       new DiffDocProvider(gitClient.getInstance, (repo) =>
-        gitClientFactory(repo, config.gitPath()).getInstance()
+        gitClientFactory(repo, extConfig.gitPath()).getInstance()
       )
     )
   );
@@ -36,7 +36,7 @@ export function createMessageProtocol(ctx: vscode.ExtensionContext) {
       avatarManager.registerBridge(bridge.post);
 
       const { onPanelShown, dispose: disposeQueries } = registerMessageHandlers(bridge, {
-        config,
+        config: extConfig,
         gitClient,
         repoManager,
         extensionState,

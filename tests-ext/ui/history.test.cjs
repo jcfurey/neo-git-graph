@@ -156,7 +156,7 @@ async function findGraph() {
 }
 async function button(text, scope = '(document.querySelector("[role=dialog]") || document)') {
   if (["Remotes", "Stashes", "Worktrees"].includes(text)) {
-    await button("Repository Tools ▾", 'document.querySelector("header")');
+    await button("Repository Tools", 'document.querySelector("header")');
     await menu(text);
     return;
   }
@@ -546,7 +546,7 @@ suite("Git Graph workflow UI", function () {
     git(["reset", "--hard", "HEAD^"], history);
     await button("Refresh");
     await delay(400);
-    await button("Repository Tools ▾");
+    await button("Repository Tools");
     await menu("Reflog & Recovery");
     await until(
       () =>
@@ -644,7 +644,7 @@ suite("Git Graph workflow UI", function () {
         ),
       "keyboard focus on the next commit"
     );
-    await button("Repository Tools ▾");
+    await button("Repository Tools");
     await menu("Git Activity");
     assert.equal(
       await graph.evaluate(
@@ -809,7 +809,7 @@ suite("Git Graph workflow UI", function () {
     git(["checkout", "main"], local);
     await button("Refresh");
     await delay(400);
-    await button("Repository Tools ▾");
+    await button("Repository Tools");
     await menu("Clean Up Merged Branches");
     await until(
       () =>
@@ -852,7 +852,7 @@ suite("Git Graph workflow UI", function () {
     git(["remote", "add", "origin", path.join(broken, "missing-remote")], broken);
     await openRepo(broken);
     await openRepo(local);
-    await button("Repository Tools ▾");
+    await button("Repository Tools");
     await menu("Workspace Fetch & Update");
     for (const dir of [local, broken]) {
       await until(
@@ -872,7 +872,7 @@ suite("Git Graph workflow UI", function () {
       "independent fetch results"
     );
     await button("Close");
-    await button("Repository Tools ▾");
+    await button("Repository Tools");
     await menu("Workspace Fetch & Update");
     assert.equal(
       await graph.evaluate('document.querySelector("[role=dialog]").innerText.includes("Failed")'),

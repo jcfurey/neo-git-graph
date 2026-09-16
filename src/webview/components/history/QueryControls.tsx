@@ -1,11 +1,9 @@
 import type { ComponentChildren } from "preact";
 
 import { Button } from "@/webview/components/ui/Button";
+import { INPUT_CLASS } from "@/webview/components/ui/Input";
 import { Loading } from "@/webview/components/ui/Loading";
 import { copyToClipboard } from "@/webview/lib/copy";
-
-export const INPUT_CLASS =
-  "min-w-0 w-full rounded-sm border border-dropdown-border bg-input px-2 py-1 text-input-fg focus:outline-1 focus:outline-focus";
 
 export function TextField({
   label,

@@ -1,12 +1,8 @@
 import * as assert from "node:assert";
-import * as fs from "node:fs";
 
-import { Config } from "@/old-extension/config";
 import { ExtensionState } from "@/old-extension/extensionState";
 import { createRepoManager } from "@/old-extension/repoManager";
 import { GitRepoSet } from "@/types";
-
-import { makeRepo } from "@tests/backend/helpers";
 
 function makeManager(initialRepos: GitRepoSet = {}) {
   const store = { repos: { ...initialRepos } };
@@ -18,11 +14,7 @@ function makeManager(initialRepos: GitRepoSet = {}) {
       saveCount++;
     }
   };
-  const config = { gitPath: () => "git" };
-  const manager = createRepoManager(
-    extensionState as unknown as ExtensionState,
-    config as unknown as Config
-  );
+  const manager = createRepoManager(extensionState as unknown as ExtensionState);
   return { manager, store, getSaveCount: () => saveCount };
 }
 
@@ -38,6 +30,12 @@ suite("repoManager", () => {
       const { manager, getSaveCount } = makeManager();
       manager.addRepo("/ws/a");
       assert.strictEqual(getSaveCount(), 1);
+    });
+
+    test("reports a repo that is already known", () => {
+      const { manager, getSaveCount } = makeManager({ "/ws/a": { columnWidths: null } });
+      assert.strictEqual(manager.addRepo("/ws/a"), false);
+      assert.strictEqual(getSaveCount(), 0);
     });
   });
 
@@ -112,33 +110,6 @@ suite("repoManager", () => {
     });
   });
 
-  suite("isDirectoryWithinRepos", () => {
-    const initial = {
-      "/ws/project": { columnWidths: null },
-      "/ws/other": { columnWidths: null }
-    };
-
-    test("returns true for an exact repo path", () => {
-      const { manager } = makeManager(initial);
-      assert.strictEqual(manager.isDirectoryWithinRepos("/ws/project"), true);
-    });
-
-    test("returns true for a subdirectory of a repo", () => {
-      const { manager } = makeManager(initial);
-      assert.strictEqual(manager.isDirectoryWithinRepos("/ws/project/src"), true);
-    });
-
-    test("returns false for an unrelated path", () => {
-      const { manager } = makeManager(initial);
-      assert.strictEqual(manager.isDirectoryWithinRepos("/ws/unrelated"), false);
-    });
-
-    test("returns false for a sibling with a shared prefix", () => {
-      const { manager } = makeManager(initial);
-      assert.strictEqual(manager.isDirectoryWithinRepos("/ws/projectother"), false);
-    });
-  });
-
   suite("removeReposWithinFolder", () => {
     test("removes repos at the exact folder path and returns true", () => {
       const { manager, store } = makeManager({
@@ -171,77 +142,6 @@ suite("repoManager", () => {
       });
       manager.removeReposWithinFolder("/ws/proj");
       assert.deepStrictEqual(Object.keys(store.repos), ["/ws/projectx"]);
-    });
-  });
-
-  suite("sendRepos / registerViewCallback", () => {
-    test("calls the view callback with sorted repos", () => {
-      const { manager } = makeManager({
-        "/z": { columnWidths: null },
-        "/a": { columnWidths: null }
-      });
-      let cbRepos: GitRepoSet | null = null;
-      manager.registerViewCallback((r) => {
-        cbRepos = r;
-      });
-      manager.sendRepos();
-      assert.deepStrictEqual(Object.keys(cbRepos!), ["/a", "/z"]);
-    });
-
-    test("does not call the callback after deregistering", () => {
-      const { manager } = makeManager({ "/a": { columnWidths: null } });
-      let called = false;
-      manager.registerViewCallback(() => {
-        called = true;
-      });
-      manager.deregisterViewCallback();
-      manager.sendRepos();
-      assert.strictEqual(called, false);
-    });
-  });
-
-  suite("checkReposExist", () => {
-    let repo: string;
-
-    setup(() => {
-      repo = makeRepo();
-    });
-
-    teardown(async () => {
-      if (fs.existsSync(repo)) {
-        await fs.promises.rm(repo, {
-          recursive: true,
-          force: true,
-          maxRetries: 10,
-          retryDelay: 100
-        });
-      }
-    });
-
-    test("returns false and keeps repos when all repos still exist", async () => {
-      const { manager, store } = makeManager({ [repo]: { columnWidths: null } });
-      const changed = await manager.checkReposExist();
-      assert.strictEqual(changed, false);
-      assert.ok(Object.keys(store.repos).includes(repo));
-    });
-
-    test("returns true and removes repos that no longer exist", async () => {
-      await fs.promises.rm(repo, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
-      const { manager, store } = makeManager({ [repo]: { columnWidths: null } });
-      const changed = await manager.checkReposExist();
-      assert.strictEqual(changed, true);
-      assert.ok(!Object.keys(store.repos).includes(repo));
-    });
-
-    test("calls sendRepos when repos are removed", async () => {
-      await fs.promises.rm(repo, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
-      const { manager } = makeManager({ [repo]: { columnWidths: null } });
-      let called = false;
-      manager.registerViewCallback(() => {
-        called = true;
-      });
-      await manager.checkReposExist();
-      assert.strictEqual(called, true);
     });
   });
 });

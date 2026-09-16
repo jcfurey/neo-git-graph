@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "preact/hooks";
 
-import { Icon } from "./Icons";
+import { ChevronDownIcon } from "./Icons";
 
 type DropdownOption = {
   label: string;
@@ -163,9 +163,7 @@ export function Dropdown({
           <span id={valueId} class="min-w-0 flex-1 truncate text-left">
             {selected?.label}
           </span>
-          <Icon class="shrink-0">
-            <path d="M7.976 10.072L12.333 5.715L12.953 6.333L8.284 11H7.666L3 6.333L3.619 5.715L7.976 10.072Z" />
-          </Icon>
+          <ChevronDownIcon class="shrink-0" />
         </button>
         {open && (
           <div class="absolute right-0 top-full z-10 mt-1 flex max-h-72 w-max min-w-full max-w-96 flex-col rounded-md border border-line bg-menu text-menu-fg shadow-md">

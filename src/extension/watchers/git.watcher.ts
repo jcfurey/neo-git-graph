@@ -6,6 +6,7 @@ import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { rpcNotify } from "@/extension/rpc/rpc-notify";
 import { createDebouncer, type FsWatcherEvent } from "@/extension/util/debounce";
 import { logger } from "@/extension/util/logger";
+import { invalidateWorkspaceScan } from "@/extension/workspace-scan";
 
 export function watchGitDir(): vscode.Disposable {
   const debouncer = createDebouncer();
@@ -21,6 +22,7 @@ export function watchGitDir(): vscode.Disposable {
 
 async function processGitDir(type: FsWatcherEvent, uri: vscode.Uri) {
   logger.info(`Git directory ${type}: ${uri.fsPath}`);
+  invalidateWorkspaceScan();
   const repoPath = normalizeRepoPath(path.dirname(uri.fsPath));
 
   if (type === "created") {

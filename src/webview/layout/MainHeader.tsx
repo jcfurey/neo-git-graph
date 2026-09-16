@@ -12,6 +12,7 @@ import { openStashes } from "@/webview/components/repository/StashManager";
 import { openWorktrees } from "@/webview/components/repository/WorktreeManager";
 import { Button } from "@/webview/components/ui/Button";
 import { Dropdown } from "@/webview/components/ui/Dropdown";
+import { ChevronDownIcon, RefreshIcon } from "@/webview/components/ui/Icons";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
 import {
   openContextMenu,
@@ -63,8 +64,9 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
       />
       <div class="ml-auto flex flex-wrap items-center gap-2">
         <ActivityIndicator />
-        <Button aria-label={window.l10n.refresh} onClick={refresh}>
-          ↻ {window.l10n.refresh}
+        <Button onClick={refresh}>
+          <RefreshIcon class="size-3.5" />
+          {window.l10n.refresh}
         </Button>
         <Button disabled={!repo} onClick={() => openRemoteAction("fetch")}>
           {window.l10n.fetch}
@@ -113,7 +115,8 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
             ])
           }
         >
-          {window.l10n.repositoryTools} ▾
+          {window.l10n.repositoryTools}
+          <ChevronDownIcon class="size-3.5" />
         </Button>
       </div>
     </header>

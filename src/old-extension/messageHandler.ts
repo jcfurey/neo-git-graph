@@ -17,15 +17,16 @@ import { commitDetails } from "@/backend/queries/commitDetails";
 import { loadBranches } from "@/backend/queries/loadBranches";
 import { loadCommits } from "@/backend/queries/loadCommits";
 import { loadRemotes } from "@/backend/queries/loadRemotes";
-import { findGitRepos } from "@/backend/queries/repoSearch";
 import { repositoryQuery } from "@/backend/queries/repository";
 import type { ActionRequest, GitFileChangeType, QueryResult } from "@/backend/types";
 import { getSubmodulePaths } from "@/backend/utils/git";
 import { isRepoWithinPath, normalizeRepoPath } from "@/backend/utils/repoPath";
 import { abbrevCommit } from "@/backend/utils/string";
+import type { Config } from "@/extension/config";
+import { logger } from "@/extension/util/logger";
 import { selectWatchedRepo } from "@/extension/watchers/git-repo.watcher";
+import { invalidateWorkspaceScan, scanWorkspaceRepos } from "@/extension/workspace-scan";
 import { AvatarManager } from "@/old-extension/avatarManager";
-import type { Config } from "@/old-extension/config";
 import { encodeDiffDocUri } from "@/old-extension/diffDocProvider";
 import { ExtensionState } from "@/old-extension/extensionState";
 import type { ResponseMessage } from "@/types";
@@ -51,18 +52,21 @@ function viewDiff(
         ? vscode.l10n.t("Deleted in {0}", abbrevHash)
         : abbrevCommit(commitHash) + "^ ↔ " + abbrevCommit(commitHash)) +
     ")";
-  return new Promise<boolean>((resolve) => {
-    vscode.commands
-      .executeCommand(
-        "vscode.diff",
-        encodeDiffDocUri(repo, oldFilePath, commitHash + "^"),
-        encodeDiffDocUri(repo, newFilePath, commitHash),
-        title,
-        { preview: true }
-      )
-      .then(() => resolve(true))
-      .then(() => resolve(false));
-  });
+  return Promise.resolve(
+    vscode.commands.executeCommand(
+      "vscode.diff",
+      encodeDiffDocUri(repo, oldFilePath, commitHash + "^"),
+      encodeDiffDocUri(repo, newFilePath, commitHash),
+      title,
+      { preview: true }
+    )
+  ).then(
+    () => true,
+    (error: unknown) => {
+      logger.error(`Unable to open the diff of ${newFilePath} at ${abbrevHash}`, error);
+      return false;
+    }
+  );
 }
 
 export function registerMessageHandlers(
@@ -114,7 +118,9 @@ export function registerMessageHandlers(
           )
         ) {
           throw new Error(
-            "Another Git operation is running in this repository. Wait for it to finish."
+            vscode.l10n.t(
+              "Another Git operation is running in this repository. Wait for it to finish."
+            )
           );
         }
         busyRepos.set(msg.repo, recursive);
@@ -186,10 +192,10 @@ export function registerMessageHandlers(
       );
     }
     if (msg.action.kind === "submodule") {
+      invalidateWorkspaceScan();
       for (const repo of await getSubmodulePaths(msg.repo, config.gitPath())) {
         repoManager.addRepo(normalizeRepoPath(repo));
       }
-      repoManager.sendRepos();
     }
   });
 
@@ -237,11 +243,7 @@ export function registerMessageHandlers(
                     msg.repo,
                     ...viewedRepos,
                     ...Object.keys(repoManager.getRepos()),
-                    ...(await findGitRepos(
-                      (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath),
-                      config.gitPath(),
-                      config.maxDepthOfRepoSearch()
-                    ))
+                    ...(await scanWorkspaceRepos(config.gitPath(), config.maxDepthOfRepoSearch()))
                   ])
                 ]
               : [],

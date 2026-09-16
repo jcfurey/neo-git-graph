@@ -15,7 +15,7 @@ export function Select({ options, value, onChange, id, "aria-label": label }: Se
     <select
       id={id}
       aria-label={label}
-      class="w-full cursor-pointer rounded-sm bg-dropdown px-2 py-1 text-dropdown-fg outline-1 outline-dropdown-border focus:outline-focus"
+      class="w-full cursor-pointer rounded-sm border border-input-border bg-dropdown px-2 py-1 text-dropdown-fg focus:outline-1 focus:outline-focus"
       value={value}
       onChange={(event) => onChange(event.currentTarget.value)}
     >

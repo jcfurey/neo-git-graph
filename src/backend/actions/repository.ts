@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import { runHistoryAction } from "@/backend/actions/history";
@@ -33,7 +34,7 @@ async function findStash(git: SimpleGit, stash: StashDetails) {
   }
   const matches = stashes.filter((item) => item.hash === stash.hash);
   if (matches.length !== 1) {
-    throw new Error("The stash list changed. Reload it before continuing.");
+    throw new Error(l10n.t("The stash list changed. Reload it before continuing."));
   }
   return matches[0]!;
 }
@@ -120,20 +121,20 @@ export async function runRepositoryAction(
         current.id !== action.operation.id ||
         current.kind !== action.operation.kind
       ) {
-        throw new Error("The operation changed. Refresh its status before continuing.");
+        throw new Error(l10n.t("The operation changed. Refresh its status before continuing."));
       }
       if (action.resolution === "skip" && current.kind === "merge") {
-        throw new Error("A merge cannot be skipped. Continue or abort it.");
+        throw new Error(l10n.t("A merge cannot be skipped. Continue or abort it."));
       }
       if (action.resolution === "continue" && (await git.status()).conflicted.length > 0) {
-        throw new Error("Resolve and stage the conflicted files before continuing.");
+        throw new Error(l10n.t("Resolve and stage the conflicted files before continuing."));
       }
       await withRecoveryEditor(git, [current.kind, `--${action.resolution}`], binary);
       return;
     }
     case "conflict": {
       if (!(await git.status()).conflicted.includes(action.path)) {
-        throw new Error("This file is no longer conflicted. Refresh the graph.");
+        throw new Error(l10n.t("This file is no longer conflicted. Refresh the graph."));
       }
       if (action.operation === "stage") {
         await git.raw(["add", "--", action.path]);
@@ -144,7 +145,7 @@ export async function runRepositoryAction(
     }
     case "addWorktree": {
       if (!path.isAbsolute(action.path)) {
-        throw new Error("Enter an absolute folder path for the worktree.");
+        throw new Error(l10n.t("Enter an absolute folder path for the worktree."));
       }
       await requireBranchName(git, action.branch);
       const start = action.newBranch ? await resolveCommit(git, action.startPoint) : action.branch;
@@ -163,17 +164,17 @@ export async function runRepositoryAction(
       const worktrees = await loadWorktrees(git);
       const worktree = worktrees.find((entry) => entry.path === normalizeRepoPath(action.path));
       if (worktree === undefined || worktree.bare || worktree.prunable) {
-        throw new Error("This worktree is no longer available. Refresh the worktree list.");
+        throw new Error(l10n.t("This worktree is no longer available. Refresh the worktree list."));
       }
       if (action.kind === "openWorktree") {
         return { kind: "worktree", path: worktree.path };
       }
       const current = normalizeRepoPath((await git.revparse(["--show-toplevel"])).trim());
       if (worktree.path === current || worktrees[0]?.path === worktree.path) {
-        throw new Error("The current or main worktree cannot be removed here.");
+        throw new Error(l10n.t("The current or main worktree cannot be removed here."));
       }
       if (worktree.head !== action.expectedHead) {
-        throw new Error("The worktree changed. Inspect it before removing it.");
+        throw new Error(l10n.t("The worktree changed. Inspect it before removing it."));
       }
       await git.raw(["worktree", "remove", "--", worktree.path]);
       return;

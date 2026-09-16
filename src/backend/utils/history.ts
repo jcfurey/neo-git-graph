@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readlink } from "node:fs/promises";
 import path from "node:path";
 
+import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import type { HistoryEntry, HistoryPage } from "@/backend/types";
@@ -11,7 +12,7 @@ export const HISTORY_FORMAT = "NGG-HISTORY%x00%H%x00%P%x00%an%x00%ae%x00%at%x00%
 
 export function pageOffset(offset: number) {
   if (!Number.isSafeInteger(offset) || offset < 0) {
-    throw new Error("Invalid history page.");
+    throw new Error(l10n.t("Invalid history page."));
   }
   return offset;
 }
@@ -28,7 +29,7 @@ export function parseHistory(text: string): HistoryEntry[] {
     if (token === "NGG-HISTORY" || token === "\nNGG-HISTORY") {
       const [hash, parents, author, email, date, message] = fields.slice(index, index + 6);
       if (!hash || !/^[0-9a-f]{40,64}$/.test(hash) || message === undefined) {
-        throw new Error("Git returned an incomplete history record.");
+        throw new Error(l10n.t("Git returned an incomplete history record."));
       }
       entries.push({
         hash,
@@ -43,7 +44,7 @@ export function parseHistory(text: string): HistoryEntry[] {
     } else {
       const status = token.replace(/^\n/, "");
       if (!/^[ACDMRTUXB][0-9]*$/.test(status) || entries.length === 0) {
-        throw new Error("Git returned an unexpected history record.");
+        throw new Error(l10n.t("Git returned an unexpected history record."));
       }
       const before = fields[index++]!;
       const after = /^[RC]/.test(status) ? fields[index++]! : before;
@@ -67,7 +68,7 @@ export function repoFile(value: string) {
       .split("/")
       .some((part) => !part || part === "." || part === ".." || part.toLowerCase() === ".git")
   ) {
-    throw new Error("Choose a file path inside the repository.");
+    throw new Error(l10n.t("Choose a file path inside the repository."));
   }
   return file;
 }
@@ -86,7 +87,7 @@ export async function checkedWorktreePath(git: SimpleGit, file: string) {
       // eslint-disable-next-line no-await-in-loop
       const stat = await lstat(directory);
       if (!stat.isDirectory() || stat.isSymbolicLink()) {
-        throw new Error("A parent of this file is not a normal directory.");
+        throw new Error(l10n.t("A parent of this file is not a normal directory."));
       }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
@@ -103,7 +104,7 @@ export async function fileSnapshot(git: SimpleGit, file: string) {
   try {
     const stat = await lstat(absolute);
     if (!stat.isFile() && !stat.isSymbolicLink()) {
-      throw new Error("Choose a file, not a directory.");
+      throw new Error(l10n.t("Choose a file, not a directory."));
     }
     digest.update(String(stat.mode));
     digest.update(stat.isSymbolicLink() ? await readlink(absolute) : await readFile(absolute));

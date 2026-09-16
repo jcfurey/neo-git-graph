@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 
 import { gitClientFactory } from "@/backend/gitClient";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
-import { config } from "@/old-extension/config";
+import { extConfig } from "@/extension/config";
 
 export function registerFileHistoryCommand(
   ctx: vscode.ExtensionContext,
@@ -17,7 +17,7 @@ export function registerFileHistoryCommand(
         if (!file || !["file", "vscode-remote"].includes(file.scheme)) {
           throw new Error(vscode.l10n.t("Select a workspace file to view its history."));
         }
-        const git = gitClientFactory(path.dirname(file.fsPath), config.gitPath()).getInstance();
+        const git = gitClientFactory(path.dirname(file.fsPath), extConfig.gitPath()).getInstance();
         const repo = normalizeRepoPath(
           (await git.raw(["rev-parse", "--show-toplevel"])).replace(/\n$/, "")
         );
