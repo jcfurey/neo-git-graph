@@ -156,7 +156,7 @@ async function findGraph() {
 }
 async function button(text, scope = '(document.querySelector("[role=dialog]") || document)') {
   if (["Remotes", "Stashes", "Worktrees"].includes(text)) {
-    await button("Repository Tools", 'document.querySelector("header")');
+    await button("Settings & Tools", 'document.querySelector("header")');
     await menu(text);
     return;
   }
@@ -546,7 +546,7 @@ suite("Git Graph workflow UI", function () {
     git(["reset", "--hard", "HEAD^"], history);
     await button("Refresh");
     await delay(400);
-    await button("Repository Tools");
+    await button("Settings & Tools");
     await menu("Reflog & Recovery");
     await until(
       () =>
@@ -644,7 +644,7 @@ suite("Git Graph workflow UI", function () {
         ),
       "keyboard focus on the next commit"
     );
-    await button("Repository Tools");
+    await button("Settings & Tools");
     await menu("Git Activity");
     assert.equal(
       await graph.evaluate(
@@ -809,7 +809,7 @@ suite("Git Graph workflow UI", function () {
     git(["checkout", "main"], local);
     await button("Refresh");
     await delay(400);
-    await button("Repository Tools");
+    await button("Settings & Tools");
     await menu("Clean Up Merged Branches");
     await until(
       () =>
@@ -852,7 +852,7 @@ suite("Git Graph workflow UI", function () {
     git(["remote", "add", "origin", path.join(broken, "missing-remote")], broken);
     await openRepo(broken);
     await openRepo(local);
-    await button("Repository Tools");
+    await button("Settings & Tools");
     await menu("Workspace Fetch & Update");
     for (const dir of [local, broken]) {
       await until(
@@ -872,7 +872,7 @@ suite("Git Graph workflow UI", function () {
       "independent fetch results"
     );
     await button("Close");
-    await button("Repository Tools");
+    await button("Settings & Tools");
     await menu("Workspace Fetch & Update");
     assert.equal(
       await graph.evaluate('document.querySelector("[role=dialog]").innerText.includes("Failed")'),
@@ -990,6 +990,63 @@ suite("Git Graph workflow UI", function () {
       deviceScaleFactor: 1,
       mobile: false
     });
+  });
+  test("lists branches, remotes, tags and stashes beside the graph and switches the graph from them", async () => {
+    const pane = directory();
+    init(pane);
+    commit("f", "pane-base", pane);
+    git(["branch", "pane-feature"], pane);
+    git(["tag", "-a", "pane-tag", "-m", "pane tag"], pane);
+    git(["update-ref", "refs/remotes/mirror/main", "HEAD"], pane);
+    fs.writeFileSync(path.join(pane, "f"), "stashed");
+    git(["stash", "push", "-m", "pane stash"], pane);
+    await openRepo(pane);
+    const nav = `document.querySelector('nav[aria-label="Branches"]')`;
+    if (!(await graph.evaluate("!!" + nav))) {
+      await button("Branches", 'document.querySelector("header")');
+    }
+    await until(
+      () =>
+        graph.evaluate(
+          `(() => { const nav = ${nav}; return !!nav && ["pane-feature", "mirror", "pane-tag", "pane stash"].every((text) => nav.innerText.includes(text)); })()`
+        ),
+      "branches pane contents"
+    );
+    await button("pane-feature", nav);
+    await until(
+      () => graph.evaluate(`!!document.querySelector('header button[title="pane-feature"]')`),
+      "graph filtered to pane-feature"
+    );
+    await button("Show All", nav);
+    await until(
+      () => graph.evaluate(`!!document.querySelector('header button[title="*"]')`),
+      "graph shows all branches"
+    );
+    const eye = `${nav}.querySelector('button[aria-pressed]')`;
+    await graph.evaluate(`${eye}.click()`);
+    await until(
+      () =>
+        graph.evaluate(
+          `${eye}.getAttribute('aria-pressed') === 'false' && ${nav}.innerText.includes('Hidden from the graph')`
+        ),
+      "remote branches hidden"
+    );
+    await button("main", `${nav}.querySelector('[aria-labelledby]:nth-of-type(2)')`);
+    await until(
+      () =>
+        graph.evaluate(
+          `${eye}.getAttribute('aria-pressed') === 'true' && !!document.querySelector('header button[title="remotes/mirror/main"]')`
+        ),
+      "remote branch selected and shown again"
+    );
+    await button("Show All", nav);
+    await graph.evaluate(`${nav}.querySelector('input').focus()`);
+    const page = connections[0];
+    const screenshot = await page.call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "branches-pane.png"),
+      Buffer.from(screenshot.data, "base64")
+    );
   });
 });
 

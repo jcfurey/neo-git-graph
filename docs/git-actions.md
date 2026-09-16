@@ -2,6 +2,14 @@
 
 All controls act on the repository selected in the graph, including initialized submodules. Clicking a repository's graph button in Source Control switches the graph to that repository. An action already running keeps its original repository; closing its dialog does not cancel Git.
 
+## Branches pane
+
+**Branches** toggles a pane beside the graph with four sections: local branches, remotes, tags and stashes. Each section collapses independently, and the filter box narrows all of them at once. Clicking a local or remote branch limits the graph to it, and **Show All** restores every branch. Clicking a tag opens the graph at that commit. Clicking a stash opens its diff.
+
+Every row carries the same context menu as the matching label in the graph, reached by right-click or its trailing menu button. The most common action is also inline: **Checkout** on a branch, **Fetch** on a remote, **Show in Graph** on a tag, and **Apply** or **Pop** on a stash. The **+** buttons create a branch at HEAD, add a remote, or save a stash.
+
+The eye button on the remotes section hides remote branches from the graph. The remote rows stay listed but dimmed, and selecting one shows remote branches again. The settings cog in the header holds the remaining tools, the same toggle, and a shortcut to the extension's settings.
+
 ## Remotes and tracking
 
 Open **Repository Tools → Remotes** to add a remote, edit its fetch and push URLs, rename or remove it, or choose the repository's default push remote. Multiple URLs are entered one per line. Leaving push URLs blank restores Git's fallback to fetch URLs. Removing a remote removes its local remote-tracking references, not the server or local branches.

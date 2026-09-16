@@ -12,7 +12,7 @@ import { openStashes } from "@/webview/components/repository/StashManager";
 import { openWorktrees } from "@/webview/components/repository/WorktreeManager";
 import { Button } from "@/webview/components/ui/Button";
 import { Dropdown } from "@/webview/components/ui/Dropdown";
-import { ChevronDownIcon, RefreshIcon } from "@/webview/components/ui/Icons";
+import { GearIcon, RefreshIcon } from "@/webview/components/ui/Icons";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
 import {
   openContextMenu,
@@ -22,8 +22,15 @@ import {
   selectRepo,
   setShowRemoteBranch
 } from "@/webview/lib/actions";
-import { selectedCommits, toggleWorkspace, workspaceVisible } from "@/webview/lib/navigation";
+import {
+  refsVisible,
+  selectedCommits,
+  toggleRefs,
+  toggleWorkspace,
+  workspaceVisible
+} from "@/webview/lib/navigation";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
+import { rpcClient } from "@/webview/lib/rpc/rpc-client";
 import { branchList, selectedBranch, selectedRepo, showRemoteBranch } from "@/webview/lib/stores";
 
 export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
@@ -34,6 +41,13 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
       : repos;
   return (
     <header class="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-line-soft bg-editor px-3 py-2 text-ui">
+      <Button
+        aria-expanded={refsVisible.value}
+        onClick={toggleRefs}
+        class={refsVisible.value ? "bg-row-selected" : ""}
+      >
+        {window.l10n.branchesPane}
+      </Button>
       <Button
         aria-expanded={workspaceVisible.value}
         onClick={toggleWorkspace}
@@ -84,6 +98,8 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
         </Button>
         <Button
           disabled={!repo}
+          aria-label={window.l10n.settingsTools}
+          title={window.l10n.settingsTools}
           aria-haspopup="menu"
           onClick={(event) =>
             openContextMenu(event, "repository-tools", [
@@ -111,12 +127,15 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
               {
                 title: (showRemoteBranch.value ? "✓ " : "") + window.l10n.showRemoteBranches,
                 onClick: () => setShowRemoteBranch(!showRemoteBranch.value)
+              },
+              {
+                title: window.l10n.openSettings,
+                onClick: () => void rpcClient.request("settings.open", null)
               }
             ])
           }
         >
-          {window.l10n.repositoryTools}
-          <ChevronDownIcon class="size-3.5" />
+          <GearIcon class="size-4" />
         </Button>
       </div>
     </header>

@@ -4,6 +4,7 @@ import type { RemoteDetails, RepositoryState } from "@/backend/types";
 import { Button } from "@/webview/components/ui/Button";
 import { Select } from "@/webview/components/ui/Select";
 import { openFormDialog } from "@/webview/lib/actions";
+import { openRemoteAction } from "@/webview/lib/remote-actions";
 import {
   confirmRepositoryAction,
   openRepositoryManager,
@@ -11,9 +12,10 @@ import {
   sendRepositoryAction
 } from "@/webview/lib/repository-actions";
 import { selectedRepo } from "@/webview/lib/stores";
+import type { ContextMenuEntry } from "@/webview/types";
 import { format } from "@/webview/utils/format";
 
-function addRemote(repo: string) {
+export function addRemote(repo: string) {
   openFormDialog({
     message: window.l10n.addRemote,
     inputs: [
@@ -35,7 +37,7 @@ function urls(value: string) {
     .filter(Boolean);
 }
 
-function editRemote(remote: RemoteDetails, repo: string) {
+export function editRemote(remote: RemoteDetails, repo: string) {
   openFormDialog({
     message: (
       <>
@@ -61,6 +63,41 @@ function editRemote(remote: RemoteDetails, repo: string) {
   });
 }
 
+export function renameRemote(remote: RemoteDetails, repo: string) {
+  openFormDialog({
+    message: window.l10n.renameRemote,
+    inputs: [{ kind: "ref", value: remote.name }],
+    action: window.l10n.renameRemote,
+    source: null,
+    onSubmit: ([newName]) =>
+      sendRepositoryAction({ kind: "renameRemote", name: remote.name, newName }, repo)
+  });
+}
+
+export function removeRemote(remote: RemoteDetails, repo: string) {
+  confirmRepositoryAction(
+    format(window.l10n.removeRemoteConfirm, <b>{remote.name}</b>),
+    window.l10n.removeRemote,
+    { kind: "removeRemote", name: remote.name },
+    repo
+  );
+}
+
+/** Everything a remote offers, for the branches pane. */
+export function remoteMenu(remote: RemoteDetails, repo: string): Array<ContextMenuEntry> {
+  return [
+    {
+      title: `${window.l10n.fetch}…`,
+      onClick: () => openRemoteAction("fetch", "", remote.name + "/")
+    },
+    { title: `${window.l10n.editRemote}…`, onClick: () => editRemote(remote, repo) },
+    { title: `${window.l10n.renameRemote}…`, onClick: () => renameRemote(remote, repo) },
+    { title: `${window.l10n.removeRemote}…`, onClick: () => removeRemote(remote, repo) },
+    null,
+    { title: window.l10n.manageRemotes, onClick: openRemotes }
+  ];
+}
+
 export function RemoteManager({ state, repo }: { state: RepositoryState; repo: string }) {
   const [pushDefault, setPushDefault] = useState(state.pushDefault ?? "");
   return (
@@ -77,32 +114,8 @@ export function RemoteManager({ state, repo }: { state: RepositoryState; repo: s
           )}
           <div class="flex flex-wrap gap-2">
             <Button onClick={() => editRemote(remote, repo)}>{window.l10n.editRemote}</Button>
-            <Button
-              onClick={() =>
-                openFormDialog({
-                  message: window.l10n.renameRemote,
-                  inputs: [{ kind: "ref", value: remote.name }],
-                  action: window.l10n.renameRemote,
-                  source: null,
-                  onSubmit: ([newName]) =>
-                    sendRepositoryAction({ kind: "renameRemote", name: remote.name, newName }, repo)
-                })
-              }
-            >
-              {window.l10n.renameRemote}
-            </Button>
-            <Button
-              onClick={() =>
-                confirmRepositoryAction(
-                  format(window.l10n.removeRemoteConfirm, <b>{remote.name}</b>),
-                  window.l10n.removeRemote,
-                  { kind: "removeRemote", name: remote.name },
-                  repo
-                )
-              }
-            >
-              {window.l10n.removeRemote}
-            </Button>
+            <Button onClick={() => renameRemote(remote, repo)}>{window.l10n.renameRemote}</Button>
+            <Button onClick={() => removeRemote(remote, repo)}>{window.l10n.removeRemote}</Button>
           </div>
         </div>
       ))}
@@ -149,7 +162,7 @@ export function openTracking(branch: string) {
       const upstream = state.branches.find((entry) => entry.name === branch)?.upstream ?? "";
       const options = [
         { label: window.l10n.none, value: "" },
-        ...state.remoteBranches.map((name) => ({ label: name, value: `refs/remotes/${name}` })),
+        ...state.remoteBranches.map(({ name }) => ({ label: name, value: `refs/remotes/${name}` })),
         ...state.branches
           .filter((entry) => entry.name !== branch)
           .map(({ name }) => ({ label: name, value: `refs/heads/${name}` }))

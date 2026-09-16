@@ -56,6 +56,7 @@ This fork:
 - **Remote ref management**: Choose a remote for tag pushes, delete remote branches/tags with confirmation, and push rewritten history with an explicit force-with-lease check
 - **Remote actions**: Push local branches to a chosen remote, set upstream tracking, pull the current branch with fast-forward only, and fetch updates with optional pruning
 - **Remote branch checkout**: Reuse and fast-forward an existing local branch, or create a new tracking branch
+- **Branches pane**: Browse local branches, remotes, tags and stashes beside the graph; click to filter the graph, check out, fetch or apply inline, and hide remote branches with one toggle
 - **Graph view**: See branches, tags, and uncommitted changes in one graph
 - **Commit details**: Click a commit to see message, files, and diffs
 - **Branch actions**: Create, checkout, rename, delete, and merge

@@ -18,6 +18,7 @@ import type {
   OperationKind,
   OperationState,
   RebasePlan,
+  RefDetails,
   RepositoryQuery,
   RepositoryQueryData,
   RepositoryState,
@@ -99,19 +100,49 @@ export async function loadWorktrees(git: SimpleGit): Promise<WorktreeDetails[]> 
     });
 }
 
+/**
+ * Parses `name NUL hash NUL extra` lines. For remote refs, `extra` names the
+ * target of a symbolic ref such as origin/HEAD, which is skipped. For tags it
+ * is the commit an annotated tag points to, which replaces the tag object's hash.
+ */
+function parseRefs(text: string, extra: "symref" | "peeled"): RefDetails[] {
+  return text
+    .trimEnd()
+    .split("\n")
+    .filter(Boolean)
+    .flatMap((line) => {
+      const [name = "", hash = "", third = ""] = line.split("\0");
+      if (extra === "symref" && third !== "") {
+        return [];
+      }
+      return [{ name, hash: extra === "peeled" && third !== "" ? third : hash }];
+    });
+}
+
 export async function loadRepositoryState(git: SimpleGit): Promise<RepositoryState> {
-  const [remotes, pushDefault, branches, worktrees, status, operation] = await Promise.all([
-    git.getRemotes(),
-    git.getConfig("remote.pushDefault"),
-    git.raw([
-      "for-each-ref",
-      "--format=%(refname:lstrip=2)%00%(upstream)%00%(upstream:track)",
-      "refs/heads/"
-    ]),
-    loadWorktrees(git),
-    git.status(),
-    loadOperation(git)
-  ]);
+  const [remotes, pushDefault, branches, remoteRefs, tagRefs, worktrees, status, operation] =
+    await Promise.all([
+      git.getRemotes(),
+      git.getConfig("remote.pushDefault"),
+      git.raw([
+        "for-each-ref",
+        "--format=%(refname:lstrip=2)%00%(upstream)%00%(upstream:track)%00%(objectname)",
+        "refs/heads/"
+      ]),
+      git.raw([
+        "for-each-ref",
+        "--format=%(refname:lstrip=2)%00%(objectname)%00%(symref)",
+        "refs/remotes/"
+      ]),
+      git.raw([
+        "for-each-ref",
+        "--format=%(refname:lstrip=2)%00%(objectname)%00%(*objectname)",
+        "refs/tags/"
+      ]),
+      loadWorktrees(git),
+      git.status(),
+      loadOperation(git)
+    ]);
   return {
     remotes: await Promise.all(
       remotes.map(async ({ name }) => ({
@@ -126,23 +157,18 @@ export async function loadRepositoryState(git: SimpleGit): Promise<RepositorySta
       .split("\n")
       .filter(Boolean)
       .map((line) => {
-        const [name = "", upstream = "", tracking = ""] = line.split("\0");
+        const [name = "", upstream = "", tracking = "", hash = ""] = line.split("\0");
         return {
           name,
+          hash,
           upstream: upstream.replace(/^refs\/(heads|remotes)\//, ""),
           ahead: Number(tracking.match(/ahead (\d+)/)?.[1] ?? 0),
           behind: Number(tracking.match(/behind (\d+)/)?.[1] ?? 0),
           gone: tracking === "[gone]"
         };
       }),
-    remoteBranches: (
-      await git.raw(["for-each-ref", "--format=%(refname:lstrip=2)%00%(symref)", "refs/remotes/"])
-    )
-      .trimEnd()
-      .split("\n")
-      .filter(Boolean)
-      .filter((line) => line.split("\0")[1] === "")
-      .map((line) => line.split("\0")[0]!),
+    remoteBranches: parseRefs(remoteRefs, "symref"),
+    tags: parseRefs(tagRefs, "peeled"),
     worktrees,
     head: status.detached ? "" : (status.current ?? ""),
     operation,

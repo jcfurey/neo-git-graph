@@ -95,6 +95,31 @@ export function getRepositoryLocalizedStrings() {
     mergeOperation: vscode.l10n.t("Merge"),
     rebaseOperation: vscode.l10n.t("Rebase"),
     cherryPickOperation: vscode.l10n.t("Cherry-pick"),
-    revertOperation: vscode.l10n.t("Revert")
+    revertOperation: vscode.l10n.t("Revert"),
+
+    // Branches pane
+    branchesPane: vscode.l10n.t("Branches"),
+    localBranches: vscode.l10n.t("Local Branches"),
+    tags: vscode.l10n.t("Tags"),
+    refFilter: vscode.l10n.t("Filter branches, tags and stashes…"),
+    noMatchingRefs: vscode.l10n.t("Nothing matches this filter."),
+    noTags: vscode.l10n.t("No tags."),
+    createBranchHere: vscode.l10n.t("New Branch"),
+    newBranchFrom: vscode.l10n.t("Create a branch at {0}"),
+    remoteBranchesShown: vscode.l10n.t(
+      "Remote branches are shown in the graph. Click to hide them."
+    ),
+    remoteBranchesHidden: vscode.l10n.t(
+      "Remote branches are hidden from the graph. Click to show them."
+    ),
+    hiddenFromGraph: vscode.l10n.t(
+      "Hidden from the graph. Selecting a remote branch shows them again."
+    ),
+    refActions: vscode.l10n.t("Actions for {0}"),
+    remoteActions: vscode.l10n.t("Actions for remote {0}"),
+    applyShort: vscode.l10n.t("Apply"),
+    popShort: vscode.l10n.t("Pop"),
+    settingsTools: vscode.l10n.t("Settings & Tools"),
+    openSettings: vscode.l10n.t("Open Extension Settings")
   };
 }

@@ -15,7 +15,14 @@ export const emptyFilter = (): HistoryFilter => ({
 });
 type SavedFilter = { name: string; filter: HistoryFilter };
 type SavedRepo = { filter: HistoryFilter; saved: SavedFilter[]; scroll: number };
-type NavigationState = { repos: Record<string, SavedRepo>; workspace: boolean };
+type NavigationState = {
+  repos: Record<string, SavedRepo>;
+  workspace: boolean;
+  /** The branches pane is open. Absent in state saved before the pane existed. */
+  refs?: boolean;
+  /** Sections of the branches pane the user collapsed. */
+  collapsed?: string[];
+};
 const initial = vscode.getState() as { navigation?: NavigationState } | null;
 let saved: NavigationState = initial?.navigation ?? { repos: {}, workspace: false };
 export const historyFilter = signal<HistoryFilter>(emptyFilter());
@@ -26,6 +33,8 @@ export const historyActive = computed(() =>
 );
 export const selectedCommits = signal<HistoryEntry[]>([]);
 export const workspaceVisible = signal(saved.workspace);
+export const refsVisible = signal(saved.refs ?? true);
+export const collapsedSections = signal<ReadonlySet<string>>(new Set(saved.collapsed ?? []));
 export const focusedCommit = signal<string | null>(null);
 export const restoreScroll = signal<number | null>(null);
 let selectionRows: HistoryEntry[] = [];
@@ -104,6 +113,22 @@ export function deleteHistoryFilter(name: string) {
 export function toggleWorkspace() {
   workspaceVisible.value = !workspaceVisible.value;
   saved.workspace = workspaceVisible.value;
+  persist();
+}
+
+export function toggleRefs() {
+  refsVisible.value = !refsVisible.value;
+  saved.refs = refsVisible.value;
+  persist();
+}
+
+export function toggleSection(id: string) {
+  const next = new Set(collapsedSections.value);
+  if (!next.delete(id)) {
+    next.add(id);
+  }
+  collapsedSections.value = next;
+  saved.collapsed = [...next];
   persist();
 }
 

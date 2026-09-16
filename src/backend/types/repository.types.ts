@@ -1,6 +1,9 @@
 export type RemoteDetails = { name: string; fetchUrls: string[]; pushUrls: string[] };
+/** A ref and the commit it points to. An annotated tag reports the commit, not the tag object. */
+export type RefDetails = { name: string; hash: string };
 export type BranchDetails = {
   name: string;
+  hash: string;
   upstream: string;
   ahead: number;
   behind: number;
@@ -20,7 +23,8 @@ export type RepositoryState = {
   remotes: RemoteDetails[];
   pushDefault: string | null;
   branches: BranchDetails[];
-  remoteBranches: string[];
+  remoteBranches: RefDetails[];
+  tags: RefDetails[];
   worktrees: WorktreeDetails[];
   head: string;
   operation: OperationState | null;

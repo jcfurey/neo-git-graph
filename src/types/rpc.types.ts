@@ -27,6 +27,10 @@ export type RpcMethodMap = {
     params: null;
     result: ScanRepoResult;
   };
+  "settings.open": {
+    params: null;
+    result: boolean;
+  };
 };
 
 export type RpcMethod = keyof RpcMethodMap;

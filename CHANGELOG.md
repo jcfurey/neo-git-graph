@@ -8,6 +8,8 @@
 - Workspace fetch with individual results and reviewed fast-forward updates.
 - Push/pull commit previews, selected merged-branch cleanup, and guided Git bisect.
 - Portable workflow UI checks, three-platform CI, and a large-history benchmark.
+- Branches pane beside the graph listing local branches, remotes, tags and stashes with inline actions and a toggle that hides remote branches.
+- Settings cog in the header that gathers the repository tools and opens the extension's settings.
 
 ### Changed
 

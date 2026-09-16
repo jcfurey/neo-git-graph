@@ -29,8 +29,11 @@ let container: HTMLDivElement;
 const state: RepositoryState = {
   remotes: [],
   pushDefault: null,
-  branches: [{ name: "main", upstream: "", ahead: 0, behind: 0, gone: false }],
+  branches: [
+    { name: "main", hash: "a".repeat(40), upstream: "", ahead: 0, behind: 0, gone: false }
+  ],
   remoteBranches: [],
+  tags: [],
   worktrees: [],
   head: "main",
   operation: null,
@@ -99,7 +102,10 @@ describe("repository dialogs", () => {
 
   it("offers tracking refs even if remote branches are hidden in the graph", () => {
     openTracking("main");
-    respond({ kind: "state", state: { ...state, remoteBranches: ["team/origin/release"] } });
+    respond({
+      kind: "state",
+      state: { ...state, remoteBranches: [{ name: "team/origin/release", hash: "b".repeat(40) }] }
+    });
     expect(form().inputs[0]).toMatchObject({
       options: [
         { label: "none", value: "" },
