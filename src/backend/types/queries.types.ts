@@ -27,13 +27,20 @@ type QueryPayloads = {
     response: { commitDetails: GitCommitDetails | null };
   };
   loadBranches: {
-    request: { repo: string; showRemoteBranches: boolean; hard: boolean };
+    request: {
+      repo: string;
+      showRemoteBranches: boolean;
+      hiddenRemotes?: string[];
+      visibilityKey?: string;
+      hard: boolean;
+    };
     response: {
       repo: string;
       branches: string[];
       head: string | null;
       hard: boolean;
       isRepo: boolean;
+      visibilityKey?: string | undefined;
     };
   };
   loadCommits: {
@@ -42,12 +49,15 @@ type QueryPayloads = {
       branchName: string;
       maxCommits: number;
       showRemoteBranches: boolean;
+      hiddenRemotes?: string[];
+      visibilityKey?: string;
       hard: boolean;
     };
     response: {
       repo: string;
       branchName: string;
       commits: GitCommitNode[];
+      visibilityKey?: string | undefined;
       head: string | null;
       moreCommitsAvailable: boolean;
       hard: boolean;

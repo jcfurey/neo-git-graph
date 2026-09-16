@@ -76,6 +76,13 @@ export function displayedBranch(branch = selectedBranch.value): string {
   return branchDisplay.value === "filter" && branch !== "*" ? (branch ?? "") : "";
 }
 export const showRemoteBranch = signal<boolean>(true);
+export const hiddenRemotes = computed(() => {
+  const repo = selectedRepo.value;
+  return repo === undefined ? [] : (repoStates.value[repo]?.hiddenRemotes ?? []);
+});
+export function remoteVisibilityKey() {
+  return JSON.stringify([showRemoteBranch.value, hiddenRemotes.value.toSorted()]);
+}
 export const maxCommits = signal<number>(0);
 
 export function initializeStores(initialLoadCommits: number): void {

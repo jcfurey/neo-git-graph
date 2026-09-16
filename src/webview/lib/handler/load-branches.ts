@@ -9,14 +9,18 @@ import {
   branchList,
   headBranch,
   selectedBranch,
-  selectedRepo
+  selectedRepo,
+  remoteVisibilityKey
 } from "@/webview/lib/stores";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
 
 type LoadBranchesMessage = Extract<ResponseMessage, { command: "loadBranches" }>;
 
 export function handleLoadBranches(msg: LoadBranchesMessage) {
-  if (msg.repo !== selectedRepo.value) {
+  if (
+    msg.repo !== selectedRepo.value ||
+    (msg.visibilityKey !== undefined && msg.visibilityKey !== remoteVisibilityKey())
+  ) {
     return;
   }
 

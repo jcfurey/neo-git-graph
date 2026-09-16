@@ -117,6 +117,8 @@ export function getRepositoryLocalizedStrings() {
     ),
     refActions: vscode.l10n.t("Actions for {0}"),
     remoteActions: vscode.l10n.t("Actions for remote {0}"),
+    showRemoteInGraph: vscode.l10n.t("Show remote {0} in the graph"),
+    hideRemoteFromGraph: vscode.l10n.t("Hide remote {0} from the graph"),
     applyShort: vscode.l10n.t("Apply"),
     popShort: vscode.l10n.t("Pop"),
     settingsTools: vscode.l10n.t("Settings & Tools"),

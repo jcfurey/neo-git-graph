@@ -446,5 +446,8 @@
   "Resume focus": "继续聚焦",
   "Dimming": "淡化程度",
   "Subtle": "轻微",
-  "Strong": "强烈"
+  "Strong": "强烈",
+  "Show remote {0} in the graph": "在图中显示远程仓库 {0}",
+  "Hide remote {0} from the graph": "在图中隐藏远程仓库 {0}",
+  "Scroll graph horizontally": "水平滚动图形"
 }

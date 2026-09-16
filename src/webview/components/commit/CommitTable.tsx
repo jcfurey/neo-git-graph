@@ -7,6 +7,7 @@ import { CommitGraph } from "@/webview/components/commit/CommitGraph";
 import { CommitRow } from "@/webview/components/commit/CommitRow";
 import type { ColumnResize } from "@/webview/components/commit/useColumnResize";
 import { useColumnResize } from "@/webview/components/commit/useColumnResize";
+import { useGraphScroll } from "@/webview/components/commit/useGraphScroll";
 import {
   COMMIT_DETAILS_HEIGHT,
   TABLE_HEADER_HEIGHT,
@@ -38,15 +39,12 @@ const HEADER_CLASS =
 
 const HANDLE_CLASS = "absolute top-0 h-full w-1.5 cursor-col-resize";
 
-/** Distance over which the graph fades out, where the column cuts it off. */
-const GRAPH_FADE = 12;
-
-const GRAPH_CLIP =
-  `width: var(--col-graph); top: ${TABLE_HEADER_HEIGHT}px;` +
-  ` mask-image: linear-gradient(to right, black calc(100% - ${GRAPH_FADE}px), transparent)`;
+const GRAPH_CLIP = `width: var(--graph-viewport-width, 0px); top: var(--graph-top, ${TABLE_HEADER_HEIGHT}px);`;
 
 /** Keep room for the graph, and for the column title when the graph is narrow. */
 const MIN_GRAPH_COLUMN = 64;
+/** Leave room for commit text; wider graphs can scroll inside their column. */
+const MAX_GRAPH_COLUMN = 240;
 
 /**
  * Grip that moves the boundary after column `boundary`. Both columns of a
@@ -101,8 +99,10 @@ export function CommitTable({
     () => new Map(commits.map((commit) => [commit.hash, commit.message])),
     [commits]
   );
-  const graphColumn = Math.max(graphWidth(layout) + GRAPH_PADDING, MIN_GRAPH_COLUMN);
+  const graphContentWidth = graphWidth(layout) + GRAPH_PADDING;
+  const graphColumn = Math.max(Math.min(graphContentWidth, MAX_GRAPH_COLUMN), MIN_GRAPH_COLUMN);
   const resize = useColumnResize(graphColumn);
+  const graphScroll = useGraphScroll(resize.containerRef, resize.headRef, graphContentWidth);
   const sized = columnWidths.value !== null;
 
   const expandedHash = expandedCommit.value;
@@ -120,16 +120,23 @@ export function CommitTable({
 
   return (
     <div class="relative" ref={resize.containerRef}>
-      <div class="pointer-events-none absolute left-0 overflow-hidden" style={GRAPH_CLIP}>
-        <CommitGraph
-          layout={layout}
-          expansion={expansion}
-          relations={relations}
-          relationForLine={(line) => lineRelation(line, commits, relations)}
-          keepMergedBright={keepMergedBright}
-          dimming={dimming}
-          revealed={revealed}
-        />
+      <div
+        ref={graphScroll.viewportRef}
+        data-graph-viewport
+        class="pointer-events-none absolute left-0 overflow-hidden"
+        style={GRAPH_CLIP}
+      >
+        <div style={{ width: graphContentWidth }}>
+          <CommitGraph
+            layout={layout}
+            expansion={expansion}
+            relations={relations}
+            relationForLine={(line) => lineRelation(line, commits, relations)}
+            keepMergedBright={keepMergedBright}
+            dimming={dimming}
+            revealed={revealed}
+          />
+        </div>
       </div>
       <table
         aria-label={window.l10n.graphKeyboardHint}
@@ -141,6 +148,7 @@ export function CommitTable({
           )
         }
         onMouseLeave={() => setHovered(null)}
+        onWheel={graphScroll.onWheel}
         class={`w-full cursor-default border-collapse text-ui select-none ${
           sized ? "table-fixed" : ""
         }`}
@@ -155,9 +163,25 @@ export function CommitTable({
         <thead>
           <tr ref={resize.headRef} class={resize.resizing ? "cursor-col-resize" : ""}>
             {titles.map((title, index) => (
-              <th key={title} class={HEADER_CLASS}>
+              <th
+                key={title}
+                class={HEADER_CLASS + (index === 0 && graphScroll.overflow ? " pb-2" : "")}
+              >
                 {index > 0 && <ResizeHandle boundary={index - 1} side="left" resize={resize} />}
                 {title}
+                {index === 0 && (
+                  <div
+                    ref={graphScroll.scrollRef}
+                    data-graph-scroll
+                    role="region"
+                    aria-label={window.l10n.scrollGraphHorizontally}
+                    tabIndex={graphScroll.overflow ? 0 : undefined}
+                    class={`graph-scrollbar absolute bottom-0 left-0 h-2.5 w-full overflow-x-auto overflow-y-hidden focus:outline-1 focus:-outline-offset-1 focus:outline-focus ${graphScroll.overflow ? "" : "invisible"}`}
+                    onScroll={graphScroll.syncScroll}
+                  >
+                    <div style={{ width: graphContentWidth, height: 1 }} />
+                  </div>
+                )}
                 {index < titles.length - 1 && (
                   <ResizeHandle boundary={index} side="right" resize={resize} />
                 )}

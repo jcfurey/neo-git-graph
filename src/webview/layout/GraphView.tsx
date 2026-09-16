@@ -29,6 +29,8 @@ import {
   focusPaused,
   focusDimming,
   headBranch,
+  hiddenRemotes,
+  showRemoteBranch,
   maxCommits,
   moreCommitsAvailable,
   selectedRepo
@@ -44,6 +46,8 @@ export function GraphView() {
     active
       ? {
           kind: "history",
+          showRemoteBranches: showRemoteBranch.value,
+          hiddenRemotes: hiddenRemotes.value,
           filter: {
             ...filter,
             revision: filter.revision || displayedBranch()

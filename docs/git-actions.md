@@ -26,7 +26,13 @@ Use **Pause focus** to temporarily restore every branch's colours, then **Resume
 
 Every row carries the same context menu as the matching label in the graph, reached by right-click or its trailing menu button. The most common action is also inline: **Checkout** on a branch, **Fetch** on a remote, **Show in Graph** on a tag, and **Apply** or **Pop** on a stash. The **+** buttons create a branch at HEAD, add a remote, or save a stash.
 
-The eye button on the remotes section hides remote branches from the graph. The remote rows stay listed but dimmed, and selecting one shows remote branches again. The settings cog in the header holds the remaining tools, the same toggle, and a shortcut to the extension's settings.
+Each remote has an eye button that hides its graph labels and commits reachable only through that remote. Shared history, local branches and tags remain visible. Hidden remote branches stay listed but dimmed; selecting or focusing one shows that remote again. Individual choices are saved per repository and also apply to history searches. Explicit commit or revision lookups can still open hidden history.
+
+The eye button on the **Remotes** section hides all remote branches temporarily. Showing them again preserves the individual hidden choices. Hiding a remote whose branch is selected clears that selection to **Show All** without checking out another branch. The settings cog in the header holds the global toggle and a shortcut to the extension's settings.
+
+## Wide graphs
+
+Branch lines stay within the **Graph** column, including after column resizing. When the lanes do not fit, use the horizontal scrollbar under the Graph heading, a horizontal trackpad gesture, or **Shift+mouse wheel** over the graph. The scrollbar also accepts keyboard arrow keys when focused. Only the lanes move sideways; commit text stays in place, and commit selection and expanded details remain aligned. Drag the boundary beside **Graph** to give the lanes more room.
 
 ## Remotes and tracking
 

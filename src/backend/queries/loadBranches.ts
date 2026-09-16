@@ -2,9 +2,11 @@ import type { SimpleGit } from "simple-git";
 
 import type { QueryResult } from "@/backend/types";
 import { isGitRepository } from "@/backend/utils/git";
+import { remoteVisibility } from "@/backend/utils/remoteVisibility";
 
 type LoadBranchesInput = {
   showRemoteBranches: boolean;
+  hiddenRemotes?: string[];
   hard: boolean;
   repo: string;
   gitPath: string;
@@ -21,9 +23,15 @@ export async function loadBranches(
   let error: boolean;
 
   try {
-    const summary = await (showRemoteBranches ? git.branch() : git.branchLocal());
+    const [summary, visibility] = await Promise.all([
+      showRemoteBranches ? git.branch() : git.branchLocal(),
+      remoteVisibility(git, input)
+    ]);
     head = summary.detached ? null : summary.current || null;
     branches = head ? [head, ...summary.all.filter((b) => b !== head)] : [...summary.all];
+    branches = branches.filter(
+      (branch) => !branch.startsWith("remotes/") || !visibility.excluded.has(branch.slice(8))
+    );
     error = false;
   } catch {
     branches = [];

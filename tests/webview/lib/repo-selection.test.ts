@@ -52,6 +52,8 @@ it("switches the graph and loads branches for the clicked repo", () => {
     command: "loadBranches",
     repo: "/workspace/child",
     showRemoteBranches: true,
+    hiddenRemotes: [],
+    visibilityKey: JSON.stringify([true, []]),
     hard: true
   });
 });

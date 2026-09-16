@@ -14,6 +14,8 @@ export type GitRepoState = {
    * The description column takes the width the others leave.
    */
   columnWidths: number[] | null;
+  /** Remote groups hidden from this repository's graph. */
+  hiddenRemotes?: string[];
 };
 
 export type Avatar = {

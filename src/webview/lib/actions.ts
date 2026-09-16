@@ -2,12 +2,14 @@ import { batch } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 
 import type { GitFileChange } from "@/backend/types";
+import { remoteForRef } from "@/backend/utils/remoteVisibility";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
 import { captureFocus, restoreFocus } from "@/webview/lib/focus";
-import { enterNavigation, leaveNavigation } from "@/webview/lib/navigation";
+import { enterNavigation, historyOffset, leaveNavigation } from "@/webview/lib/navigation";
 import { sendRemoteAction } from "@/webview/lib/remote-actions";
 import {
   repositoryRevision,
+  repositoryState,
   requestRepositoryState,
   resetRepositoryState
 } from "@/webview/lib/repository-actions";
@@ -25,9 +27,11 @@ import {
   focusDimming,
   focusPaused,
   headBranch,
+  hiddenRemotes,
   maxCommits,
   moreCommitsAvailable,
   repoStates,
+  remoteVisibilityKey,
   selectedBranch,
   selectedRepo,
   showRemoteBranch,
@@ -51,6 +55,8 @@ function requestBranches(repo: string) {
     command: "loadBranches",
     repo,
     showRemoteBranches: showRemoteBranch.value,
+    hiddenRemotes: hiddenRemotes.value,
+    visibilityKey: remoteVisibilityKey(),
     hard: true
   });
 }
@@ -62,6 +68,8 @@ function requestCommits(repo: string, branch: CommitBranchType) {
     branchName: displayedBranch(branch),
     maxCommits: maxCommits.value,
     showRemoteBranches: showRemoteBranch.value,
+    hiddenRemotes: hiddenRemotes.value,
+    visibilityKey: remoteVisibilityKey(),
     hard: true
   });
 }
@@ -98,7 +106,8 @@ export function selectRepo(repo: string) {
 }
 
 export function selectBranch(branch: CommitBranchType) {
-  if (branch === selectedBranch.value) {
+  const revealed = revealBranchRemote(branch);
+  if (branch === selectedBranch.value && !revealed) {
     return;
   }
 
@@ -114,8 +123,13 @@ export function selectBranch(branch: CommitBranchType) {
   });
 
   const repo = selectedRepo.value;
-  if (repo !== undefined && commitList.value === undefined) {
-    requestCommits(repo, branch);
+  if (repo !== undefined) {
+    if (revealed) {
+      requestBranches(repo);
+    }
+    if (revealed || commitList.value === undefined) {
+      requestCommits(repo, branch);
+    }
   }
   leaveNavigation(repo);
 }
@@ -145,16 +159,13 @@ export function setBranchDisplay(value: BranchDisplay) {
 /** A view action: it never checks out or modifies the selected branch. */
 export function focusBranchInGraph(branch: string) {
   const previous = displayedBranch();
-  const revealRemote = branch.startsWith("remotes/") && !showRemoteBranch.value;
+  const revealRemote = revealBranchRemote(branch);
   batch(() => {
     if (branchDisplay.value === "filter") {
       branchDisplay.value = "focus";
     }
     selectedBranch.value = branch;
     focusPaused.value = false;
-    if (revealRemote) {
-      showRemoteBranch.value = true;
-    }
     if (previous !== displayedBranch()) {
       clearCommits();
     }
@@ -222,6 +233,74 @@ export function setShowRemoteBranch(value: boolean) {
   }
 
   showRemoteBranch.value = value;
+  refreshRemoteVisibility();
+}
+
+function remoteOfBranch(branch: string | undefined) {
+  return branch?.startsWith("remotes/")
+    ? remoteForRef(branch.slice(8), [
+        ...(repositoryState.value?.remotes.map((remote) => remote.name) ?? []),
+        ...hiddenRemotes.value
+      ])
+    : undefined;
+}
+
+function saveHiddenRemotes(remotes: string[]) {
+  const repo = selectedRepo.value;
+  if (repo === undefined) {
+    return;
+  }
+  const state = {
+    columnWidths: null,
+    ...repoStates.value[repo],
+    hiddenRemotes: remotes.toSorted()
+  };
+  repoStates.value = { ...repoStates.value, [repo]: state };
+  vscode.postMessage({ command: "saveRepoState", repo, state });
+}
+
+/** Selecting a hidden branch reveals only its owning remote. */
+function revealBranchRemote(branch: string) {
+  const remote = remoteOfBranch(branch);
+  if (remote === undefined) {
+    return false;
+  }
+  const hidden = hiddenRemotes.value.includes(remote);
+  const changed = hidden || !showRemoteBranch.value;
+  batch(() => {
+    showRemoteBranch.value = true;
+    if (hidden) {
+      saveHiddenRemotes(hiddenRemotes.value.filter((name) => name !== remote));
+    }
+  });
+  return changed;
+}
+
+export function setRemoteVisible(remote: string, visible: boolean) {
+  const next = new Set(hiddenRemotes.value);
+  if (visible) {
+    next.delete(remote);
+  } else {
+    next.add(remote);
+  }
+  batch(() => {
+    saveHiddenRemotes([...next]);
+    if (visible) {
+      showRemoteBranch.value = true;
+    }
+  });
+  refreshRemoteVisibility();
+}
+
+function refreshRemoteVisibility() {
+  batch(() => {
+    const remote = remoteOfBranch(selectedBranch.value);
+    if (remote !== undefined && (!showRemoteBranch.value || hiddenRemotes.value.includes(remote))) {
+      selectedBranch.value = SHOW_ALL_BRANCHES;
+      focusPaused.value = false;
+    }
+    historyOffset.value = 0;
+  });
 
   const repo = selectedRepo.value;
   if (repo === undefined) {
@@ -233,6 +312,7 @@ export function setShowRemoteBranch(value: boolean) {
   if (branch !== undefined) {
     requestCommits(repo, branch);
   }
+  leaveNavigation(repo);
 }
 
 export function loadMoreCommits() {

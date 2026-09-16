@@ -4,6 +4,9 @@
 
 ### Added
 
+- Per-remote graph visibility controls with saved choices, consistent history searches, and automatic reveal when selecting a hidden remote branch.
+- Horizontal scrolling within the Graph column for wide histories, using a scrollbar, trackpad or Shift+mouse wheel.
+
 - Selectable branch focus with full-colour direct history, muted merged history and gray unrelated commits, plus an option to keep all ancestors bright.
 - Focus branches from their context menus, identify the target with a Focus badge, choose subtle or strong graph dimming, and pause/resume focus without losing the target.
 - Submodule commit comparisons and parent pointer staging/unstaging.
@@ -24,6 +27,8 @@
 - Open the search row on demand from the header or with `/`, give advanced menu items plain-language names, and explain how to undo in the reset, checkout, delete, drop, rebase and force-push dialogs.
 
 ### Fixed
+
+- Clip graph lines to the actual column width so wide graphs cannot overlap commit text.
 
 - Include staged-only submodule pointer changes in the workspace filter.
 - Report a diff that VS Code cannot open instead of leaving the request pending.

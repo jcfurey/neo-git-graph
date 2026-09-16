@@ -7,6 +7,7 @@ import type {
   GitRefData,
   QueryResult
 } from "@/backend/types";
+import { remoteVisibility } from "@/backend/utils/remoteVisibility";
 
 const eolRegex = /\r\n|\r|\n/g;
 const gitLogSeparator = "XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb";
@@ -15,12 +16,17 @@ type LoadCommitsInput = {
   branchName: string;
   maxCommits: number;
   showRemoteBranches: boolean;
+  hiddenRemotes?: string[];
   hard: boolean;
   dateType: DateType;
   showUncommittedChanges: boolean;
 };
 
-async function getRefs(git: SimpleGit, showRemoteBranches: boolean): Promise<GitRefData> {
+async function getRefs(
+  git: SimpleGit,
+  showRemoteBranches: boolean,
+  excluded: ReadonlySet<string>
+): Promise<GitRefData> {
   try {
     const args = ["show-ref"];
     if (!showRemoteBranches) {
@@ -45,7 +51,7 @@ async function getRefs(git: SimpleGit, showRemoteBranches: boolean): Promise<Git
           name: ref.endsWith("^{}") ? ref.substring(10, ref.length - 3) : ref.substring(10),
           type: "tag"
         });
-      } else if (ref.startsWith("refs/remotes/")) {
+      } else if (ref.startsWith("refs/remotes/") && !excluded.has(ref.substring(13))) {
         refData.refs.push({ hash, name: ref.substring(13), type: "remote" });
       } else if (ref === "HEAD") {
         refData.head = hash;
@@ -61,7 +67,7 @@ async function getLog(
   git: SimpleGit,
   branch: string,
   maxCommits: number,
-  showRemoteBranches: boolean,
+  remoteArgs: string[],
   dateType: DateType
 ): Promise<GitLogEntry[]> {
   const dateField = dateType === "Author Date" ? "%at" : "%ct";
@@ -71,9 +77,7 @@ async function getLog(
     args.push(branch);
   } else {
     args.push("--branches", "--tags");
-    if (showRemoteBranches) {
-      args.push("--remotes");
-    }
+    args.push(...remoteArgs);
   }
   try {
     const stdout = await git.raw(args);
@@ -126,10 +130,11 @@ export async function loadCommits(
 ): Promise<LoadCommitsResult> {
   const { branchName, maxCommits, showRemoteBranches, hard, dateType, showUncommittedChanges } =
     input;
+  const visibility = await remoteVisibility(git, input);
 
   const [rawCommits, refData] = await Promise.all([
-    getLog(git, branchName, maxCommits + 1, showRemoteBranches, dateType),
-    getRefs(git, showRemoteBranches)
+    getLog(git, branchName, maxCommits + 1, visibility.logArgs, dateType),
+    getRefs(git, showRemoteBranches, visibility.excluded)
   ]);
 
   let commits = rawCommits;

@@ -446,5 +446,8 @@
   "Resume focus": "繼續聚焦",
   "Dimming": "淡化程度",
   "Subtle": "輕微",
-  "Strong": "強烈"
+  "Strong": "強烈",
+  "Show remote {0} in the graph": "在圖中顯示遠端儲存庫 {0}",
+  "Hide remote {0} from the graph": "在圖中隱藏遠端儲存庫 {0}",
+  "Scroll graph horizontally": "水平捲動圖形"
 }

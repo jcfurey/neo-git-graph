@@ -2,6 +2,7 @@ import type { ComponentChildren } from "preact";
 import { useId, useState } from "preact/hooks";
 
 import type { BranchDetails, GitRef, RefDetails, RemoteDetails } from "@/backend/types";
+import { remoteForRef } from "@/backend/utils/remoteVisibility";
 import { abbrevCommit } from "@/backend/utils/string";
 import { BranchFocusBadge } from "@/webview/components/commit/BranchFocusBadge";
 import { addRemote, remoteMenu } from "@/webview/components/repository/RemoteManager";
@@ -30,6 +31,7 @@ import {
   openFormDialog,
   runAction,
   selectBranch,
+  setRemoteVisible,
   setShowRemoteBranch
 } from "@/webview/lib/actions";
 import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menus";
@@ -39,6 +41,7 @@ import { repositoryState } from "@/webview/lib/repository-actions";
 import {
   activeSource,
   commitHead,
+  hiddenRemotes,
   selectedBranch,
   selectedRepo,
   showRemoteBranch
@@ -63,8 +66,7 @@ export function groupRemoteBranches(remotes: RemoteDetails[], refs: RefDetails[]
     remotes.map((remote) => [remote.name, { remote: remote.name, details: remote, branches: [] }])
   );
   for (const ref of refs) {
-    const remote =
-      names.find((name) => ref.name.startsWith(name + "/")) ?? ref.name.split("/")[0] ?? ref.name;
+    const remote = remoteForRef(ref.name, names);
     let group = groups.get(remote);
     if (group === undefined) {
       group = { remote, details: undefined, branches: [] };
@@ -382,77 +384,88 @@ export function RefsPane() {
             }
           >
             {!remotesShown && <Hint>{window.l10n.hiddenFromGraph}</Hint>}
-            {groups.map((group) => (
-              <Section
-                key={group.remote}
-                id={`remote:${group.remote}`}
-                depth={1}
-                title={group.remote}
-                count={group.branches.length}
-                trailing={
-                  <span class="flex shrink-0 items-center gap-0.5">
-                    <button
-                      type="button"
-                      class={ACTION_CLASS}
-                      onClick={() => openRemoteAction("fetch", "", group.remote + "/")}
-                    >
-                      {window.l10n.fetch}
-                    </button>
-                    {group.details !== undefined && repo !== undefined && (
+            {groups.map((group) => {
+              const shown = remotesShown && !hiddenRemotes.value.includes(group.remote);
+              return (
+                <Section
+                  key={group.remote}
+                  id={`remote:${group.remote}`}
+                  depth={1}
+                  title={group.remote}
+                  count={group.branches.length}
+                  trailing={
+                    <span class="flex shrink-0 items-center gap-0.5">
                       <button
                         type="button"
                         class={ACTION_CLASS}
-                        aria-label={window.l10n.remoteActions.replace("{0}", group.remote)}
-                        aria-haspopup="menu"
-                        onClick={(event) =>
-                          openContextMenu(
-                            event,
-                            `remote:${group.remote}`,
-                            remoteMenu(group.details!, repo)
-                          )
-                        }
+                        aria-label={window.l10n.showRemoteInGraph.replace("{0}", group.remote)}
+                        aria-pressed={shown}
+                        title={(shown
+                          ? window.l10n.hideRemoteFromGraph
+                          : window.l10n.showRemoteInGraph
+                        ).replace("{0}", group.remote)}
+                        onClick={() => setRemoteVisible(group.remote, !shown)}
                       >
-                        <KebabIcon class="size-3.5" />
+                        {shown ? <EyeIcon class="size-3.5" /> : <EyeClosedIcon class="size-3.5" />}
                       </button>
-                    )}
-                  </span>
-                }
-              >
-                {group.branches.map((ref) => {
-                  const gitRef: GitRef = { type: "remote", name: ref.name, hash: ref.hash };
-                  const value = "remotes/" + ref.name;
-                  return (
-                    <Row
-                      key={ref.name}
-                      depth={2}
-                      source={refMenuSource(gitRef)}
-                      label={ref.name.slice(group.remote.length + 1)}
-                      title={ref.name}
-                      icon={<BranchIcon class={ROW_ICON} />}
-                      dimmed={!remotesShown}
-                      active={selectedBranch.value === value}
-                      badge={<BranchFocusBadge branch={value} />}
-                      onSelect={() => {
-                        if (!remotesShown) {
-                          setShowRemoteBranch(true);
-                        }
-                        selectBranch(value);
-                      }}
-                      menu={() => refMenu(gitRef, false)}
-                      actions={
+                      <button
+                        type="button"
+                        class={ACTION_CLASS}
+                        onClick={() => openRemoteAction("fetch", "", group.remote + "/")}
+                      >
+                        {window.l10n.fetch}
+                      </button>
+                      {group.details !== undefined && repo !== undefined && (
                         <button
                           type="button"
                           class={ACTION_CLASS}
-                          onClick={() => checkoutBranchAction(gitRef)}
+                          aria-label={window.l10n.remoteActions.replace("{0}", group.remote)}
+                          aria-haspopup="menu"
+                          onClick={(event) =>
+                            openContextMenu(
+                              event,
+                              `remote:${group.remote}`,
+                              remoteMenu(group.details!, repo)
+                            )
+                          }
                         >
-                          {window.l10n.checkout}
+                          <KebabIcon class="size-3.5" />
                         </button>
-                      }
-                    />
-                  );
-                })}
-              </Section>
-            ))}
+                      )}
+                    </span>
+                  }
+                >
+                  {group.branches.map((ref) => {
+                    const gitRef: GitRef = { type: "remote", name: ref.name, hash: ref.hash };
+                    const value = "remotes/" + ref.name;
+                    return (
+                      <Row
+                        key={ref.name}
+                        depth={2}
+                        source={refMenuSource(gitRef)}
+                        label={ref.name.slice(group.remote.length + 1)}
+                        title={ref.name}
+                        icon={<BranchIcon class={ROW_ICON} />}
+                        dimmed={!shown}
+                        active={selectedBranch.value === value}
+                        badge={<BranchFocusBadge branch={value} />}
+                        onSelect={() => selectBranch(value)}
+                        menu={() => refMenu(gitRef, false)}
+                        actions={
+                          <button
+                            type="button"
+                            class={ACTION_CLASS}
+                            onClick={() => checkoutBranchAction(gitRef)}
+                          >
+                            {window.l10n.checkout}
+                          </button>
+                        }
+                      />
+                    );
+                  })}
+                </Section>
+              );
+            })}
           </Section>
           <Section
             id="tags"

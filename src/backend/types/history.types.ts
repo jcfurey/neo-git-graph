@@ -50,7 +50,13 @@ export type StagedPlan = { head: string; tree: string; files: string[]; target: 
 export type BatchPlan = { head: string; branch: string; entries: HistoryEntry[] };
 
 export type HistoryQuery =
-  | { kind: "history"; filter: HistoryFilter; offset: number }
+  | {
+      kind: "history";
+      filter: HistoryFilter;
+      offset: number;
+      showRemoteBranches?: boolean;
+      hiddenRemotes?: string[];
+    }
   | { kind: "compare"; left: string; right: string; mergeBase: boolean }
   | { kind: "compareCommits"; left: string; right: string; side: "left" | "right"; offset: number }
   | { kind: "reflog"; offset: number }

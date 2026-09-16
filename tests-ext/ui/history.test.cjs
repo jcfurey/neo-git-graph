@@ -15,6 +15,7 @@ const connections = [];
 const dirs = [];
 let graph;
 let repo;
+const visible = (hash) => `!!document.querySelector('tr[data-commit-hash="${hash}"]')`;
 function git(args, cwd = repo) {
   return cp.execFileSync("git", args, { cwd, stdio: "pipe" }).toString().trim();
 }
@@ -1185,6 +1186,255 @@ suite("Git Graph workflow UI", function () {
       mobile: false
     });
   });
+  test("hides individual remotes and restores their visibility without changing Git refs", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "remote-base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    const origin = git(["commit-tree", tree, "-p", base, "-m", "remote-origin-only"], dir);
+    const upstream = git(["commit-tree", tree, "-p", base, "-m", "remote-upstream-only"], dir);
+    git(["remote", "add", "origin", dir], dir);
+    git(["remote", "add", "upstream", dir], dir);
+    git(["update-ref", "refs/remotes/origin/topic", origin], dir);
+    git(["update-ref", "refs/remotes/upstream/topic", upstream], dir);
+    git(["update-ref", "refs/remotes/origin/shared", base], dir);
+    const refsBefore = git(["show-ref"], dir);
+    await openRepo(dir);
+    const nav = `document.querySelector('nav[aria-label="Branches"]')`;
+    if (!(await graph.evaluate("!!" + nav))) {
+      await button("Branches", 'document.querySelector("header")');
+    }
+    const eye = (remote) =>
+      `${nav}.querySelector('button[aria-label="Show remote ${remote} in the graph"]')`;
+    await until(
+      () => graph.evaluate(`${visible(origin)} && ${visible(upstream)} && !!${eye("origin")}`),
+      "both remote histories"
+    );
+    await graph.evaluate(`${eye("origin")}.click()`);
+    await until(
+      () => graph.evaluate(`!${visible(origin)} && ${visible(upstream)} && ${visible(base)}`),
+      "one remote hidden"
+    );
+    assert.equal(await graph.evaluate(`${eye("origin")}.getAttribute('aria-pressed')`), "false");
+    assert.ok(await graph.evaluate(`${nav}.innerText.includes('origin')`));
+    assert.equal(
+      await graph.evaluate(`!!document.querySelector('tbody span[title^="origin/"]')`),
+      false
+    );
+    if (!(await graph.evaluate('!!document.querySelector("[data-history-search]")'))) {
+      await button("Search history", 'document.querySelector("header")');
+    }
+    await graph.evaluate(`(() => {
+      const input = document.querySelector('[data-history-search]');
+      input.value = 'remote-'; input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await button("Search", 'document.querySelector("form[role=search]")');
+    await until(
+      () =>
+        graph.evaluate(
+          `!${visible(origin)} && ${visible(upstream)} && !!document.querySelector('main').innerText.includes('Filtered history')`
+        ),
+      "search respects hidden remote"
+    );
+    await button("Return to Graph");
+    await headerChoice("Branch", "Show All");
+    await graph.evaluate(`document.querySelector('header button[title="*"]').click()`);
+    assert.equal(
+      await graph.evaluate(
+        `[...document.querySelectorAll('[role=option]')].some(option => option.title.startsWith('remotes/origin/'))`
+      ),
+      false
+    );
+    await graph.evaluate(`document.querySelector('header button[title="*"]').click()`);
+    await openRepo(repo);
+    await openRepo(dir);
+    await until(
+      () =>
+        graph.evaluate(
+          `!${visible(origin)} && ${visible(upstream)} && ${eye("origin")}?.getAttribute('aria-pressed') === 'false'`
+        ),
+      "saved remote visibility"
+    );
+    await graph.evaluate(`${nav}.querySelector('button[title="origin/topic"]').click()`);
+    await until(
+      () =>
+        graph.evaluate(
+          `${visible(origin)} && ${eye("origin")}.getAttribute('aria-pressed') === 'true'`
+        ),
+      "selecting hidden branch reveals it"
+    );
+    await graph.evaluate(`${eye("origin")}.click()`);
+    await until(
+      () =>
+        graph.evaluate(
+          `!${visible(origin)} && ${visible(upstream)} && !!document.querySelector('header button[title="*"]')`
+        ),
+      "hiding selected remote clears selection"
+    );
+    await button("Show Remote Branches", nav);
+    await until(
+      () => graph.evaluate(`!${visible(origin)} && !${visible(upstream)} && ${visible(base)}`),
+      "all remotes hidden"
+    );
+    await button("Show Remote Branches", nav);
+    await until(
+      () => graph.evaluate(`!${visible(origin)} && ${visible(upstream)}`),
+      "individual choice retained after global toggle"
+    );
+    await graph.evaluate(`${eye("origin")}.click()`);
+    await until(
+      () => graph.evaluate(`${visible(origin)} && ${visible(upstream)}`),
+      "remote restored"
+    );
+    assert.equal(git(["show-ref"], dir), refsBefore);
+    assert.equal(git(["branch", "--show-current"], dir), "main");
+    const screenshot = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "remote-visibility.png"),
+      Buffer.from(screenshot.data, "base64")
+    );
+    await openRepo(repo);
+  });
+
+  test("clips wide graphs to their column and scrolls lanes without moving commit text", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "wide-base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    for (let index = 0; index < 14; index++) {
+      const hash = git(["commit-tree", tree, "-p", base, "-m", "wide-lane-" + index], dir);
+      git(["branch", "lane-" + index, hash], dir);
+    }
+    await openRepo(dir);
+    const measure = () =>
+      graph.evaluate(`(() => {
+      const viewport = document.querySelector('[data-graph-viewport]');
+      const scroll = document.querySelector('[data-graph-scroll]');
+      const table = document.querySelector('table');
+      const description = table.querySelector('thead th:nth-child(2)').getBoundingClientRect();
+      return { clipRight: viewport.getBoundingClientRect().right, descriptionLeft: description.left,
+        width: viewport.clientWidth, scrollWidth: scroll.scrollWidth, scrollLeft: scroll.scrollLeft,
+        viewportScroll: viewport.scrollLeft, overflow: getComputedStyle(viewport).overflowX,
+        dots: [...viewport.querySelectorAll('circle')].map(dot => dot.getBoundingClientRect().x),
+        rows: [...table.querySelectorAll('tr[data-commit-hash]')].map(row => row.dataset.commitHash) };
+    })()`);
+    await until(async () => {
+      const state = await measure();
+      return state.rows.length === 15 && state.scrollWidth > state.width;
+    }, "wide graph overflow");
+    let before = await measure();
+    assert.ok(
+      before.clipRight <= before.descriptionLeft + 1,
+      "graph cannot paint over description"
+    );
+    assert.equal(before.overflow, "hidden");
+    await graph.evaluate(`(() => {
+      const scroll = document.querySelector('[data-graph-scroll]');
+      scroll.scrollLeft = 10000; scroll.dispatchEvent(new Event('scroll'));
+    })()`);
+    let after = await measure();
+    assert.ok(after.scrollLeft > 0);
+    assert.equal(after.viewportScroll, after.scrollLeft);
+    assert.equal(after.descriptionLeft, before.descriptionLeft);
+    assert.deepEqual(after.rows, before.rows);
+    assert.ok(after.dots[0] < before.dots[0]);
+    before = after;
+    await graph.evaluate(`document.querySelector('[data-graph-scroll]').focus()`);
+    await connections[0].call("Input.dispatchKeyEvent", {
+      type: "keyDown",
+      key: "ArrowLeft",
+      code: "ArrowLeft",
+      windowsVirtualKeyCode: 37
+    });
+    await connections[0].call("Input.dispatchKeyEvent", {
+      type: "keyUp",
+      key: "ArrowLeft",
+      code: "ArrowLeft",
+      windowsVirtualKeyCode: 37
+    });
+    await until(
+      async () => (await measure()).scrollLeft < before.scrollLeft,
+      "keyboard graph scrolling"
+    );
+    const keyboard = await measure();
+    assert.equal(keyboard.viewportScroll, keyboard.scrollLeft);
+    await graph.evaluate(
+      `document.querySelector('tbody td').dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, shiftKey: true, deltaY: 20 }))`
+    );
+    assert.ok((await measure()).scrollLeft > keyboard.scrollLeft, "Shift+wheel scrolls graph");
+    await connections[0].call("Emulation.setDeviceMetricsOverride", {
+      width: 650,
+      height: 850,
+      deviceScaleFactor: 1,
+      mobile: false
+    });
+    await until(async () => {
+      const state = await measure();
+      return (
+        (await graph.evaluate("innerWidth < 700")) && state.clipRight <= state.descriptionLeft + 1
+      );
+    }, "narrow window graph clipping");
+    await connections[0].call("Emulation.setDeviceMetricsOverride", {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false
+    });
+    await until(() => graph.evaluate("innerWidth > 1000"), "restored window size");
+    await graph.evaluate(`(() => {
+      const cell = document.querySelector('thead th');
+      const grip = cell.querySelector('[role=separator]');
+      const rect = cell.getBoundingClientRect();
+      grip.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: rect.right }));
+      window.dispatchEvent(new MouseEvent('mousemove', { clientX: rect.left + 40 }));
+      window.dispatchEvent(new MouseEvent('mouseup'));
+    })()`);
+    await until(async () => (await measure()).width < before.width, "narrower graph column");
+    before = await measure();
+    assert.ok(before.clipRight <= before.descriptionLeft + 1);
+    await graph.evaluate(
+      `document.querySelector('tbody td').dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: -50 }))`
+    );
+    after = await measure();
+    assert.ok(after.scrollLeft < before.scrollLeft);
+    assert.equal(after.viewportScroll, after.scrollLeft);
+    assert.equal(after.descriptionLeft, before.descriptionLeft);
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash] td:nth-child(2)').click()`);
+    await until(
+      () =>
+        graph.evaluate(
+          `(() => {
+            const selected = document.querySelector('tr[aria-selected="true"]');
+            return selected && document.querySelector('td[colspan="4"]')?.textContent.includes(selected.dataset.commitHash);
+          })()`
+        ),
+      "commit selection and expansion after scrolling"
+    );
+    assert.ok(
+      await graph.evaluate(`(() => {
+      const rows = [...document.querySelectorAll('tr[data-commit-hash]')];
+      return [...document.querySelectorAll('[data-graph-viewport] circle')].every((dot, index) => {
+        const vertex = dot.getBoundingClientRect(); const row = rows[index].getBoundingClientRect();
+        return Math.abs(vertex.top + vertex.height / 2 - (row.top + row.height / 2)) < 2;
+      });
+    })()`),
+      "graph stays aligned with rows and expanded details"
+    );
+    const screenshot = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "wide-graph-scroll.png"),
+      Buffer.from(screenshot.data, "base64")
+    );
+    await headerChoice("Branch", "main");
+    await until(
+      async () => (await measure()).rows.length === 1 && (await measure()).viewportScroll === 0,
+      "scroll clamps after graph shrinks"
+    );
+    await openRepo(repo);
+  });
+
   test("lists branches, remotes, tags and stashes beside the graph and switches the graph from them", async () => {
     const pane = directory();
     init(pane);

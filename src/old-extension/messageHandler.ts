@@ -298,9 +298,11 @@ export function registerMessageHandlers(
       command: "loadCommits",
       repo: msg.repo,
       branchName: msg.branchName,
+      visibilityKey: msg.visibilityKey,
       ...(await loadCommits(gitClient.getInstance(), {
         branchName: msg.branchName,
         maxCommits: msg.maxCommits,
+        hiddenRemotes: msg.hiddenRemotes ?? [],
         showRemoteBranches: msg.showRemoteBranches,
         hard: msg.hard,
         dateType: config.dateType(),
@@ -313,8 +315,10 @@ export function registerMessageHandlers(
     setCurrentRepo(msg.repo);
     bridge.post({
       command: "loadBranches",
+      visibilityKey: msg.visibilityKey,
       ...(await loadBranches(gitClient.getInstance(), {
         showRemoteBranches: msg.showRemoteBranches,
+        hiddenRemotes: msg.hiddenRemotes ?? [],
         hard: msg.hard,
         repo: msg.repo,
         gitPath: config.gitPath()

@@ -22,6 +22,7 @@ import {
   parseHistory,
   repoFile
 } from "@/backend/utils/history";
+import { remoteVisibility, type RemoteVisibility } from "@/backend/utils/remoteVisibility";
 import { resolveCommit } from "@/backend/utils/validation";
 
 const logArgs = (offset: number) => [
@@ -36,7 +37,8 @@ const logArgs = (offset: number) => [
 export async function loadHistory(
   git: SimpleGit,
   filter: HistoryFilter,
-  offset: number
+  offset: number,
+  visibility: RemoteVisibility = {}
 ): Promise<HistoryPage> {
   const args = logArgs(offset);
   for (const [name, value] of [
@@ -76,7 +78,7 @@ export async function loadHistory(
   } else if (filter.revision) {
     args.push(await resolveCommit(git, filter.revision));
   } else {
-    args.push("--branches", "--tags", "--remotes");
+    args.push("--branches", "--tags", ...(await remoteVisibility(git, visibility)).logArgs);
     const head = await git.raw(["rev-parse", "--verify", "--quiet", "HEAD"]);
     if (head.trim()) {
       args.push(head.trim());
@@ -251,7 +253,7 @@ export async function historyQuery(
 ): Promise<HistoryQueryData> {
   switch (query.kind) {
     case "history":
-      return { kind: "history", page: await loadHistory(git, query.filter, query.offset) };
+      return { kind: "history", page: await loadHistory(git, query.filter, query.offset, query) };
     case "compare":
       return {
         kind: "compare",

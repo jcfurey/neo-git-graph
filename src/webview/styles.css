@@ -76,6 +76,19 @@
 }
 
 @layer components {
+  .graph-scrollbar::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .graph-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--vscode-scrollbarSlider-background);
+    border-radius: 4px;
+  }
+
+  .graph-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--vscode-scrollbarSlider-hoverBackground);
+  }
+
   .branch-focus-row {
     --color-graph: var(--branch-display-colour);
   }

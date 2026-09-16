@@ -9,6 +9,7 @@ import {
   displayedBranch,
   moreCommitsAvailable,
   selectedRepo,
+  remoteVisibilityKey,
   uncommittedChanges
 } from "@/webview/lib/stores";
 
@@ -17,7 +18,11 @@ type LoadCommitsMessage = Extract<ResponseMessage, { command: "loadCommits" }>;
 export function handleLoadCommits(msg: LoadCommitsMessage) {
   const requested = displayedBranch();
 
-  if (msg.repo !== selectedRepo.value || msg.branchName !== requested) {
+  if (
+    msg.repo !== selectedRepo.value ||
+    msg.branchName !== requested ||
+    (msg.visibilityKey !== undefined && msg.visibilityKey !== remoteVisibilityKey())
+  ) {
     return;
   }
 
