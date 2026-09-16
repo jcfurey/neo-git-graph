@@ -1,4 +1,4 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 
 import type { HistoryFilter } from "@/backend/types";
 import { Button } from "@/webview/components/ui/Button";
@@ -23,8 +23,14 @@ export function SearchBar() {
   const [draft, setDraft] = useState(active);
   const [expanded, setExpanded] = useState(false);
   const [savedName, setSavedName] = useState("");
+  // Effects run a frame after mount. Only a filter that really changed replaces
+  // the draft, so text typed into a freshly opened row is not thrown away.
+  const applied = useRef(active);
   useEffect(() => {
-    setDraft(active);
+    if (applied.current !== active) {
+      applied.current = active;
+      setDraft(active);
+    }
   }, [active]);
   function update(patch: Partial<HistoryFilter>) {
     setDraft({ ...draft, ...patch });
