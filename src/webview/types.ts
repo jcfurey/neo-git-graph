@@ -3,6 +3,7 @@ import type { ComponentChildren } from "preact";
 import type { ActionRequest } from "@/backend/types";
 
 export type CommitBranchType = "*" | (string & {});
+export type BranchDisplay = "filter" | "focus" | "ancestors";
 
 /** One clickable row of a context menu. `null` renders a divider. */
 export type ContextMenuEntry = { title: string; onClick: () => void } | null;

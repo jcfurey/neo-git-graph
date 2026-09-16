@@ -5,7 +5,7 @@ import { openBatch, openCompare } from "@/webview/components/history/HistoryTool
 import { PageControls, QueryStatus } from "@/webview/components/history/QueryControls";
 import { Button } from "@/webview/components/ui/Button";
 import { Loading } from "@/webview/components/ui/Loading";
-import { loadMoreCommits } from "@/webview/lib/actions";
+import { loadMoreCommits, selectBranch } from "@/webview/lib/actions";
 import { commitMenuHintDismissed, dismissCommitMenuHint } from "@/webview/lib/hints";
 import {
   historyActive,
@@ -17,6 +17,8 @@ import {
 import {
   commitHead,
   commitList,
+  branchDisplay,
+  displayedBranch,
   headBranch,
   maxCommits,
   moreCommitsAvailable,
@@ -35,14 +37,22 @@ export function GraphView() {
           kind: "history",
           filter: {
             ...filter,
-            revision:
-              filter.revision || (selectedBranch.value === "*" ? "" : (selectedBranch.value ?? ""))
+            revision: filter.revision || displayedBranch()
           },
           offset: historyOffset.value
         }
       : null
   );
   const commits = active ? query.data?.page.entries : commitList.value;
+  const focusBranch =
+    branchDisplay.value !== "filter" && selectedBranch.value !== "*"
+      ? selectedBranch.value
+      : undefined;
+  const focus = useRepositoryQuery<"branchFocus">(
+    focusBranch && commits?.length
+      ? { kind: "branchFocus", branch: focusBranch, hashes: commits.map((commit) => commit.hash) }
+      : null
+  );
   const repo = selectedRepo.value;
   useLayoutEffect(() => {
     if (commits === undefined || restoreScroll.value === null) {
@@ -80,6 +90,26 @@ export function GraphView() {
 
   return (
     <main class="relative">
+      {focusBranch && (
+        <div
+          class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line-soft px-3 py-1.5 text-xs"
+          role="status"
+        >
+          <span class="max-w-80 truncate" title={focusBranch}>
+            {window.l10n.branchFocus.replace("{0}", focusBranch.replace(/^remotes\//, ""))}
+          </span>
+          <span class="text-muted">
+            {focus.error
+              ? window.l10n.branchFocusUnavailable
+              : focus.loading
+                ? window.l10n.loadingBranchFocus
+                : branchDisplay.value === "ancestors"
+                  ? window.l10n.focusAncestorsHint
+                  : window.l10n.focusDirectHint}
+          </span>
+          <Button onClick={() => selectBranch("*")}>{window.l10n.clearBranchFocus}</Button>
+        </div>
+      )}
       {active && (
         <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-3 py-2 text-xs text-muted">
           <span>
@@ -141,7 +171,13 @@ export function GraphView() {
           </button>
         </div>
       )}
-      <CommitTable commits={commits} head={commitHead.value} headBranch={headBranch.value} />
+      <CommitTable
+        commits={commits}
+        head={commitHead.value}
+        headBranch={headBranch.value}
+        focus={focus.loading || focus.error ? null : focus.data}
+        keepMergedBright={branchDisplay.value === "ancestors"}
+      />
       {active && query.data && (
         <div class="px-3">
           <PageControls

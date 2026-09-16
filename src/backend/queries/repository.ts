@@ -6,6 +6,7 @@ import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import { loadBisect } from "@/backend/queries/bisect";
+import { loadBranchFocus } from "@/backend/queries/branchFocus";
 import { historyQuery } from "@/backend/queries/history";
 import {
   loadSyncPlan,
@@ -234,6 +235,8 @@ export async function repositoryQuery(
   }
 ): Promise<RepositoryQueryData> {
   switch (query.kind) {
+    case "branchFocus":
+      return { kind: "branchFocus", ...(await loadBranchFocus(git, query.branch, query.hashes)) };
     case "bisect":
       return {
         kind: "bisect",

@@ -1,5 +1,5 @@
 import { Fragment } from "preact";
-import { useMemo } from "preact/hooks";
+import { useMemo, useState } from "preact/hooks";
 
 import type { HistoryEntry } from "@/backend/types";
 import { CommitDetails } from "@/webview/components/commit/CommitDetails";
@@ -13,18 +13,21 @@ import {
   UNCOMMITTED_CHANGES
 } from "@/webview/constants";
 import { GRAPH_PADDING } from "@/webview/graph/constants";
+import { commitRelations, lineRelation } from "@/webview/graph/focus";
 import { computeGraphLayout } from "@/webview/graph/layout";
 import { branchColour } from "@/webview/graph/palette";
 import type { GraphExpansion } from "@/webview/graph/types";
 import { graphWidth } from "@/webview/graph/utils";
 import { toggleCommitDetails } from "@/webview/lib/actions";
-import { focusedCommit } from "@/webview/lib/navigation";
+import { focusedCommit, selectedCommits } from "@/webview/lib/navigation";
 import { columnWidths, commitDetails, expandedCommit } from "@/webview/lib/stores";
 
 type CommitTableProps = {
   commits: Array<HistoryEntry>;
   head: string | null;
   headBranch: string | null;
+  focus?: { direct: string[]; merged: string[] } | null;
+  keepMergedBright?: boolean;
 };
 
 const HEADER_CLASS =
@@ -69,8 +72,28 @@ function ResizeHandle({
   );
 }
 
-export function CommitTable({ commits, head, headBranch }: CommitTableProps) {
+export function CommitTable({
+  commits,
+  head,
+  headBranch,
+  focus = null,
+  keepMergedBright = false
+}: CommitTableProps) {
   const layout = useMemo(() => computeGraphLayout(commits, head), [commits, head]);
+  const relations = useMemo(() => commitRelations(commits, focus), [commits, focus]);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const selected = new Set(selectedCommits.value.map((commit) => commit.hash));
+  const revealed = new Set(
+    commits.flatMap((commit, index) =>
+      commit.hash === head ||
+      commit.hash === hovered ||
+      commit.hash === focusedCommit.value ||
+      commit.hash === expandedCommit.value ||
+      selected.has(commit.hash)
+        ? [index]
+        : []
+    )
+  );
   const messages = useMemo(
     () => new Map(commits.map((commit) => [commit.hash, commit.message])),
     [commits]
@@ -95,10 +118,25 @@ export function CommitTable({ commits, head, headBranch }: CommitTableProps) {
   return (
     <div class="relative" ref={resize.containerRef}>
       <div class="pointer-events-none absolute left-0 overflow-hidden" style={GRAPH_CLIP}>
-        <CommitGraph layout={layout} expansion={expansion} />
+        <CommitGraph
+          layout={layout}
+          expansion={expansion}
+          relations={relations}
+          relationForLine={(line) => lineRelation(line, commits, relations)}
+          keepMergedBright={keepMergedBright}
+          revealed={revealed}
+        />
       </div>
       <table
         aria-label={window.l10n.graphKeyboardHint}
+        onMouseOver={(event) =>
+          setHovered(
+            (event.target as HTMLElement)
+              .closest("tr[data-commit-hash]")
+              ?.getAttribute("data-commit-hash") ?? null
+          )
+        }
+        onMouseLeave={() => setHovered(null)}
         class={`w-full cursor-default border-collapse text-ui select-none ${
           sized ? "table-fixed" : ""
         }`}
@@ -138,6 +176,8 @@ export function CommitTable({ commits, head, headBranch }: CommitTableProps) {
                 headBranch={headBranch}
                 messages={messages}
                 colour={branchColour(layout.vertices[index]?.colour ?? 0)}
+                relation={relations[index] ?? "normal"}
+                keepMergedBright={keepMergedBright}
                 expanded={index === expandedRow}
                 onSelect={
                   commit.hash === UNCOMMITTED_CHANGES

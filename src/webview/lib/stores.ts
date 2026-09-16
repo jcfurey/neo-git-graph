@@ -2,7 +2,12 @@ import { computed, signal } from "@preact/signals";
 
 import type { GitCommitDetails, GitCommitNode } from "@/backend/types";
 import type { GitRepoSet } from "@/types";
-import type { CommitBranchType, ContextMenuState, DialogState } from "@/webview/types";
+import type {
+  BranchDisplay,
+  CommitBranchType,
+  ContextMenuState,
+  DialogState
+} from "@/webview/types";
 import { isColumnWidths } from "@/webview/utils/columns";
 
 export const selectedRepo = signal<string | undefined>(undefined);
@@ -55,6 +60,12 @@ export const columnWidths = computed(() => {
 });
 
 export const selectedBranch = signal<CommitBranchType | undefined>(undefined);
+export const branchDisplay = signal<BranchDisplay>("filter");
+
+/** Focus changes emphasis while keeping the same all-branches history. */
+export function displayedBranch(branch = selectedBranch.value): string {
+  return branchDisplay.value === "filter" && branch !== "*" ? (branch ?? "") : "";
+}
 export const showRemoteBranch = signal<boolean>(true);
 export const maxCommits = signal<number>(0);
 

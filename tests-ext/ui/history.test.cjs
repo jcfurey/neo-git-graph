@@ -223,6 +223,27 @@ async function openRepo(dir) {
     "loaded commits"
   );
 }
+async function headerChoice(label, option) {
+  await until(
+    () =>
+      graph.evaluate(`(() => {
+      const trigger = [...document.querySelectorAll('header button[aria-haspopup="listbox"]')]
+        .find(button => document.getElementById(button.getAttribute('aria-labelledby').split(' ')[0])?.textContent === ${JSON.stringify(label + ":")});
+      if (!trigger || trigger.disabled) return false;
+      trigger.click(); return true;
+    })()`),
+    "header choice " + label
+  );
+  await until(
+    () =>
+      graph.evaluate(`(() => {
+      const option = [...document.querySelectorAll('[role="option"]')].find(item => item.textContent.trim() === ${JSON.stringify(option)});
+      if (!option) return false;
+      option.click(); return true;
+    })()`),
+    "option " + option
+  );
+}
 suite("Git Graph workflow UI", function () {
   this.timeout(120000);
   suiteSetup(async () => {
@@ -269,6 +290,101 @@ suite("Git Graph workflow UI", function () {
     for (const dir of dirs) {
       await fs.promises.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
+  });
+
+  test("focuses direct or merged branch history without hiding rows or changing checkout", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "focus-base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "-b", "topic"], dir);
+    commit("topic", "focus-merged", dir);
+    const topic = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "main"], dir);
+    commit("main", "focus-main", dir);
+    git(["merge", "--no-ff", "topic", "-m", "focus-merge"], dir);
+    const tip = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "-b", "side", base], dir);
+    commit("side", "focus-unrelated", dir);
+    const side = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "main"], dir);
+    await openRepo(dir);
+    await until(
+      () => graph.evaluate(`!!document.querySelector('tr[data-commit-hash="${side}"]')`),
+      "all focus fixture rows"
+    );
+    const geometry = () =>
+      graph.evaluate(`({
+      rows: [...document.querySelectorAll('tr[data-commit-hash]')].map(row => row.dataset.commitHash),
+      vertices: [...document.querySelectorAll('svg[aria-hidden] circle[data-branch-relation]')].map(dot => [dot.getAttribute('cx'), dot.getAttribute('cy')])
+    })`);
+    const before = await geometry();
+    await headerChoice("View", "Focus direct history");
+    await until(
+      () =>
+        graph.evaluate(`
+      document.querySelector('tr[data-commit-hash="${topic}"]')?.dataset.branchRelation === 'merged' &&
+      document.querySelector('tr[data-commit-hash="${side}"]')?.dataset.branchRelation === 'unrelated' &&
+      document.querySelector('tr[data-commit-hash="${tip}"]')?.dataset.branchRelation === 'direct'
+    `),
+      "three focus levels"
+    );
+    assert.deepEqual(await geometry(), before);
+    assert.ok(
+      await graph.evaluate(
+        `!!document.querySelector('path[data-branch-relation="merged"][stroke^="color-mix"]')`
+      )
+    );
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="${side}"]').focus()`);
+    assert.equal(
+      await graph.evaluate(`(() => {
+      const row = document.querySelector('tr[data-commit-hash="${side}"]');
+      return getComputedStyle(row).color === getComputedStyle(document.querySelector('tr[data-commit-hash="${tip}"]')).color;
+    })()`),
+      true
+    );
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="${tip}"]').focus()`);
+    const screenshot = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "branch-focus.png"),
+      Buffer.from(screenshot.data, "base64")
+    );
+    await headerChoice("View", "Focus all ancestors");
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('tr[data-commit-hash="${topic}"]')?.dataset.branchRelation === 'direct'`
+        ),
+      "merged history stays bright"
+    );
+    assert.deepEqual(await geometry(), before);
+    await headerChoice("Branch", "side");
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('tr[data-commit-hash="${side}"]')?.dataset.branchRelation === 'direct'`
+        ),
+      "focus another branch"
+    );
+    assert.deepEqual(await geometry(), before);
+    assert.equal(git(["branch", "--show-current"], dir), "main");
+    assert.equal(git(["rev-parse", "HEAD"], dir), tip);
+    await button("Clear focus");
+    await until(
+      () =>
+        graph.evaluate(
+          `![...document.querySelectorAll('tr[data-commit-hash]')].some(row => row.dataset.branchRelation !== 'normal')`
+        ),
+      "clear focus"
+    );
+    assert.deepEqual(await geometry(), before);
+    await headerChoice("Branch", "side");
+    await headerChoice("View", "Filter to branch");
+    await until(
+      () => graph.evaluate(`document.querySelectorAll('tr[data-commit-hash]').length === 2`),
+      "filter branch history"
+    );
+    await openRepo(repo);
   });
 
   test("configures remotes and upstreams, pushes/deletes tags, pops stashes, and manages worktrees", async () => {

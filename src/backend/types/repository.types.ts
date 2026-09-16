@@ -41,6 +41,7 @@ export type RebasePlan = { base: string; head: string; branch: string; entries: 
 export type RepositoryQuery =
   | WorkflowQuery
   | HistoryQuery
+  | { kind: "branchFocus"; branch: string; hashes: string[] }
   | { kind: "state" }
   | { kind: "stashes" }
   | { kind: "rebasePlan"; base: string; autosquash?: boolean }
@@ -49,6 +50,7 @@ export type RepositoryQuery =
 export type RepositoryQueryData =
   | WorkflowQueryData
   | HistoryQueryData
+  | { kind: "branchFocus"; tip: string; direct: string[]; merged: string[] }
   | { kind: "state"; state: RepositoryState }
   | { kind: "stashes"; stashes: StashDetails[] }
   | { kind: "rebasePlan"; plan: RebasePlan }

@@ -10,7 +10,15 @@ Inside the graph, a hint above the commit list says how to reach a commit's acti
 
 ## Branches pane
 
-**Branches** toggles a pane beside the graph with four sections: local branches, remotes, tags and stashes. Each section collapses independently, and the filter box narrows all of them at once. Clicking a local or remote branch limits the graph to it, and **Show All** restores every branch. Clicking a tag opens the graph at that commit. Clicking a stash opens its diff.
+**Branches** toggles a pane beside the graph with four sections: local branches, remotes, tags and stashes. Each section collapses independently, and the filter box narrows all of them at once. Clicking a local or remote branch selects its history using the header's **View** choice, and **Show All** restores every branch without dimming. Clicking a tag opens the graph at that commit. Clicking a stash opens its diff.
+
+The **View** selector offers three ways to read a selected branch:
+
+- **Filter to branch** keeps the existing view showing only that branch's reachable history.
+- **Focus direct history** keeps every visible branch in place. The selected branch's first-parent history stays in full colour, merged-in history uses muted colour, and commits outside its ancestry turn gray.
+- **Focus all ancestors** also keeps the surrounding branches, but gives merged-in history full colour.
+
+Focus changes the view without checking out a branch. When enabled from **Show All**, it starts with the checked-out branch when available. Switching focus between branches keeps the rows and lanes in place. **Clear focus** restores full colour, and the view choice is remembered per repository. Hovering, keyboard focus, selection and the checked-out commit retain clear text and markers. Search still filters the visible commits; in focus views it searches across branches and colours matches using their actual ancestry, even when connecting commits are outside the page.
 
 Every row carries the same context menu as the matching label in the graph, reached by right-click or its trailing menu button. The most common action is also inline: **Checkout** on a branch, **Fetch** on a remote, **Show in Graph** on a tag, and **Apply** or **Pop** on a stash. The **+** buttons create a branch at HEAD, add a remote, or save a stash.
 
@@ -82,7 +90,7 @@ The result displays the first bad commit, or explains when skipped commits preve
 
 ## Search, file history, and comparison
 
-The header's search button opens the search row, and `/` or Ctrl/Cmd+F opens and focuses it. The row stays open while a filter is active. It queries repository history beyond the graph's loaded commits, with 100 results per page. Enter a commit message or a resolvable SHA of at least seven characters. **Filters** adds literal author/email and path filters, inclusive dates, rename following for a single file, and named filters saved per repository. A selected branch limits the history to that branch. Filtered results may omit commits between matches. **Return to Graph** clears the filters.
+The header's search button opens the search row, and `/` or Ctrl/Cmd+F opens and focuses it. The row stays open while a filter is active. It queries repository history beyond the graph's loaded commits, with 100 results per page. Enter a commit message or a resolvable SHA of at least seven characters. **Filters** adds literal author/email and path filters, inclusive dates, rename following for a single file, and named filters saved per repository. In **Filter to branch** view, a selected branch limits the history to that branch. Filtered results may omit commits between matches. **Return to Graph** clears the filters.
 
 Right-click a file in Explorer, an editor title, or a commit's changed-file list and choose **File History**. Rename following retains the historical path at each commit. From a history row, open that file at its revision or choose **Restore File Contents**. The restore preview lets you choose the destination and compare its working contents with the historical version before confirming. Restore replaces the working file, including binary contents and Git file modes, and preserves the real index. A changed working file or index invalidates the preview. Historical previews use VS Code text documents; binary restoration does not require a text preview.
 

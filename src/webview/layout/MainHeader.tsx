@@ -19,6 +19,7 @@ import {
   openFormDialog,
   refresh,
   selectBranch,
+  setBranchDisplay,
   selectRepo,
   setShowRemoteBranch
 } from "@/webview/lib/actions";
@@ -34,7 +35,14 @@ import {
 } from "@/webview/lib/navigation";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
 import { rpcClient } from "@/webview/lib/rpc/rpc-client";
-import { branchList, selectedBranch, selectedRepo, showRemoteBranch } from "@/webview/lib/stores";
+import {
+  branchDisplay,
+  branchList,
+  selectedBranch,
+  selectedRepo,
+  showRemoteBranch
+} from "@/webview/lib/stores";
+import type { BranchDisplay } from "@/webview/types";
 
 export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
   const repo = selectedRepo.value;
@@ -77,6 +85,18 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
         ]}
         value={selectedBranch.value}
         onChange={selectBranch}
+        disabled={branchList.value === undefined}
+      />
+      <Dropdown
+        label={window.l10n.branchDisplay}
+        class="max-w-56"
+        options={[
+          { label: window.l10n.filterToBranch, value: "filter" },
+          { label: window.l10n.focusDirectHistory, value: "focus" },
+          { label: window.l10n.focusAllAncestors, value: "ancestors" }
+        ]}
+        value={branchDisplay.value}
+        onChange={(value) => setBranchDisplay(value as BranchDisplay)}
         disabled={branchList.value === undefined}
       />
       <div class="ml-auto flex flex-wrap items-center gap-2">

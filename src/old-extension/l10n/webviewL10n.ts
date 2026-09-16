@@ -19,6 +19,20 @@ export function getWebviewLocalizedStrings() {
     // UI labels
     repo: vscode.l10n.t("Repo"),
     branch: vscode.l10n.t("Branch"),
+    branchDisplay: vscode.l10n.t("View"),
+    filterToBranch: vscode.l10n.t("Filter to branch"),
+    focusDirectHistory: vscode.l10n.t("Focus direct history"),
+    focusAllAncestors: vscode.l10n.t("Focus all ancestors"),
+    branchFocus: vscode.l10n.t("Focus: {0}"),
+    clearBranchFocus: vscode.l10n.t("Clear focus"),
+    loadingBranchFocus: vscode.l10n.t("Loading branch focus…"),
+    branchFocusUnavailable: vscode.l10n.t(
+      "Branch focus unavailable. Refresh or select another branch."
+    ),
+    focusDirectHint: vscode.l10n.t(
+      "Direct history: full colour · Merged history: muted · Other commits: gray"
+    ),
+    focusAncestorsHint: vscode.l10n.t("All ancestors: full colour · Other commits: gray"),
     showRemoteBranches: vscode.l10n.t("Show Remote Branches"),
     refresh: vscode.l10n.t("Refresh"),
     close: vscode.l10n.t("Close"),

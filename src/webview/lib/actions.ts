@@ -13,11 +13,13 @@ import {
 } from "@/webview/lib/repository-actions";
 import {
   branchList,
+  branchDisplay,
   commitDetails,
   commitHead,
   commitList,
   contextMenu,
   dialog,
+  displayedBranch,
   expandedCommit,
   headBranch,
   maxCommits,
@@ -32,6 +34,7 @@ import { vscode } from "@/webview/lib/vscode";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
 import type {
   ActionCommand,
+  BranchDisplay,
   CommitBranchType,
   ContextMenuEntry,
   DialogBody,
@@ -52,7 +55,7 @@ function requestCommits(repo: string, branch: CommitBranchType) {
   vscode.postMessage({
     command: "loadCommits",
     repo,
-    branchName: branch === SHOW_ALL_BRANCHES ? "" : branch,
+    branchName: displayedBranch(branch),
     maxCommits: maxCommits.value,
     showRemoteBranches: showRemoteBranch.value,
     hard: true
@@ -95,15 +98,39 @@ export function selectBranch(branch: CommitBranchType) {
     return;
   }
 
+  const previous = displayedBranch();
   batch(() => {
     selectedBranch.value = branch;
-    clearCommits();
+    if (previous !== displayedBranch()) {
+      clearCommits();
+    }
   });
 
   const repo = selectedRepo.value;
-  if (repo !== undefined) {
+  if (repo !== undefined && commitList.value === undefined) {
     requestCommits(repo, branch);
   }
+}
+
+export function setBranchDisplay(value: BranchDisplay) {
+  if (value === branchDisplay.value) {
+    return;
+  }
+  const previous = displayedBranch();
+  batch(() => {
+    branchDisplay.value = value;
+    if (value !== "filter" && selectedBranch.value === SHOW_ALL_BRANCHES) {
+      selectedBranch.value = headBranch.value ?? branchList.value?.[0] ?? SHOW_ALL_BRANCHES;
+    }
+    if (previous !== displayedBranch()) {
+      clearCommits();
+    }
+  });
+  const repo = selectedRepo.value;
+  if (repo !== undefined && selectedBranch.value !== undefined && commitList.value === undefined) {
+    requestCommits(repo, selectedBranch.value);
+  }
+  leaveNavigation(repo);
 }
 
 /** Resize the columns of the commit table, while the user drags a boundary. */

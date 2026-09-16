@@ -79,6 +79,8 @@ function traceMerge(vertices: Array<Vertex>, startAt: number) {
     const curPoint = connection ?? nextPointOf(currentVertex);
 
     addLine(parentBranch, {
+      child: vertex.y,
+      parent: parentVertex.y,
       p1: lastPoint,
       p2: curPoint,
       isCommitted: vertex.isCommitted,
@@ -118,6 +120,8 @@ function traceBranch(vertices: Array<Vertex>, startAt: number, colours: BranchCo
         : nextPointOf(currentVertex);
 
     addLine(branch, {
+      child: vertex.y,
+      parent: parentVertex?.y ?? null,
       p1: lastPoint,
       p2: curPoint,
       isCommitted: vertex.isCommitted,

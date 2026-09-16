@@ -4,6 +4,8 @@ import { RefLabel } from "@/webview/components/commit/RefLabel";
 import { fileContextMenu } from "@/webview/components/history/file-menu";
 import { KebabIcon } from "@/webview/components/ui/Icons";
 import { UNCOMMITTED_CHANGES } from "@/webview/constants";
+import { focusColour } from "@/webview/graph/focus";
+import type { BranchRelation } from "@/webview/graph/types";
 import { openContextMenu } from "@/webview/lib/actions";
 import type { CommitMessages } from "@/webview/lib/menus";
 import { commitMenu, commitMenuSource } from "@/webview/lib/menus";
@@ -27,6 +29,8 @@ type CommitRowProps = {
   messages: CommitMessages;
   /** Colour of the graph branch this commit sits on. */
   colour: string | undefined;
+  relation?: BranchRelation;
+  keepMergedBright?: boolean;
   /** The details view of this commit is open. */
   expanded: boolean;
   /** Open or close the details view. Absent for the uncommitted changes row. */
@@ -74,6 +78,8 @@ export function CommitRow({
   headBranch,
   messages,
   colour,
+  relation = "normal",
+  keepMergedBright = false,
   expanded,
   onSelect
 }: CommitRowProps) {
@@ -106,13 +112,23 @@ export function CommitRow({
     <tr
       class={
         rowClass(isHead, expanded || marked, onSelect !== undefined, menuOpen) +
-        " focus:outline-1 focus:-outline-offset-1 focus:outline-focus"
+        " branch-focus-row focus:outline-1 focus:-outline-offset-1 focus:outline-focus"
       }
       data-commit-hash={uncommitted ? undefined : commit.hash}
+      data-branch-relation={relation === "merged" && keepMergedBright ? "direct" : relation}
+      data-emphasized={isHead || uncommitted || expanded || marked || menuOpen}
       tabIndex={uncommitted ? undefined : tabStop ? 0 : -1}
       aria-selected={marked}
+      onFocus={() => {
+        if (!uncommitted) {
+          focusedCommit.value = commit.hash;
+        }
+      }}
       title={window.l10n.selectCommitsHint}
-      style={colour === undefined ? undefined : `--color-graph: ${colour}`}
+      style={{
+        "--branch-colour": focusColour(colour, "normal"),
+        "--branch-display-colour": focusColour(colour, relation, keepMergedBright)
+      }}
       onClick={(event) => {
         if (uncommitted) {
           return;

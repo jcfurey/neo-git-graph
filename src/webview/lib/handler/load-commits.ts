@@ -1,14 +1,13 @@
 import { batch } from "@preact/signals";
 
 import type { ResponseMessage } from "@/types";
-import { SHOW_ALL_BRANCHES } from "@/webview/constants";
 import { closeCommitDetails } from "@/webview/lib/actions";
 import {
   commitHead,
   commitList,
   expandedCommit,
+  displayedBranch,
   moreCommitsAvailable,
-  selectedBranch,
   selectedRepo,
   uncommittedChanges
 } from "@/webview/lib/stores";
@@ -16,8 +15,7 @@ import {
 type LoadCommitsMessage = Extract<ResponseMessage, { command: "loadCommits" }>;
 
 export function handleLoadCommits(msg: LoadCommitsMessage) {
-  const branch = selectedBranch.value;
-  const requested = branch === SHOW_ALL_BRANCHES ? "" : branch;
+  const requested = displayedBranch();
 
   if (msg.repo !== selectedRepo.value || msg.branchName !== requested) {
     return;

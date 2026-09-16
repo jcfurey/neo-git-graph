@@ -426,5 +426,15 @@
   "The file or its staged version changed. Preview the restore again.": "檔案或其暫存版本已變更。請重新預覽還原。",
   "HEAD or the staged changes changed. Preview the fixup commit again.": "HEAD 或暫存的變更已改變。請重新預覽修正提交。",
   "Commit or stash your changes before applying commits.": "套用提交前請先提交或暫存變更。",
-  "Choose a valid mainline parent for the selected merge commits.": "請為所選合併提交選擇有效的主線父提交。"
+  "Choose a valid mainline parent for the selected merge commits.": "請為所選合併提交選擇有效的主線父提交。",
+  "View": "檢視",
+  "Filter to branch": "只顯示所選分支",
+  "Focus direct history": "聚焦主線歷史",
+  "Focus all ancestors": "聚焦所有祖先提交",
+  "Focus: {0}": "聚焦：{0}",
+  "Clear focus": "清除聚焦",
+  "Loading branch focus…": "正在載入分支聚焦…",
+  "Branch focus unavailable. Refresh or select another branch.": "無法聚焦分支。請重新整理或選擇其他分支。",
+  "Direct history: full colour · Merged history: muted · Other commits: gray": "主線歷史：原色 · 已合併歷史：淡色 · 其他提交：灰色",
+  "All ancestors: full colour · Other commits: gray": "所有祖先提交：原色 · 其他提交：灰色"
 }

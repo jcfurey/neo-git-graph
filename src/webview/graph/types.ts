@@ -4,8 +4,12 @@
  */
 
 export type GraphPoint = { x: number; y: number };
+export type BranchRelation = "normal" | "direct" | "merged" | "unrelated";
 
 export type GraphLine = {
+  /** Original edge endpoints, retained even when its lane crosses other rows. */
+  child: number;
+  parent: number | null;
   p1: GraphPoint;
   p2: GraphPoint;
   isCommitted: boolean;
@@ -42,6 +46,7 @@ export type GraphExpansion = {
 
 /** One SVG path, in pixels. */
 export type GraphStroke = {
+  relation: BranchRelation;
   path: string;
   colour: number;
   isCommitted: boolean;

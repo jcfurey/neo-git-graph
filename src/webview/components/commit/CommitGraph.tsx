@@ -1,7 +1,8 @@
 import { VERTEX_RADIUS } from "@/webview/graph/constants";
+import { focusColour } from "@/webview/graph/focus";
 import { branchColour, UNCOMMITTED_COLOUR } from "@/webview/graph/palette";
 import { branchStrokes } from "@/webview/graph/strokes";
-import type { GraphExpansion, GraphLayout } from "@/webview/graph/types";
+import type { BranchRelation, GraphExpansion, GraphLayout, GraphLine } from "@/webview/graph/types";
 import { expandOffset, graphHeight, graphWidth, laneX, rowY } from "@/webview/graph/utils";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
 
@@ -17,13 +18,23 @@ const DOT_CLASS = "stroke-editor/75 stroke-1";
  */
 export function CommitGraph({
   layout,
-  expansion
+  expansion,
+  relations,
+  relationForLine,
+  keepMergedBright,
+  revealed
 }: {
   layout: GraphLayout;
   expansion: GraphExpansion | null;
+  relations: BranchRelation[];
+  relationForLine: (line: GraphLine) => BranchRelation;
+  keepMergedBright: boolean;
+  revealed: ReadonlySet<number>;
 }) {
   const angular = getWebviewConfig().graphStyle === "angular";
-  const strokes = layout.branches.flatMap((branch) => branchStrokes(branch, angular, expansion));
+  const strokes = layout.branches.flatMap((branch) =>
+    branchStrokes(branch, angular, expansion, relationForLine)
+  );
 
   return (
     <svg
@@ -38,16 +49,29 @@ export function CommitGraph({
           <path
             class={LINE_CLASS}
             d={stroke.path}
-            stroke={stroke.isCommitted ? branchColour(stroke.colour) : UNCOMMITTED_COLOUR}
+            data-branch-relation={stroke.relation}
+            stroke={
+              stroke.isCommitted
+                ? focusColour(branchColour(stroke.colour), stroke.relation, keepMergedBright)
+                : UNCOMMITTED_COLOUR
+            }
           />
         </g>
       ))}
       {layout.vertices.map((vertex) => {
-        const colour = vertex.isCommitted ? branchColour(vertex.colour) : UNCOMMITTED_COLOUR;
+        const relation = relations[vertex.y] ?? "normal";
+        const colour = vertex.isCommitted
+          ? focusColour(
+              branchColour(vertex.colour),
+              revealed.has(vertex.y) || vertex.isCurrent ? "normal" : relation,
+              keepMergedBright
+            )
+          : UNCOMMITTED_COLOUR;
 
         return (
           <circle
             key={vertex.y}
+            data-branch-relation={relation}
             cx={laneX(vertex.x)}
             cy={rowY(vertex.y) + expandOffset(vertex.y, expansion)}
             r={VERTEX_RADIUS}

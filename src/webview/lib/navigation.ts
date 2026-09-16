@@ -2,8 +2,9 @@ import { computed, signal } from "@preact/signals";
 
 import type { HistoryEntry, HistoryFilter } from "@/backend/types";
 import type { SidebarPane } from "@/types";
-import { selectedRepo } from "@/webview/lib/stores";
+import { branchDisplay, selectedRepo } from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
+import type { BranchDisplay } from "@/webview/types";
 
 export const emptyFilter = (): HistoryFilter => ({
   text: "",
@@ -15,7 +16,12 @@ export const emptyFilter = (): HistoryFilter => ({
   follow: false
 });
 type SavedFilter = { name: string; filter: HistoryFilter };
-type SavedRepo = { filter: HistoryFilter; saved: SavedFilter[]; scroll: number };
+type SavedRepo = {
+  filter: HistoryFilter;
+  saved: SavedFilter[];
+  scroll: number;
+  branchDisplay?: BranchDisplay;
+};
 type NavigationState = {
   repos: Record<string, SavedRepo>;
   workspace: boolean;
@@ -69,6 +75,7 @@ export function leaveNavigation(repo: string | undefined) {
   saved.repos[repo] = {
     filter: historyFilter.value,
     saved: savedFilters.value,
+    branchDisplay: branchDisplay.value,
     scroll: window.scrollY
   };
   persist();
@@ -76,6 +83,7 @@ export function leaveNavigation(repo: string | undefined) {
 
 export function enterNavigation(repo: string) {
   const state = saved.repos[repo];
+  branchDisplay.value = state?.branchDisplay ?? "filter";
   historyFilter.value = { ...emptyFilter(), ...state?.filter };
   savedFilters.value = state?.saved ?? [];
   historyOffset.value = 0;

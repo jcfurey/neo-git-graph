@@ -76,6 +76,25 @@
 }
 
 @layer components {
+  .branch-focus-row {
+    --color-graph: var(--branch-display-colour);
+  }
+
+  .branch-focus-row[data-branch-relation="merged"] {
+    color: color-mix(in srgb, var(--color-fg) 80%, var(--color-muted));
+  }
+
+  .branch-focus-row[data-branch-relation="unrelated"] {
+    color: var(--color-muted);
+  }
+
+  .branch-focus-row:hover,
+  .branch-focus-row:focus-within,
+  .branch-focus-row[data-emphasized="true"] {
+    --color-graph: var(--branch-colour);
+    color: var(--color-fg);
+  }
+
   /* A scroll timeline drives the fade, so the range is a distance, not a duration. */
   .animate-scroll-shadow {
     animation: scroll-shadow linear both;

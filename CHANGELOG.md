@@ -4,6 +4,7 @@
 
 ### Added
 
+- Selectable branch focus with full-colour direct history, muted merged history and gray unrelated commits, plus an option to keep all ancestors bright.
 - Submodule commit comparisons and parent pointer staging/unstaging.
 - Workspace fetch with individual results and reviewed fast-forward updates.
 - Push/pull commit previews, selected merged-branch cleanup, and guided Git bisect.
