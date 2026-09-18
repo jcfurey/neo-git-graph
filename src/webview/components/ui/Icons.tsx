@@ -76,6 +76,15 @@ export function GearIcon(props: IconProps) {
   );
 }
 
+export function RevealIcon(props: IconProps) {
+  return (
+    <Icon {...props} {...STROKE}>
+      <circle cx="8" cy="8" r="3" />
+      <path d="M8 1v3m0 8v3M1 8h3m8 0h3" />
+    </Icon>
+  );
+}
+
 export function EyeIcon(props: IconProps) {
   return (
     <Icon {...props} {...STROKE}>

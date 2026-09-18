@@ -1,3 +1,5 @@
+import { useLayoutEffect, useRef } from "preact/hooks";
+
 import type { GitRepo } from "@/types";
 import { ActivityIndicator, openActivity } from "@/webview/components/history/ActivityView";
 import {
@@ -45,13 +47,36 @@ import {
 import type { BranchDisplay } from "@/webview/types";
 
 export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
+  const headerRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    if (!header) {
+      return;
+    }
+    // The controls wrap on narrow windows; sticky table headers must follow that height.
+    const measure = () =>
+      document.documentElement.style.setProperty(
+        "--main-header-height",
+        `${header.getBoundingClientRect().height}px`
+      );
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty("--main-header-height");
+    };
+  }, []);
   const repo = selectedRepo.value;
   const choices =
     repo && !repos.some((entry) => entry.path === repo)
       ? [...repos, { path: repo, name: repo.split("/").at(-1) ?? repo }]
       : repos;
   return (
-    <header class="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-line-soft bg-editor px-3 py-2 text-ui">
+    <header
+      ref={headerRef}
+      class="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-line-soft bg-editor px-3 py-2 text-ui"
+    >
       <Button
         aria-expanded={refsVisible.value}
         onClick={toggleRefs}

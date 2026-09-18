@@ -91,6 +91,7 @@
 
   .branch-focus-row {
     --color-graph: var(--branch-display-colour);
+    scroll-margin-top: calc(var(--main-header-height, 0px) + var(--graph-top, 32px));
   }
 
   .branch-focus-row[data-branch-relation="merged"] {

@@ -35,6 +35,8 @@ type CommitRowProps = {
   expanded: boolean;
   /** Open or close the details view. Absent for the uncommitted changes row. */
   onSelect: (() => void) | undefined;
+  /** Bring this commit's lane into view after explicit row navigation. */
+  onRevealLane?: (hash: string) => void;
 };
 
 const CELL_CLASS = "h-6 overflow-hidden text-ellipsis whitespace-nowrap px-1 leading-6";
@@ -81,7 +83,8 @@ export function CommitRow({
   relation = "normal",
   keepMergedBright = false,
   expanded,
-  onSelect
+  onSelect,
+  onRevealLane
 }: CommitRowProps) {
   const uncommitted = commit.hash === UNCOMMITTED_CHANGES;
   const message = uncommitted
@@ -122,6 +125,7 @@ export function CommitRow({
       onFocus={() => {
         if (!uncommitted) {
           focusedCommit.value = commit.hash;
+          onRevealLane?.(commit.hash);
         }
       }}
       title={window.l10n.selectCommitsHint}
@@ -134,6 +138,7 @@ export function CommitRow({
           return;
         }
         focusedCommit.value = commit.hash;
+        onRevealLane?.(commit.hash);
         event.currentTarget.focus({ preventScroll: true });
         selectCommitRows(commit, rows, event.ctrlKey || event.metaKey, event.shiftKey);
         if (!event.ctrlKey && !event.metaKey && !event.shiftKey) {
@@ -161,6 +166,7 @@ export function CommitRow({
             ];
           if (next) {
             focusedCommit.value = next.hash;
+            onRevealLane?.(next.hash);
             selectCommitRows(next, rows, false, event.shiftKey);
             event.currentTarget
               .closest("table")

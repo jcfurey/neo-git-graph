@@ -140,24 +140,23 @@ visible in the implementation but has not been reproduced end to end; “Propose
 
 ## P3 — Optional usability improvements
 
-- [ ] **Reveal a selected commit's lane when it is off-screen.** **Proposed.** Add a deliberate
-      reveal action or minimally scroll the graph when keyboard navigation selects a clipped
-      lane. Preserve manual positioning during background refreshes.
-      **Done when:** the selected node can be brought into view without moving commit text or
-      changing the selected branch, checkout, or focus mode.
+- [x] **Reveal a selected commit's lane when it is off-screen.** Completed 2026-09-18. Clicking
+      or keyboard-navigating to a commit minimally reveals its lane. The **Reveal selected lane**
+      button returns to it after manual panning. Refreshes and resizing preserve manual position
+      within the available scroll range. Regression and VS Code UI tests cover reveal, keyboard
+      access, refresh preservation, and unchanged text position, branch, checkout, and focus mode.
       Sources: [graph scrolling](src/webview/components/commit/useGraphScroll.ts),
       [commit table](src/webview/components/commit/CommitTable.tsx).
 
-- [ ] **Keep horizontal graph navigation discoverable deep in history.** **Proposed.** The
-      horizontal scrollbar lives in the table header. Evaluate a sticky control or a compact
-      reveal/scroll affordance when the header is outside the viewport.
-      **Done when:** users can find and operate lane scrolling after moving far down the history,
-      without obscuring rows or interfering with normal vertical scrolling.
+- [x] **Keep horizontal graph navigation discoverable deep in history.** Completed 2026-09-18.
+      Sticky column headings keep the scrollbar and reveal button beneath the main controls,
+      following their measured height when they wrap. UI coverage exercises a deep, wide graph,
+      narrow windows, row alignment, keyboard scrolling, and normal vertical wheel handling.
       Sources: [commit table](src/webview/components/commit/CommitTable.tsx),
       [graph scrolling](src/webview/components/commit/useGraphScroll.ts).
 
 ## Suggested next batch
 
-The correctness batch is complete. Make fork packaging repeatable before the next local installation
-or release, then update publishing validation and the README. Continue with graph rendering and
-accessibility coverage after that.
+The correctness and optional usability batches are complete. Make fork packaging repeatable before
+the next local installation or release, then update publishing validation and the README. Continue
+with graph rendering and accessibility coverage after that.

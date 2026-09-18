@@ -450,5 +450,6 @@
   "Strong": "強烈",
   "Show remote {0} in the graph": "在圖中顯示遠端儲存庫 {0}",
   "Hide remote {0} from the graph": "在圖中隱藏遠端儲存庫 {0}",
-  "Scroll graph horizontally": "水平捲動圖形"
+  "Scroll graph horizontally": "水平捲動圖形",
+  "Reveal selected lane": "顯示所選提交的軌道"
 }

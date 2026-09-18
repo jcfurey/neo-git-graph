@@ -1,6 +1,7 @@
 import type { RefObject } from "preact";
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
 
+import { VERTEX_RADIUS } from "@/webview/graph/constants";
 import { selectedRepo } from "@/webview/lib/stores";
 
 /** Clip to the column the browser actually laid out, which may be narrower than its requested width. */
@@ -66,5 +67,20 @@ export function useGraphScroll(
     }
   }
 
-  return { viewportRef, scrollRef, overflow, syncScroll, onWheel };
+  /** Called by explicit row navigation, never by a layout update or background refresh. */
+  function revealLane(x: number) {
+    const scroll = scrollRef.current;
+    if (!scroll || scroll.clientWidth === 0) {
+      return;
+    }
+    const margin = Math.min(VERTEX_RADIUS + 4, scroll.clientWidth / 2);
+    if (x - margin < scroll.scrollLeft) {
+      scroll.scrollLeft = Math.max(0, x - margin);
+    } else if (x + margin > scroll.scrollLeft + scroll.clientWidth) {
+      scroll.scrollLeft = x + margin - scroll.clientWidth;
+    }
+    syncScroll();
+  }
+
+  return { viewportRef, scrollRef, overflow, syncScroll, onWheel, revealLane };
 }

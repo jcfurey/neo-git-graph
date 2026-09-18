@@ -8,6 +8,7 @@ import { CommitRow } from "@/webview/components/commit/CommitRow";
 import type { ColumnResize } from "@/webview/components/commit/useColumnResize";
 import { useColumnResize } from "@/webview/components/commit/useColumnResize";
 import { useGraphScroll } from "@/webview/components/commit/useGraphScroll";
+import { RevealIcon } from "@/webview/components/ui/Icons";
 import {
   COMMIT_DETAILS_HEIGHT,
   TABLE_HEADER_HEIGHT,
@@ -18,7 +19,7 @@ import { commitRelations, lineRelation } from "@/webview/graph/focus";
 import { computeGraphLayout } from "@/webview/graph/layout";
 import { branchColour } from "@/webview/graph/palette";
 import type { GraphExpansion } from "@/webview/graph/types";
-import { graphWidth } from "@/webview/graph/utils";
+import { graphWidth, laneX } from "@/webview/graph/utils";
 import { toggleCommitDetails } from "@/webview/lib/actions";
 import { focusedCommit, selectedCommits } from "@/webview/lib/navigation";
 import { columnWidths, commitDetails, expandedCommit } from "@/webview/lib/stores";
@@ -104,6 +105,14 @@ export function CommitTable({
   const resize = useColumnResize(graphColumn);
   const graphScroll = useGraphScroll(resize.containerRef, resize.headRef, graphContentWidth);
   const sized = columnWidths.value !== null;
+  const focusedHash = focusedCommit.value;
+  const canReveal = commits.some((commit) => commit.hash === focusedHash);
+  function revealCommit(hash: string) {
+    const vertex = layout.vertices[commits.findIndex((commit) => commit.hash === hash)];
+    if (vertex) {
+      graphScroll.revealLane(laneX(vertex.x));
+    }
+  }
 
   const expandedHash = expandedCommit.value;
   const expandedRow = commits.findIndex((commit) => commit.hash === expandedHash);
@@ -160,7 +169,7 @@ export function CommitTable({
           <col style="width: var(--col-author)" />
           <col style="width: var(--col-commit)" />
         </colgroup>
-        <thead>
+        <thead class="sticky z-10 bg-editor" style="top: var(--main-header-height, 0px)">
           <tr ref={resize.headRef} class={resize.resizing ? "cursor-col-resize" : ""}>
             {titles.map((title, index) => (
               <th
@@ -169,6 +178,18 @@ export function CommitTable({
               >
                 {index > 0 && <ResizeHandle boundary={index - 1} side="left" resize={resize} />}
                 {title}
+                {index === 1 && graphScroll.overflow && (
+                  <button
+                    type="button"
+                    aria-label={window.l10n.revealSelectedLane}
+                    title={window.l10n.revealSelectedLane}
+                    disabled={!canReveal}
+                    class="ml-2 inline-flex cursor-pointer rounded p-1 align-middle hover:bg-btn-hover focus:outline-1 focus:outline-focus disabled:cursor-default disabled:opacity-50"
+                    onClick={() => focusedHash && revealCommit(focusedHash)}
+                  >
+                    <RevealIcon class="size-3.5" />
+                  </button>
+                )}
                 {index === 0 && (
                   <div
                     ref={graphScroll.scrollRef}
@@ -204,6 +225,7 @@ export function CommitTable({
                 headBranch={headBranch}
                 messages={messages}
                 colour={branchColour(layout.vertices[index]?.colour ?? 0)}
+                onRevealLane={revealCommit}
                 relation={relations[index] ?? "normal"}
                 keepMergedBright={keepMergedBright}
                 expanded={index === expandedRow}

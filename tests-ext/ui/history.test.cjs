@@ -1547,6 +1547,178 @@ suite("Git Graph workflow UI", function () {
     await openRepo(repo);
   });
 
+  test("reveals selected lanes and keeps graph scrolling accessible deep in history", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "deep-base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    for (let lane = 0; lane < 14; lane++) {
+      let parent = base;
+      for (let depth = 0; depth < 8; depth++) {
+        parent = git(["commit-tree", tree, "-p", parent, "-m", `deep-${lane}-${depth}`], dir);
+      }
+      git(["branch", `deep-${lane}`, parent], dir);
+    }
+    const refsBefore = git(["show-ref"], dir);
+    await openRepo(dir);
+    await headerChoice("View", "Focus direct history");
+    await headerChoice("Branch", "main");
+    await until(
+      () => graph.evaluate("document.querySelectorAll('tr[data-commit-hash]').length === 113"),
+      "deep graph history"
+    );
+    await graph.evaluate(`(() => {
+      const cell = document.querySelector('thead th');
+      const rect = cell.getBoundingClientRect();
+      cell.querySelector('[role=separator]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: rect.right }));
+      window.dispatchEvent(new MouseEvent('mousemove', { clientX: rect.left + 80 }));
+      window.dispatchEvent(new MouseEvent('mouseup'));
+    })()`);
+    const target = await graph.evaluate(`(() => {
+      const dots = [...document.querySelectorAll('[data-graph-viewport] circle')];
+      const index = dots.reduce((best, dot, i) => +dot.getAttribute('cx') >= +dots[best].getAttribute('cx') ? i : best, 0);
+      const rows = [...document.querySelectorAll('tr[data-commit-hash]')];
+      rows[index - 1].focus();
+      rows[index - 1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      return { index, hash: rows[index].dataset.commitHash, x: +dots[index].getAttribute('cx') };
+    })()`);
+    const measure = () =>
+      graph.evaluate(`(() => {
+      const scroll = document.querySelector('[data-graph-scroll]');
+      const viewport = document.querySelector('[data-graph-viewport]');
+      const row = document.querySelector('tr[data-commit-hash="${target.hash}"]');
+      const head = document.querySelector('thead').getBoundingClientRect();
+      const dot = viewport.querySelectorAll('circle')[${target.index}].getBoundingClientRect();
+      const clip = viewport.getBoundingClientRect();
+      return { left: scroll.scrollLeft, width: scroll.clientWidth, viewportLeft: viewport.scrollLeft,
+        descriptionLeft: row.cells[1].getBoundingClientRect().left,
+        headTop: head.top, headBottom: head.bottom, mainBottom: document.querySelector('header').getBoundingClientRect().bottom,
+        rowTop: row.getBoundingClientRect().top, rowBottom: row.getBoundingClientRect().bottom,
+        dotVisible: dot.left >= clip.left && dot.right <= clip.right,
+        aligned: Math.abs(dot.top + dot.height / 2 - (row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2)) < 2,
+        scrollTop: scroll.getBoundingClientRect().top, y: scrollY, height: innerHeight,
+        focused: document.activeElement?.getAttribute('data-commit-hash') };
+    })()`);
+    await until(async () => {
+      const state = await measure();
+      return state.y > 500 && state.dotVisible && state.focused === target.hash;
+    }, "keyboard selection reveals a deep clipped lane");
+    const before = await measure();
+    assert.ok(Math.abs(before.left - (target.x + 8 - before.width)) <= 1, "minimal lane movement");
+    assert.ok(
+      Math.abs(before.headTop - before.mainBottom) <= 1,
+      "table header follows sticky controls"
+    );
+    assert.ok(
+      before.rowTop >= before.headBottom && before.rowBottom <= before.height,
+      "focused row stays visible"
+    );
+    assert.ok(
+      before.scrollTop >= before.mainBottom && before.scrollTop < before.height,
+      "scrollbar stays visible"
+    );
+    assert.ok(before.aligned, "sticky header does not move graph relative to rows");
+    await graph.evaluate(`(() => {
+      const row = document.querySelector('tr[data-commit-hash="${target.hash}"]');
+      window.scrollBy(0, row.getBoundingClientRect().top - document.querySelector('thead').getBoundingClientRect().bottom);
+      row.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    })()`);
+    assert.ok(
+      await graph.evaluate(
+        `document.activeElement.getBoundingClientRect().top >= document.querySelector('thead').getBoundingClientRect().bottom - 1`
+      ),
+      "keyboard navigation cannot hide a row behind the sticky header"
+    );
+    await graph.evaluate(
+      `document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))`
+    );
+    await graph.evaluate(`(() => {
+      const scroll = document.querySelector('[data-graph-scroll]');
+      scroll.scrollLeft = 0; scroll.dispatchEvent(new Event('scroll'));
+    })()`);
+    // A new ref makes the refresh observable, without moving the selected row or its lane.
+    git(["tag", "refresh-marker", base], dir);
+    await button("Refresh", 'document.querySelector("header")');
+    await until(
+      () => graph.evaluate("!!document.querySelector('tbody [title=\"refresh-marker\"]')"),
+      "refreshed graph data"
+    );
+    assert.equal((await measure()).left, 0, "refresh preserves manual panning");
+    await button("Reveal selected lane", 'document.querySelector("thead")');
+    let after = await measure();
+    assert.ok(after.dotVisible);
+    assert.equal(after.left, before.left);
+    assert.equal(after.viewportLeft, after.left);
+    assert.equal(after.descriptionLeft, before.descriptionLeft);
+    assert.ok(
+      await graph.evaluate(`(() => {
+      const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 120 });
+      document.querySelector('tr[data-commit-hash="${target.hash}"] td').dispatchEvent(event);
+      return !event.defaultPrevented;
+    })()`),
+      "ordinary vertical scrolling is not intercepted"
+    );
+    await graph.evaluate(`(() => {
+      const scroll = document.querySelector('[data-graph-scroll]');
+      scroll.focus({ preventScroll: true });
+    })()`);
+    await connections[0].call("Input.dispatchKeyEvent", {
+      type: "keyDown",
+      key: "ArrowLeft",
+      code: "ArrowLeft",
+      windowsVirtualKeyCode: 37
+    });
+    await connections[0].call("Input.dispatchKeyEvent", {
+      type: "keyUp",
+      key: "ArrowLeft",
+      code: "ArrowLeft",
+      windowsVirtualKeyCode: 37
+    });
+    await until(
+      async () => (await measure()).left < before.left,
+      "sticky scrollbar keyboard access"
+    );
+    await connections[0].call("Emulation.setDeviceMetricsOverride", {
+      width: 650,
+      height: 850,
+      deviceScaleFactor: 1,
+      mobile: false
+    });
+    await until(async () => {
+      const state = await measure();
+      return (
+        (await graph.evaluate("innerWidth < 700")) &&
+        Math.abs(state.headTop - state.mainBottom) <= 1
+      );
+    }, "sticky header follows wrapped controls at narrow width");
+    await button("Reveal selected lane", 'document.querySelector("thead")');
+    after = await measure();
+    assert.ok(after.dotVisible && after.aligned);
+    assert.ok(after.scrollTop >= after.mainBottom && after.scrollTop < after.height);
+    assert.ok(
+      await graph.evaluate(
+        "!!document.querySelector('header button[title=\"main\"]') && !!document.querySelector('header button[title=\"focus\"]')"
+      ),
+      "branch and focus mode unchanged"
+    );
+    git(["tag", "-d", "refresh-marker"], dir);
+    assert.equal(git(["show-ref"], dir), refsBefore);
+    assert.equal(git(["branch", "--show-current"], dir), "main");
+    const screenshot = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "deep-graph-scroll.png"),
+      Buffer.from(screenshot.data, "base64")
+    );
+    await connections[0].call("Emulation.setDeviceMetricsOverride", {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false
+    });
+    await openRepo(repo);
+  });
+
   test("lists branches, remotes, tags and stashes beside the graph and switches the graph from them", async () => {
     const pane = directory();
     init(pane);
