@@ -60,31 +60,28 @@ visible in the implementation but has not been reproduced end to end; “Propose
 
 ## P2 — Packaging, coverage, and maintainability
 
-- [ ] **Make fork packaging repeatable.** **Code review.** The checked-in manifest still identifies
-      `asispts.neo-git-graph@0.6.0`; our local installation work uses the user-approved
-      `jcfurey.neo-git-graph` identity. Replace manual staging edits with a documented packaging
-      command or deliberate manifest update, including the fork's version and repository links.
-      Account for tests that currently hard-code the upstream extension ID.
-      **Done when:** a clean checkout produces a VSIX with the intended identity/version, and
-      installing it upgrades the existing fork without creating a second extension.
-      Sources: [manifest](package.json), [UI setup](tests-ext/ui/history.test.cjs).
+- [x] **Make fork packaging repeatable.** Completed 2026-09-18. The manifest now identifies
+      `jcfurey.neo-git-graph@0.9.5` and links to the fork. `pnpm run package:vsix` builds it without
+      manifest overrides; extension tests derive their identity from the manifest.
+      **Verified:** a fresh source copy with a locked dependency install builds the VSIX. An
+      isolated VS Code test upgrades an older fork without a duplicate, checks packaged assets,
+      activates the installed extension, and opens its graph, guide, and walkthrough.
+      Sources: [manifest](package.json), [packaging guide](docs/packaging.md),
+      [package test](scripts/test-package.cjs).
 
-- [ ] **Gate publishing on validation of the release commit.** **Code review.** The tag-triggered
-      publish workflow packages and publishes independently of the CI test jobs. Require tests,
-      type/lint/format/localization checks, and matching tag/manifest version before publishing.
-      Validate the intended publisher as part of the packaging work above.
-      **Done when:** a failed check or mismatched version prevents publication, and the published
-      VSIX is the same artifact that passed validation.
+- [x] **Gate publishing on validation of the release commit.** Completed 2026-09-18. Tag pushes
+      validate the fork identity/version and invoke the full CI workflow from the release commit.
+      Publishing depends on all checks, downloads the package-tested artifact, verifies its embedded
+      identity/version, and publishes that file without rebuilding.
+      **Verified:** release guard tests reject wrong identities and mismatched tags; actionlint
+      validates both workflows. Live registry publishing has not been run.
       Sources: [publish workflow](.github/workflows/publish.yml),
       [existing three-platform CI](.github/workflows/ci.yaml).
 
-- [ ] **Refresh the README and release notes for the fork.** **Code review.** The README roadmap
-      still names 0.6.0 as latest and describes only a single remote visibility toggle. Document
-      focus modes, pause/resume, dimming strength, individual remotes, and horizontal scrolling.
-      Explain that hiding remotes changes visibility, not Git refs, and that an explicit revision
-      search can still open hidden history. Align installation instructions with fork packaging.
-      **Done when:** a new user can install the intended extension and discover the new controls;
-      the roadmap separates shipped features from future work and links to this backlog.
+- [x] **Refresh the README and release notes for the fork.** Completed 2026-09-18. Documented
+      the 0.9.5 fork build, local installation, focus modes and dimming, individual remote visibility,
+      hidden revision lookups, and horizontal graph navigation. The roadmap distinguishes shipped
+      behavior from this backlog and the packaging guide explains verification and release gates.
       Sources: [README](README.md), [changelog](CHANGELOG.md).
 
 - [ ] **Expand graph geometry and rendering regression coverage.** **Proposed.** Build on the
@@ -157,6 +154,7 @@ visible in the implementation but has not been reproduced end to end; “Propose
 
 ## Suggested next batch
 
-The correctness and optional usability batches are complete. Make fork packaging repeatable before
-the next local installation or release, then update publishing validation and the README. Continue
-with graph rendering and accessibility coverage after that.
+Correctness, optional usability, and fork packaging/documentation are complete. Continue with graph
+geometry and theme/keyboard coverage, then resolve preference lifetime and measure large-repository
+performance. Improve UI failure diagnostics and minimum-version compatibility checks alongside those
+tests.

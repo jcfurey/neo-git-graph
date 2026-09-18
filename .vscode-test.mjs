@@ -1,11 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve as resolvePath } from "node:path";
 
 import { defineConfig } from "@vscode/test-cli";
 
+const manifest = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 // Each run gets a disposable repository and a free debugger port, including on CI.
 const workspaceFolder = realpathSync.native(mkdtempSync(join(tmpdir(), "ngg-extension-tests-")));
 execFileSync("git", ["init", "-b", "main", workspaceFolder], { stdio: "pipe" });
@@ -29,7 +30,11 @@ export default defineConfig({
   ...(process.env.NGG_VSCODE_PATH
     ? { useInstallation: { fromPath: process.env.NGG_VSCODE_PATH } }
     : {}),
-  env: { NGG_CDP_PORT: String(port), NGG_ARTIFACTS: resolvePath("test-results") },
+  env: {
+    NGG_CDP_PORT: String(port),
+    NGG_ARTIFACTS: resolvePath("test-results"),
+    NGG_EXTENSION_ID: `${manifest.publisher}.${manifest.name}`
+  },
   launchArgs: [
     "--disable-gpu",
     "--skip-welcome",

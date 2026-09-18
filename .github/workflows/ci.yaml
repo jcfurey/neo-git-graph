@@ -6,6 +6,7 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -44,6 +45,9 @@ jobs:
 
       - name: Check l10n
         run: pnpm run l10n:check
+
+      - name: Validate fork identity and release checks
+        run: pnpm run check:release && pnpm run test:release
 
   test:
     runs-on: ${{ matrix.os }}
@@ -98,7 +102,11 @@ jobs:
 
       - name: Build installable extension
         if: runner.os == 'Linux'
-        run: pnpm exec vsce package --no-dependencies --out neo-git-graph.vsix
+        run: pnpm run package:vsix --out neo-git-graph.vsix
+
+      - name: Verify packaged upgrade and activation
+        if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm run test:package neo-git-graph.vsix
 
       - name: Upload extension
         if: runner.os == 'Linux'
@@ -106,3 +114,4 @@ jobs:
         with:
           name: neo-git-graph-vsix
           path: neo-git-graph.vsix
+          if-no-files-found: error

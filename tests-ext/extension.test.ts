@@ -18,8 +18,9 @@ async function openPanel() {
 
 suite("GitGraphPanel", () => {
   suiteSetup(async () => {
-    const ext = vscode.extensions.getExtension("asispts.neo-git-graph");
-    await ext?.activate();
+    const ext = vscode.extensions.getExtension(process.env.NGG_EXTENSION_ID!);
+    assert.ok(ext, "The extension identified by package.json must be installed");
+    await ext.activate();
   });
 
   setup(async () => {

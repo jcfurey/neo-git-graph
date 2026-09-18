@@ -9,8 +9,26 @@ on:
       - "v*"
 
 jobs:
+  release:
+    name: Validate release identity and tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/setup@v2
+        with:
+          runtime: node@24
+          install: false
+      - run: node scripts/check-release.cjs "$RELEASE_TAG"
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+
+  validate:
+    needs: release
+    uses: ./.github/workflows/ci.yaml
+
   deploy:
     name: Publish extension
+    needs: [release, validate]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -19,16 +37,30 @@ jobs:
         with:
           runtime: node@24
           cache: true
+          install: false
 
-      - name: Package extension
-        run: pnpm exec vsce package --no-dependencies --out extension.vsix
+      - name: Install locked publishing tools
+        run: pnpm install --frozen-lockfile
+
+      - name: Download validated extension
+        uses: actions/download-artifact@v4
+        with:
+          name: neo-git-graph-vsix
+          path: release
+
+      - name: Check packaged identity and release version
+        run: |
+          unzip -p release/neo-git-graph.vsix extension/package.json > "$RUNNER_TEMP/vsix-manifest.json"
+          node scripts/check-release.cjs "$RELEASE_TAG" "$RUNNER_TEMP/vsix-manifest.json"
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
 
       - name: Publish to VS Marketplace
-        run: pnpm exec vsce publish --packagePath extension.vsix --skip-duplicate
+        run: pnpm exec vsce publish --packagePath release/neo-git-graph.vsix --skip-duplicate
         env:
           VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
 
       - name: Publish to Open VSX
-        run: pnpm exec ovsx publish extension.vsix --skip-duplicate
+        run: pnpm exec ovsx publish release/neo-git-graph.vsix --skip-duplicate
         env:
           OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}

@@ -1,7 +1,7 @@
 {
   "name": "neo-git-graph",
   "displayName": "(neo) Git Graph",
-  "version": "0.6.0",
+  "version": "0.9.5",
   "description": "%description%",
   "categories": [
     "SCM Providers",
@@ -14,9 +14,9 @@
     "git history",
     "git log"
   ],
-  "homepage": "https://github.com/asispts/neo-git-graph",
+  "homepage": "https://github.com/jcfurey/neo-git-graph",
   "bugs": {
-    "url": "https://github.com/asispts/neo-git-graph/issues"
+    "url": "https://github.com/jcfurey/neo-git-graph/issues"
   },
   "license": "MIT",
   "author": {
@@ -31,17 +31,21 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/asispts/neo-git-graph.git"
+    "url": "https://github.com/jcfurey/neo-git-graph.git"
   },
   "sponsor": {
     "url": "https://github.com/sponsors/asispts"
   },
-  "publisher": "asispts",
+  "publisher": "jcfurey",
   "main": "./out/extension.js",
   "scripts": {
     "typecheck": "tsc -p . && tsc -p src/webview && tsc -p tests && tsc -p tests/webview && tsc -p tests-ext --noEmit",
     "vscode:prepublish": "pnpm run clean && pnpm run package",
     "package": "pnpm run typecheck && pnpm run lint && node esbuild.js --production",
+    "package:vsix": "node scripts/check-release.cjs && vsce package --no-dependencies",
+    "check:release": "node scripts/check-release.cjs",
+    "test:release": "node --test scripts/check-release.test.cjs",
+    "test:package": "node scripts/test-package.cjs",
     "clean": "node -e \"require('fs').rmSync('out',{recursive:true,force:true})\"",
     "compile": "pnpm run clean && node esbuild.js",
     "test": "vitest run --project backend && vitest run --project extension && vitest run --project webview",

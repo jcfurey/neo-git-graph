@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+Current fork build: **`jcfurey.neo-git-graph@0.9.5`**. The manifest now carries the fork identity
+directly, continuing the locally installed 0.9.x builds. Historical upstream releases remain below.
+
 ### Added
 
 - Per-remote graph visibility controls with saved choices, consistent history searches, and automatic reveal when selecting a hidden remote branch.
@@ -20,6 +23,9 @@
 
 ### Changed
 
+- Make fork VSIX packaging repeatable with `pnpm run package:vsix`, and verify upgrades and activation in an isolated VS Code profile.
+- Gate tag publishing on matching fork identity/version and the full validation workflow; publish the same VSIX that passed package checks.
+- Refresh fork installation instructions, shipped features, and remaining work in the README.
 - Cancel superseded repository queries, restore focus after dialogs, and adapt controls to narrow windows.
 - Localize the backend's error messages through `@vscode/l10n`, with Simplified and Traditional Chinese translations.
 - Reuse the workspace repository scan between refreshes until a repository appears or vanishes.
@@ -122,7 +128,7 @@
 
 Initial release
 
-[Unreleased]: https://github.com/asispts/neo-git-graph/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/jcfurey/neo-git-graph/compare/v0.6.0...HEAD
 [0.6.0]: https://github.com/asispts/neo-git-graph/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/asispts/neo-git-graph/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/asispts/neo-git-graph/compare/v0.3.0...v0.4.0

@@ -2,7 +2,7 @@
   <img src="./resources/icon.png" height="128"/>
   <samp>
     <h1>(neo) Git Graph for Visual Studio Code</h1>
-    <h3>An MIT-licensed fork of Git Graph with visual history, branch actions, and devcontainer support.</h3>
+    <h3>The jcfurey fork: visual Git history, branch focus, repository workflows, and devcontainer support.</h3>
   </samp>
 </div>
 
@@ -16,9 +16,7 @@
 </h4>
 
 <p align="center">
-  <a href="./LICENSE"><img src="https://img.shields.io/github/license/asispts/neo-git-graph" alt="License"></a>
-  <a href="https://github.com/asispts/neo-git-graph/releases"><img alt="GitHub release" src="https://img.shields.io/github/v/release/asispts/neo-git-graph"></a>
-  <a href="https://open-vsx.org/extension/asispts/neo-git-graph"><img alt="open-vsx downloads" src="https://img.shields.io/open-vsx/dt/asispts/neo-git-graph?label=open-vsx"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/jcfurey/neo-git-graph" alt="License"></a>
 </p>
 
 <!-- ![demo](resources/demo.gif) -->
@@ -26,6 +24,10 @@
 <p>&nbsp;</p>
 
 ## Why this fork
+
+This repository maintains **`jcfurey.neo-git-graph`**, based on
+[asispts/neo-git-graph](https://github.com/asispts/neo-git-graph). Its current build version is
+**0.9.5**. The upstream authors and MIT license are retained.
 
 The original [Git Graph](https://github.com/mhutchie/vscode-git-graph) by mhutchie changed its license in May 2019.
 This fork is based on the last MIT-licensed commit, [`4af8583`](https://github.com/mhutchie/vscode-git-graph/commit/4af8583a42082b2c230d2c0187d4eaff4b69c665).
@@ -41,6 +43,9 @@ This fork:
 
 ## Features
 
+- **Branch focus**: Choose **View → Focus direct history** or **Focus all ancestors** to keep related history bright and dim unrelated branches. Choose subtle or strong dimming, pause/resume the target, or clear focus without changing checkout.
+- **Individual remote visibility**: Hide each remote with its eye button in the Branches pane. Choices survive reopening and repository switches; hiding changes the view, not Git refs. Selecting a hidden branch reveals it, and an explicit revision search can still open hidden history.
+- **Wide and deep graphs**: Resize the Graph column or scroll its lanes with the scrollbar, trackpad, or Shift+wheel. Sticky headings keep the scrollbar accessible; selecting a commit reveals its lane, and **Reveal selected lane** returns to it after panning. Refresh preserves manual positioning and commit text stays fixed.
 - Review push/pull commits, fetch across workspace repositories, and apply reviewed fast-forward updates.
 - Compare and stage submodule pointers, clean up merged local branches, and find regressions with guided Git bisect.
 
@@ -56,7 +61,7 @@ This fork:
 - **Remote ref management**: Choose a remote for tag pushes, delete remote branches/tags with confirmation, and push rewritten history with an explicit force-with-lease check
 - **Remote actions**: Push local branches to a chosen remote, set upstream tracking, pull the current branch with fast-forward only, and fetch updates with optional pruning
 - **Remote branch checkout**: Reuse and fast-forward an existing local branch, or create a new tracking branch
-- **Branches pane**: Browse local branches, remotes, tags and stashes beside the graph; click to filter the graph, check out, fetch or apply inline, and hide remote branches with one toggle
+- **Branches pane**: Browse local branches, remotes, tags and stashes beside the graph; select or focus a branch, check out, fetch or apply inline, and hide individual remotes or all remote branches
 - **Graph view**: See branches, tags, and uncommitted changes in one graph
 - **Commit details**: Click a commit to see message, files, and diffs
 - **Branch actions**: Create, checkout, rename, delete, and merge
@@ -71,24 +76,37 @@ See [Working from the graph](docs/git-actions.md) for the available actions and 
 
 ## Installation
 
-Search for `neo-git-graph` in Extensions, or install from:
+Build the fork from this checkout using **Node.js 24**, **pnpm 11.15.1** (pinned in `package.json`), and Git:
 
-- [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=asispts.neo-git-graph)
-- [Open VSX Registry](https://open-vsx.org/extension/asispts/neo-git-graph)
+```sh
+git clone https://github.com/jcfurey/neo-git-graph.git
+cd neo-git-graph
+pnpm install --frozen-lockfile
+pnpm run package:vsix
+code --install-extension ./neo-git-graph-0.9.5.vsix --force
+```
+
+Alternatively, use **Extensions → … → Install from VSIX…** and select the generated file.
+VS Code **1.125.0 or newer** is required. Reload the VS Code window after upgrading an active extension.
+
+The manifest supplies the publisher, version, and fork links directly. Installing this VSIX upgrades
+an existing `jcfurey.neo-git-graph` installation, including 0.9.4. The upstream
+`asispts.neo-git-graph` has a separate extension identity; disable it if it is also installed to avoid
+duplicate graph commands. No temporary manifest edits are needed.
+
+See [Packaging and releases](docs/packaging.md) for package verification and release validation.
 
 After installing, the **Get started with (neo) Git Graph** walkthrough appears on the Welcome page. Reopen it any time with the **Getting Started** entry in the graph's settings cog.
 
 ## Roadmap
 
-- **v0.6.0 (latest):**
-  - Migrate the legacy webview to Preact
-- **v0.7.0 (next):**
-  - Introduce RPC protocol
-  - Refine the extension and backend APIs after the webview migration
-- **v0.8.0:**
-  - Redesign the user interface and commit list
-- **v0.9.0 and later:**
-  - Close the main feature gaps with the original Git Graph
+The fork already includes the Preact webview, RPC-backed repository workflows, branch focus,
+individual remote visibility, and horizontal graph navigation described above. See the
+[changelog](CHANGELOG.md) for implemented changes.
+
+Remaining work includes graph geometry and theme coverage, consistent preference lifetimes,
+large-repository performance measurements, and better UI diagnostics. The tracked acceptance
+criteria are in [todo.md](todo.md).
 
 ## Configuration
 
@@ -113,7 +131,7 @@ All settings use the `neo-git-graph` prefix.
 
 Pull requests from external contributors are currently limited while the project undergoes heavy refactoring.
 
-Please use [Issues](https://github.com/asispts/neo-git-graph/issues) for bug reports, feature requests, and discussion.
+Please use [Issues](https://github.com/jcfurey/neo-git-graph/issues) for bug reports, feature requests, and discussion.
 
 See the [Roadmap](#roadmap) for the project's current direction.
 

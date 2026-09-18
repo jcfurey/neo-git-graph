@@ -271,7 +271,7 @@ suite("Git Graph workflow UI", function () {
     commit("a", "ui-first");
     commit("b", "ui-second");
     git(["tag", "v-ui"]);
-    const extension = vscode.extensions.getExtension("asispts.neo-git-graph");
+    const extension = vscode.extensions.getExtension(process.env.NGG_EXTENSION_ID);
     assert.ok(extension);
     await extension.activate();
     await vscode.commands.executeCommand("workbench.action.closeSidebar");

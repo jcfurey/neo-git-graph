@@ -4,6 +4,7 @@
 
 # Whitelist files
 !LICENSE
+!README.md
 !CHANGELOG.md
 !package.nls*.json
 !out/
@@ -15,5 +16,6 @@
 !resources/webview-icon-light.svg
 
 !docs/git-actions.md
+!docs/packaging.md
 
 !walkthroughs/
