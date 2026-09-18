@@ -7,6 +7,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Added
 
+- Repeatable backend focus and VS Code interaction benchmarks for large histories, with timing reports and hover CPU profiles in Linux CI.
 - Graph topology and rendering regression coverage for complex merges, partial history, both graph styles, zoom, resizing, and expanded details.
 - Keyboard and contrast checks for graph focus and remote visibility in built-in light, dark, and high-contrast themes.
 - Per-remote graph visibility controls with saved choices, consistent history searches, and automatic reveal when selecting a hidden remote branch.
@@ -38,6 +39,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Fixed
 
+- Avoid scanning all loaded commits for every row's keyboard tab stop; keep graph hover updates from rerendering text rows and reuse unchanged graph line paths.
 - Keep explicitly cleared focus cleared after reopening, and save a current-branch fallback when the old target disappears.
 - Merge individual preference updates so focus, column widths, and remote visibility cannot overwrite one another.
 - Keep hidden remote labels readable using the theme's muted text color instead of fading the entire row.

@@ -390,6 +390,21 @@ suite("Git Graph workflow UI", function () {
     }
   });
 
+  if (process.env.NGG_BENCH_UI === "1") {
+    test("benchmarks large graph interactions", async function () {
+      this.timeout(300000);
+      await require("./benchmark.cjs")({
+        directory,
+        openRepo,
+        graph: () => graph,
+        button,
+        headerChoice,
+        until,
+        artifacts
+      });
+    });
+  }
+
   test("focuses direct or merged branch history without hiding rows or changing checkout", async () => {
     const dir = directory();
     init(dir);

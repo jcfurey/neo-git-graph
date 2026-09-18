@@ -1,5 +1,6 @@
+import { useSignal } from "@preact/signals";
 import { Fragment } from "preact";
-import { useMemo, useState } from "preact/hooks";
+import { useMemo } from "preact/hooks";
 
 import type { HistoryEntry } from "@/backend/types";
 import { CommitDetails } from "@/webview/components/commit/CommitDetails";
@@ -87,12 +88,12 @@ export function CommitTable({
 }: CommitTableProps) {
   const layout = useMemo(() => computeGraphLayout(commits, head), [commits, head]);
   const relations = useMemo(() => commitRelations(commits, focus), [commits, focus]);
-  const [hovered, setHovered] = useState<string | null>(null);
+  // Only the graph observes hover changes; the text rows already use CSS hover.
+  const hovered = useSignal<string | null>(null);
   const selected = new Set(selectedCommits.value.map((commit) => commit.hash));
   const revealed = new Set(
     commits.flatMap((commit, index) =>
       commit.hash === head ||
-      commit.hash === hovered ||
       commit.hash === focusedCommit.value ||
       commit.hash === expandedCommit.value ||
       selected.has(commit.hash)
@@ -111,6 +112,13 @@ export function CommitTable({
   const sized = columnWidths.value !== null;
   const focusedHash = focusedCommit.value;
   const canReveal = commits.some((commit) => commit.hash === focusedHash);
+  const tabStopHash = canReveal
+    ? focusedHash
+    : commits.find((commit) => commit.hash !== UNCOMMITTED_CHANGES)?.hash;
+  const commitRows = useMemo(
+    () => new Map(commits.map((commit, index) => [commit.hash, index])),
+    [commits]
+  );
   function revealCommit(hash: string) {
     const vertex = layout.vertices[commits.findIndex((commit) => commit.hash === hash)];
     if (vertex) {
@@ -148,19 +156,22 @@ export function CommitTable({
             keepMergedBright={keepMergedBright}
             dimming={dimming}
             revealed={revealed}
+            hovered={hovered}
+            commitRows={commitRows}
           />
         </div>
       </div>
       <table
         aria-label={window.l10n.graphKeyboardHint}
-        onMouseOver={(event) =>
-          setHovered(
+        onMouseOver={(event) => {
+          hovered.value =
             (event.target as HTMLElement)
               .closest("tr[data-commit-hash]")
-              ?.getAttribute("data-commit-hash") ?? null
-          )
-        }
-        onMouseLeave={() => setHovered(null)}
+              ?.getAttribute("data-commit-hash") ?? null;
+        }}
+        onMouseLeave={() => {
+          hovered.value = null;
+        }}
         onWheel={graphScroll.onWheel}
         class={`w-full cursor-default border-collapse text-ui select-none ${
           sized ? "table-fixed" : ""
@@ -227,11 +238,7 @@ export function CommitTable({
               <CommitRow
                 commit={commit}
                 rows={commits}
-                tabStop={
-                  focusedCommit.value === commit.hash ||
-                  (!commits.some((row) => row.hash === focusedCommit.value) &&
-                    commit === commits.find((row) => row.hash !== UNCOMMITTED_CHANGES))
-                }
+                tabStop={commit.hash === tabStopHash}
                 isHead={commit.hash === head}
                 headBranch={headBranch}
                 messages={messages}

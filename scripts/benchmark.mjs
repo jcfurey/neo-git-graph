@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop -- Sequential measurements avoid contention between cases. */
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -8,6 +9,9 @@ import { performance } from "node:perf_hooks";
 
 import { build } from "esbuild";
 
+import fixtureTools from "./benchmark-fixture.cjs";
+
+const { createBenchmarkRepository, summarize } = fixtureTools;
 const total = Number(process.env.NGG_BENCH_COMMITS || 50000);
 const children = Number(process.env.NGG_BENCH_SUBMODULES || 40);
 assert.ok(Number.isSafeInteger(total) && total >= 1000 && total <= 500000);
@@ -31,6 +35,8 @@ try {
     stdin: {
       contents: `export {loadHistory} from "./src/backend/queries/history";
 export {loadWorkspace} from "./src/backend/queries/workspace";
+export {loadCommits} from "./src/backend/queries/loadCommits";
+export {loadBranchFocus} from "./src/backend/queries/branchFocus";
 export {gitClientFactory} from "./src/backend/gitClient";
 export {computeGraphLayout} from "./src/webview/graph/layout";`,
       resolveDir: process.cwd(),
@@ -42,19 +48,15 @@ export {computeGraphLayout} from "./src/webview/graph/layout";`,
     outfile: bundle,
     logLevel: "silent"
   });
-  const { loadHistory, loadWorkspace, gitClientFactory, computeGraphLayout } = createRequire(
-    import.meta.url
-  )(bundle);
-  git(["init", "-b", "main"]);
-  const stream = [];
-  for (let index = 1; index <= total; index++) {
-    const subject = index === 1 ? "historical benchmark needle" : `commit ${index}`;
-    stream.push(
-      `commit refs/heads/main\nmark :${index}\ncommitter Benchmark <benchmark@example.test> ${1700000000 + index} +0000\ndata ${Buffer.byteLength(subject)}\n${subject}\n${index > 1 ? `from :${index - 1}\n` : ""}\n`
-    );
-  }
-  git(["-c", "gc.auto=0", "fast-import", "--quiet"], fixture, stream.join(""));
-  git(["reset", "--hard", "HEAD"]);
+  const {
+    loadHistory,
+    loadWorkspace,
+    loadCommits,
+    loadBranchFocus,
+    gitClientFactory,
+    computeGraphLayout
+  } = createRequire(import.meta.url)(bundle);
+  const topology = createBenchmarkRepository(fixture, total);
   const head = git(["rev-parse", "HEAD"]);
   const modules = [];
   for (let index = 0; index < children; index++) {
@@ -96,7 +98,7 @@ export {computeGraphLayout} from "./src/webview/graph/layout";`,
       await run();
       samples.push(Math.round((performance.now() - started) * 10) / 10);
     }
-    timings[name] = { samplesMs: samples, medianMs: samples.toSorted((a, b) => a - b)[1] };
+    timings[name] = summarize(samples);
   }
   await measure("historyPage", async () =>
     assert.equal((await loadHistory(client, filter, 0)).entries.length, 100)
@@ -111,6 +113,44 @@ export {computeGraphLayout} from "./src/webview/graph/layout";`,
   await measure("workspaceSubmodules", async () =>
     assert.equal((await loadWorkspace([fixture], "git")).length, children + 1)
   );
+  const graphInput = {
+    branchName: "",
+    maxCommits: 300,
+    showRemoteBranches: true,
+    hiddenRemotes: [],
+    hard: true,
+    dateType: "Author Date",
+    showUncommittedChanges: false
+  };
+  for (const count of [300, 1000, 3000]) {
+    await measure(`graphLoad${count}`, async () => {
+      assert.equal(
+        (await loadCommits(client, { ...graphInput, maxCommits: count })).commits.length,
+        Math.min(count, topology.commits + 1)
+      );
+    });
+  }
+  await measure("hideOrigin3000", async () => {
+    const page = await loadCommits(client, {
+      ...graphInput,
+      maxCommits: 3000,
+      hiddenRemotes: ["origin"]
+    });
+    assert.equal(page.commits.length, Math.min(3000, topology.commits + 1 - 80));
+    assert.ok(page.commits.every((commit) => !commit.message.startsWith("origin lane")));
+    assert.ok(page.commits.some((commit) => commit.message.startsWith("upstream lane")));
+  });
+  const focusHashes = (await loadCommits(client, { ...graphInput, maxCommits: 3000 })).commits.map(
+    (commit) => commit.hash
+  );
+  const wanted = new Set(focusHashes);
+  for (const branch of ["main", "bench/topic", "remotes/origin/lane-0"]) {
+    await measure(`focus:${branch}`, async () => {
+      const focus = await loadBranchFocus(client, branch, focusHashes);
+      assert.ok(focus.direct.length > 0 && focus.merged.length > 0);
+      assert.ok([...focus.direct, ...focus.merged].every((hash) => wanted.has(hash)));
+    });
+  }
   const commits = Array.from({ length: 10000 }, (_, index) => ({
     hash: String(index),
     parentHashes:
@@ -141,7 +181,8 @@ export {computeGraphLayout} from "./src/webview/graph/layout";`,
     arch: process.arch,
     node: process.version,
     git: git(["--version"]),
-    commits: total + 1,
+    ...topology,
+    commits: topology.commits + 1,
     submodules: children,
     graphCommits: commits.length,
     timings

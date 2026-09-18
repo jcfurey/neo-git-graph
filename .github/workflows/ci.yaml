@@ -92,12 +92,18 @@ jobs:
         if: runner.os == 'Linux'
         run: pnpm run benchmark
 
+      - name: Benchmark graph interactions
+        if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm run benchmark:ui
+
       - name: Collect benchmark results
         if: runner.os == 'Linux' && always()
         uses: actions/upload-artifact@v4
         with:
           name: benchmark
-          path: test-results/benchmark.json
+          path: |
+            test-results/benchmark*.json
+            test-results/benchmark*.cpuprofile
           if-no-files-found: ignore
 
       - name: Build installable extension

@@ -1,3 +1,6 @@
+import type { ReadonlySignal } from "@preact/signals";
+import { useMemo } from "preact/hooks";
+
 import { VERTEX_RADIUS } from "@/webview/graph/constants";
 import { focusColour } from "@/webview/graph/focus";
 import { branchColour, UNCOMMITTED_COLOUR } from "@/webview/graph/palette";
@@ -24,7 +27,9 @@ export function CommitGraph({
   relationForLine,
   keepMergedBright,
   dimming,
-  revealed
+  revealed,
+  hovered,
+  commitRows
 }: {
   layout: GraphLayout;
   expansion: GraphExpansion | null;
@@ -33,11 +38,18 @@ export function CommitGraph({
   keepMergedBright: boolean;
   dimming: FocusDimming;
   revealed: ReadonlySet<number>;
+  hovered: ReadonlySignal<string | null>;
+  commitRows: ReadonlyMap<string, number>;
 }) {
   const angular = getWebviewConfig().graphStyle === "angular";
-  const strokes = layout.branches.flatMap((branch) =>
-    branchStrokes(branch, angular, expansion, relationForLine)
+  const strokes = useMemo(
+    () =>
+      layout.branches.flatMap((branch) =>
+        branchStrokes(branch, angular, expansion, relationForLine)
+      ),
+    [layout, angular, expansion, relationForLine]
   );
+  const hoveredRow = hovered.value === null ? undefined : commitRows.get(hovered.value);
 
   return (
     <svg
@@ -71,7 +83,9 @@ export function CommitGraph({
         const colour = vertex.isCommitted
           ? focusColour(
               branchColour(vertex.colour),
-              revealed.has(vertex.y) || vertex.isCurrent ? "normal" : relation,
+              revealed.has(vertex.y) || hoveredRow === vertex.y || vertex.isCurrent
+                ? "normal"
+                : relation,
               keepMergedBright,
               dimming
             )

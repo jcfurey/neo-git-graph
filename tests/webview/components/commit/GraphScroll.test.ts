@@ -135,3 +135,58 @@ it("resets temporary horizontal panning when returning to a repository or recrea
   expect(scrollbar().scrollLeft).toBe(0);
   expect(viewport().scrollLeft).toBe(0);
 });
+
+it("keeps one keyboard entry point when focus changes or its commit leaves the loaded page", () => {
+  const tabStops = () =>
+    rows()
+      .filter((row) => row.tabIndex === 0)
+      .map((row) => row.dataset.commitHash);
+  const dirty = { ...commits[0]!, hash: "*", parentHashes: [commits[0]!.hash] };
+  act(() => draw([dirty, ...commits]));
+  expect(tabStops()).toEqual([commits[0]!.hash]);
+  act(() => {
+    focusedCommit.value = commits[8]!.hash;
+  });
+  expect(tabStops()).toEqual([commits[8]!.hash]);
+  act(() => draw([dirty, ...commits.slice(0, 5)]));
+  expect(tabStops()).toEqual([commits[0]!.hash]);
+  act(() => draw([dirty]));
+  expect(tabStops()).toEqual([]);
+});
+
+it("emphasizes only the hovered graph dot and keeps selection emphasized after leaving", () => {
+  act(() =>
+    render(
+      h(CommitTable, {
+        commits,
+        head: null,
+        headBranch: null,
+        focus: { direct: [commits[0]!.hash], merged: [] }
+      }),
+      container
+    )
+  );
+  const dots = () => [...container.querySelectorAll("circle")];
+  const muted = dots()[8]!.getAttribute("fill");
+  const lines = [...container.querySelectorAll("path")].map((path) => path.getAttribute("stroke"));
+  act(() => {
+    rows()[8]!.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+  });
+  const highlighted = dots()[8]!.getAttribute("fill");
+  expect(highlighted).not.toBe(muted);
+  expect(dots()[7]!.getAttribute("fill")).toBe(muted);
+  expect(
+    [...container.querySelectorAll("path")].map((path) => path.getAttribute("stroke"))
+  ).toEqual(lines);
+  act(() => {
+    rows()[7]!.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+  });
+  expect(dots()[8]!.getAttribute("fill")).toBe(muted);
+  expect(dots()[7]!.getAttribute("fill")).not.toBe(muted);
+  click(8);
+  act(() => {
+    container.querySelector("table")!.dispatchEvent(new MouseEvent("mouseleave"));
+  });
+  expect(dots()[8]!.getAttribute("fill")).toBe(highlighted);
+  expect(dots()[7]!.getAttribute("fill")).toBe(muted);
+});

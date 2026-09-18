@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { rmSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, expect, it } from "vitest";
@@ -75,3 +76,69 @@ it.each(["missing", "main~1", "--all"])(
     ).rejects.toThrow();
   }
 );
+
+it("follows parent links despite skewed dates and sees a moved branch immediately", async () => {
+  const tree = execFileSync("git", ["rev-parse", "HEAD^{tree}"], { cwd: repo }).toString().trim();
+  function create(message: string, date: string, parents: string[]) {
+    return execFileSync(
+      "git",
+      ["commit-tree", tree, ...parents.flatMap((parent) => ["-p", parent]), "-m", message],
+      {
+        cwd: repo,
+        env: { ...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }
+      }
+    )
+      .toString()
+      .trim();
+  }
+  const a = create("older timestamp child", "2001-01-01T00:00:00Z", [base]);
+  const b = create("newer timestamp side", "2030-01-01T00:00:00Z", [base]);
+  const merge = create("skewed merge", "2002-01-01T00:00:00Z", [a, b]);
+  git(["update-ref", "refs/heads/skewed", merge], repo);
+  const hashes = [base, a, b, merge, "*"];
+  const query = { kind: "branchFocus" as const, branch: "skewed", hashes };
+  expect(await repositoryQuery(simpleGit(repo), query)).toEqual({
+    kind: "branchFocus",
+    tip: merge,
+    direct: [merge, a, base],
+    merged: [b]
+  });
+  git(["update-ref", "refs/heads/skewed", b], repo);
+  expect(await repositoryQuery(simpleGit(repo), query)).toEqual({
+    kind: "branchFocus",
+    tip: b,
+    direct: [b, base],
+    merged: []
+  });
+});
+
+it("reclassifies newly available ancestry after a shallow repository is deepened", async () => {
+  const shallow = makeRepo();
+  try {
+    rmSync(shallow, { recursive: true, force: true });
+    git(
+      ["clone", "--depth=1", "--no-tags", "--branch=main", pathToFileURL(repo).href, shallow],
+      repo
+    );
+    const query = {
+      kind: "branchFocus" as const,
+      branch: "main",
+      hashes: [tip, main, base, merged, side]
+    };
+    expect(await repositoryQuery(simpleGit(shallow), query)).toEqual({
+      kind: "branchFocus",
+      tip,
+      direct: [tip],
+      merged: []
+    });
+    git(["fetch", "--unshallow"], shallow);
+    expect(await repositoryQuery(simpleGit(shallow), query)).toEqual({
+      kind: "branchFocus",
+      tip,
+      direct: [tip, main, base],
+      merged: [merged]
+    });
+  } finally {
+    rmSync(shallow, { recursive: true, force: true });
+  }
+});

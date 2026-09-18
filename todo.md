@@ -119,13 +119,18 @@ visible in the implementation but has not been reproduced end to end; “Propose
       [stores](src/webview/lib/stores.ts),
       [graph scroll state](src/webview/components/commit/useGraphScroll.ts).
 
-- [ ] **Measure focus and rendering costs on large repositories.** **Investigate.** Each focus
-      query runs two ancestry traversals before filtering to visible hashes, and the commit table
-      renders every loaded row. The existing benchmark measures history queries and graph layout,
-      but does not measure focus queries or interactive webview rendering.
-      **Done when:** repeatable measurements cover focus changes, hidden-remote changes, loading
-      more rows, and scrolling. Optimize demonstrated bottlenecks; consider ancestry caching
-      with ref-change invalidation or row virtualization only if the results justify them.
+- [x] **Measure focus and rendering costs on large repositories.** Completed 2026-09-18.
+      Shared 53,157-commit merge/remote fixtures now cover backend focus/visibility queries and real
+      VS Code focus changes, hidden remotes, loading more, hover, and both scroll directions at
+      300/1,000/3,000 rows. Linux CI uploads timing reports and hover CPU profiles.
+      **Fixed:** compute the keyboard tab stop once per table render; hover updates only the graph
+      and reuses unchanged line paths. At 3,000 rows, measured median hover fell from 170 to 41 ms,
+      focus changes from 877 to 682 ms, and loading more from 1,259 to 972 ms. Hover long tasks were
+      eliminated in these samples. A slower single-walk ancestry experiment was discarded; ancestry
+      caching and virtualization remain deferred, with their tradeoffs and remaining large-page
+      costs documented in [the measurements and raw comparison](docs/performance.md).
+      **Verified:** keyboard entry points, hover/selection emphasis, moved focus refs, skewed dates,
+      and shallow-history deepening have regression coverage; timings are diagnostic, not CI limits.
       Sources: [focus query](src/backend/queries/branchFocus.ts),
       [commit table](src/webview/components/commit/CommitTable.tsx),
       [benchmark](scripts/benchmark.mjs).
@@ -159,6 +164,6 @@ visible in the implementation but has not been reproduced end to end; “Propose
 
 ## Suggested next batch
 
-Correctness, optional usability, fork packaging/documentation, graph/theme coverage, and preference
-lifetime are complete. Next measure large-repository performance. Improve UI failure diagnostics and
-minimum-version compatibility checks alongside those tests.
+Correctness, optional usability, fork packaging/documentation, graph/theme coverage, preference
+lifetime, and large-repository measurements are complete. Next improve UI failure diagnostics and
+minimum-version compatibility checks.
