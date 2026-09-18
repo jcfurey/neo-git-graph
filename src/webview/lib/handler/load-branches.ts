@@ -3,6 +3,7 @@ import { batch } from "@preact/signals";
 import type { ResponseMessage } from "@/types";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
 import { selectBranch } from "@/webview/lib/actions";
+import { acceptGraphResponse } from "@/webview/lib/graph-requests";
 import { savedFocusBranch } from "@/webview/lib/navigation";
 import {
   branchDisplay,
@@ -19,7 +20,8 @@ type LoadBranchesMessage = Extract<ResponseMessage, { command: "loadBranches" }>
 export function handleLoadBranches(msg: LoadBranchesMessage) {
   if (
     msg.repo !== selectedRepo.value ||
-    (msg.visibilityKey !== undefined && msg.visibilityKey !== remoteVisibilityKey())
+    (msg.visibilityKey !== undefined && msg.visibilityKey !== remoteVisibilityKey()) ||
+    !acceptGraphResponse(msg)
   ) {
     return;
   }

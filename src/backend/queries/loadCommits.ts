@@ -66,6 +66,7 @@ async function getRefs(
 async function getLog(
   git: SimpleGit,
   branch: string,
+  head: string | null,
   maxCommits: number,
   remoteArgs: string[],
   dateType: DateType
@@ -78,6 +79,11 @@ async function getLog(
   } else {
     args.push("--branches", "--tags");
     args.push(...remoteArgs);
+    // Detached HEAD may not be reachable from any visible ref. Use the resolved
+    // hash so an unborn HEAD never turns an otherwise valid query into an error.
+    if (head !== null) {
+      args.push(head);
+    }
   }
   try {
     const stdout = await git.raw(args);
@@ -132,10 +138,15 @@ export async function loadCommits(
     input;
   const visibility = await remoteVisibility(git, input);
 
-  const [rawCommits, refData] = await Promise.all([
-    getLog(git, branchName, maxCommits + 1, visibility.logArgs, dateType),
-    getRefs(git, showRemoteBranches, visibility.excluded)
-  ]);
+  const refData = await getRefs(git, showRemoteBranches, visibility.excluded);
+  const rawCommits = await getLog(
+    git,
+    branchName,
+    refData.head,
+    maxCommits + 1,
+    visibility.logArgs,
+    dateType
+  );
 
   let commits = rawCommits;
   const moreCommitsAvailable = commits.length === maxCommits + 1;

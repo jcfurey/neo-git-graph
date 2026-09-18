@@ -1,4 +1,5 @@
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 
 import { simpleGit } from "simple-git";
@@ -31,6 +32,106 @@ afterAll(() => {
 });
 
 describe("loadCommits", () => {
+  it.each([true, false])(
+    "includes detached-only history and dirty changes with remote visibility %s",
+    async (showRemoteBranches) => {
+      const detachedRepo = makeRepo();
+      try {
+        git(["checkout", "--detach", "HEAD"], detachedRepo);
+        git(["commit", "--allow-empty", "-m", "detached-only"], detachedRepo);
+        fs.writeFileSync(path.join(detachedRepo, "untracked"), "dirty");
+        const client = simpleGit(detachedRepo);
+        const head = (await client.revparse(["HEAD"])).trim();
+        const input = {
+          branchName: "",
+          maxCommits: 300,
+          showRemoteBranches,
+          hard: false,
+          dateType: "Author Date" as const,
+          showUncommittedChanges: true
+        };
+        const result = await loadCommits(client, input);
+        expect(result.head).toBe(head);
+        expect(result.commits.map((commit) => commit.hash)).toContain(head);
+        expect(result.commits[0]).toMatchObject({ hash: "*", parentHashes: [head] });
+        expect(result.uncommittedChanges).toBe(1);
+        const filtered = await loadCommits(client, { ...input, branchName: "main" });
+        expect(filtered.commits.map((commit) => commit.hash)).not.toContain(head);
+        expect(filtered.uncommittedChanges).toBe(0);
+      } finally {
+        fs.rmSync(detachedRepo, { recursive: true, force: true });
+      }
+    }
+  );
+
+  it("includes detached HEAD when no branch or tag refs remain", async () => {
+    const detachedRepo = makeRepo();
+    try {
+      git(["checkout", "--detach", "HEAD"], detachedRepo);
+      git(["branch", "-D", "main"], detachedRepo);
+      const result = await loadCommits(simpleGit(detachedRepo), {
+        branchName: "",
+        maxCommits: 300,
+        showRemoteBranches: true,
+        hard: false,
+        dateType: "Author Date",
+        showUncommittedChanges: true
+      });
+      expect(result.commits).toHaveLength(1);
+      expect(result.commits[0]).toMatchObject({ hash: result.head, refs: [] });
+    } finally {
+      fs.rmSync(detachedRepo, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps checked-out hidden remote history without revealing its labels", async () => {
+    const detachedRepo = makeRepo();
+    try {
+      git(["remote", "add", "origin", "."], detachedRepo);
+      git(["checkout", "--detach", "HEAD"], detachedRepo);
+      git(["commit", "--allow-empty", "-m", "hidden-remote-tip"], detachedRepo);
+      git(["update-ref", "refs/remotes/origin/topic", "HEAD"], detachedRepo);
+      const result = await loadCommits(simpleGit(detachedRepo), {
+        branchName: "",
+        maxCommits: 300,
+        showRemoteBranches: true,
+        hiddenRemotes: ["origin"],
+        hard: false,
+        dateType: "Author Date",
+        showUncommittedChanges: false
+      });
+      expect(result.commits.find((commit) => commit.hash === result.head)).toMatchObject({
+        message: "hidden-remote-tip",
+        refs: []
+      });
+    } finally {
+      fs.rmSync(detachedRepo, { recursive: true, force: true });
+    }
+  });
+
+  it("returns empty history for an unborn repository", async () => {
+    const emptyRepo = fs.mkdtempSync(path.join(os.tmpdir(), "ngg-empty-"));
+    try {
+      git(["init", "-b", "main"], emptyRepo);
+      const result = await loadCommits(simpleGit(emptyRepo), {
+        branchName: "",
+        maxCommits: 300,
+        showRemoteBranches: true,
+        hard: false,
+        dateType: "Author Date",
+        showUncommittedChanges: true
+      });
+      expect(result).toMatchObject({
+        commits: [],
+        head: null,
+        moreCommitsAvailable: false,
+        uncommittedChanges: 0
+      });
+    } finally {
+      fs.rmSync(emptyRepo, { recursive: true, force: true });
+    }
+  });
+
   it("returns commits with expected fields", async () => {
     const result = await loadCommits(simpleGit(repo), {
       branchName: "",

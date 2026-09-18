@@ -50,6 +50,7 @@ it("switches the graph and loads branches for the clicked repo", () => {
   expect(commitList.value).toBeUndefined();
   expect(vscodeApi.postMessage).toHaveBeenCalledWith({
     command: "loadBranches",
+    requestId: expect.any(String),
     repo: "/workspace/child",
     showRemoteBranches: true,
     hiddenRemotes: [],

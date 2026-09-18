@@ -1,10 +1,15 @@
 import type { ResponseMessage } from "@/types";
 import { closeCommitDetails, openErrorDialog } from "@/webview/lib/actions";
+import { acceptGraphResponse } from "@/webview/lib/graph-requests";
 import { commitDetails, expandedCommit } from "@/webview/lib/stores";
 
 type CommitDetailsMessage = Extract<ResponseMessage, { command: "commitDetails" }>;
 
 export function handleCommitDetails(msg: CommitDetailsMessage) {
+  if (!acceptGraphResponse(msg)) {
+    return;
+  }
+
   if (msg.commitDetails === null) {
     closeCommitDetails();
     openErrorDialog(window.l10n.unableToLoadCommitDetails);

@@ -18,7 +18,12 @@ import { loadBranches } from "@/backend/queries/loadBranches";
 import { loadCommits } from "@/backend/queries/loadCommits";
 import { loadRemotes } from "@/backend/queries/loadRemotes";
 import { repositoryQuery } from "@/backend/queries/repository";
-import type { ActionRequest, GitFileChangeType, QueryResult } from "@/backend/types";
+import type {
+  ActionRequest,
+  GitFileChangeType,
+  GraphQueryCommand,
+  QueryResult
+} from "@/backend/types";
 import { getSubmodulePaths } from "@/backend/utils/git";
 import { isRepoWithinPath, normalizeRepoPath } from "@/backend/utils/repoPath";
 import { abbrevCommit } from "@/backend/utils/string";
@@ -29,7 +34,7 @@ import { invalidateWorkspaceScan, scanWorkspaceRepos } from "@/extension/workspa
 import { AvatarManager } from "@/old-extension/avatarManager";
 import { encodeDiffDocUri } from "@/old-extension/diffDocProvider";
 import { ExtensionState } from "@/old-extension/extensionState";
-import type { ResponseMessage } from "@/types";
+import type { RequestMessage, ResponseMessage } from "@/types";
 
 import type { RepoManager } from "./repoManager";
 import type { WebviewBridge } from "./webviewBridge";
@@ -84,11 +89,20 @@ export function registerMessageHandlers(
   let currentRepo: string | null = null;
   const busyRepos = new Map<string, boolean>();
   const viewedRepos = new Set<string>();
+  const graphControllers = new Map<GraphQueryCommand, AbortController>();
+
+  function cancelGraphQueries() {
+    for (const controller of graphControllers.values()) {
+      controller.abort();
+    }
+    graphControllers.clear();
+  }
 
   function setCurrentRepo(repo: string) {
     if (repo === currentRepo) {
       return;
     }
+    cancelGraphQueries();
     currentRepo = repo;
     viewedRepos.add(repo);
     gitClient.setRepo(repo);
@@ -292,14 +306,53 @@ export function registerMessageHandlers(
     });
   });
 
-  bridge.onMessage("loadCommits", async (msg) => {
-    setCurrentRepo(msg.repo);
-    bridge.post({
-      command: "loadCommits",
+  function registerGraphQuery<K extends GraphQueryCommand>(
+    command: K,
+    query: (
+      git: SimpleGit,
+      message: Extract<RequestMessage, { command: K }>
+    ) => Promise<QueryResult<K>>
+  ) {
+    bridge.onMessage(command, async (message) => {
+      const { repo, requestId } = message as Extract<
+        RequestMessage,
+        { command: GraphQueryCommand }
+      >;
+      setCurrentRepo(repo);
+      graphControllers.get(command)?.abort();
+      const controller = new AbortController();
+      graphControllers.set(command, controller);
+      try {
+        const data = await query(
+          gitClientFactory(repo, config.gitPath(), controller.signal).getInstance(),
+          message
+        );
+        if (!controller.signal.aborted) {
+          bridge.post({
+            command,
+            ...data,
+            repo,
+            requestId
+          } as ResponseMessage);
+        }
+      } catch (error: unknown) {
+        if (!controller.signal.aborted) {
+          throw error;
+        }
+      } finally {
+        if (graphControllers.get(command) === controller) {
+          graphControllers.delete(command);
+        }
+      }
+    });
+  }
+
+  registerGraphQuery("loadCommits", async (git, msg) => {
+    return {
       repo: msg.repo,
       branchName: msg.branchName,
       visibilityKey: msg.visibilityKey,
-      ...(await loadCommits(gitClient.getInstance(), {
+      ...(await loadCommits(git, {
         branchName: msg.branchName,
         maxCommits: msg.maxCommits,
         hiddenRemotes: msg.hiddenRemotes ?? [],
@@ -308,33 +361,25 @@ export function registerMessageHandlers(
         dateType: config.dateType(),
         showUncommittedChanges: config.showUncommittedChanges()
       }))
-    });
+    };
   });
 
-  bridge.onMessage("loadBranches", async (msg) => {
-    setCurrentRepo(msg.repo);
-    bridge.post({
-      command: "loadBranches",
+  registerGraphQuery("loadBranches", async (git, msg) => {
+    return {
       visibilityKey: msg.visibilityKey,
-      ...(await loadBranches(gitClient.getInstance(), {
+      ...(await loadBranches(git, {
         showRemoteBranches: msg.showRemoteBranches,
         hiddenRemotes: msg.hiddenRemotes ?? [],
         hard: msg.hard,
         repo: msg.repo,
         gitPath: config.gitPath()
       }))
-    });
+    };
   });
 
-  bridge.onMessage("commitDetails", async (msg) => {
-    bridge.post({
-      command: "commitDetails",
-      ...(await commitDetails(gitClientFactory(msg.repo, config.gitPath()).getInstance(), {
-        commitHash: msg.commitHash,
-        dateType: config.dateType()
-      }))
-    });
-  });
+  registerGraphQuery("commitDetails", (git, msg) =>
+    commitDetails(git, { commitHash: msg.commitHash, dateType: config.dateType() })
+  );
 
   // --- Infrastructure handlers ---
 
@@ -359,6 +404,7 @@ export function registerMessageHandlers(
 
   return {
     dispose: () => {
+      cancelGraphQueries();
       for (const { controller } of queryControllers.values()) {
         controller.abort();
       }

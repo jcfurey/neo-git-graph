@@ -8,15 +8,17 @@ import {
   setRemoteVisible,
   setShowRemoteBranch
 } from "@/webview/lib/actions";
+import { resetGraphRequests } from "@/webview/lib/graph-requests";
 import { handleLoadBranches } from "@/webview/lib/handler/load-branches";
 import { handleLoadCommits } from "@/webview/lib/handler/load-commits";
 import * as stores from "@/webview/lib/stores";
 
 import { vscodeApi } from "@tests/webview/setup";
-import { setupWebviewTest } from "@tests/webview/test-utils";
+import { latestGraphRequest, setupWebviewTest } from "@tests/webview/test-utils";
 
 beforeAll(() => setupWebviewTest());
 beforeEach(() => {
+  resetGraphRequests();
   stores.selectedRepo.value = "/repo";
   stores.selectedBranch.value = "*";
   stores.branchDisplay.value = "filter";
@@ -86,6 +88,7 @@ it("ignores history and branch replies from older remote visibility choices", ()
   const branches = stores.branchList.value;
   const commitsReply = {
     command: "loadCommits" as const,
+    requestId: latestGraphRequest("loadCommits").requestId,
     repo: "/repo",
     branchName: "",
     commits: [],
@@ -97,6 +100,7 @@ it("ignores history and branch replies from older remote visibility choices", ()
   };
   const branchesReply = {
     command: "loadBranches" as const,
+    requestId: latestGraphRequest("loadBranches").requestId,
     repo: "/repo",
     branches: ["old"],
     head: "old",

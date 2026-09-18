@@ -4,22 +4,25 @@ import { beforeAll, beforeEach, expect, it, vi } from "vitest";
 import {
   focusBranchInGraph,
   loadMoreCommits,
+  refresh,
   selectBranch,
   selectRepo,
   setBranchDisplay,
   setFocusDimming,
   toggleBranchFocus
 } from "@/webview/lib/actions";
+import { resetGraphRequests } from "@/webview/lib/graph-requests";
 import { handleLoadBranches } from "@/webview/lib/handler/load-branches";
 import { handleLoadCommits } from "@/webview/lib/handler/load-commits";
 import { refMenu } from "@/webview/lib/menus";
 import * as stores from "@/webview/lib/stores";
 
 import { vscodeApi } from "@tests/webview/setup";
-import { setupWebviewTest } from "@tests/webview/test-utils";
+import { latestGraphRequest, setupWebviewTest } from "@tests/webview/test-utils";
 
 beforeAll(() => setupWebviewTest());
 beforeEach(() => {
+  resetGraphRequests();
   stores.selectedRepo.value = "/repo";
   stores.selectedBranch.value = "*";
   stores.branchDisplay.value = "filter";
@@ -105,6 +108,7 @@ it("restores the paused target and dimming per repository", () => {
   selectRepo("/repo");
   handleLoadBranches({
     command: "loadBranches",
+    requestId: latestGraphRequest("loadBranches").requestId,
     repo: "/repo",
     head: "main",
     branches: ["main", "topic"],
@@ -140,6 +144,7 @@ it("loads all branches for focus and ignores an older filtered response", () => 
   );
   const response = {
     command: "loadCommits" as const,
+    requestId: latestGraphRequest("loadCommits").requestId,
     repo: "/repo",
     branchName: "main",
     commits: [],
@@ -172,6 +177,7 @@ it("restores the view per repository and falls back when the focused branch disa
   expect(stores.branchDisplay.value).toBe("focus");
   handleLoadBranches({
     command: "loadBranches",
+    requestId: latestGraphRequest("loadBranches").requestId,
     repo: "/repo",
     head: "main",
     branches: ["main"],
@@ -180,8 +186,10 @@ it("restores the view per repository and falls back when the focused branch disa
   });
   expect(stores.selectedBranch.value).toBe("main");
   selectBranch("topic");
+  refresh();
   handleLoadBranches({
     command: "loadBranches",
+    requestId: latestGraphRequest("loadBranches").requestId,
     repo: "/repo",
     head: "main",
     branches: ["main"],

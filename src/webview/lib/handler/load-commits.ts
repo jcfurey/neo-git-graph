@@ -2,6 +2,7 @@ import { batch } from "@preact/signals";
 
 import type { ResponseMessage } from "@/types";
 import { closeCommitDetails } from "@/webview/lib/actions";
+import { acceptGraphResponse } from "@/webview/lib/graph-requests";
 import {
   commitHead,
   commitList,
@@ -21,7 +22,8 @@ export function handleLoadCommits(msg: LoadCommitsMessage) {
   if (
     msg.repo !== selectedRepo.value ||
     msg.branchName !== requested ||
-    (msg.visibilityKey !== undefined && msg.visibilityKey !== remoteVisibilityKey())
+    (msg.visibilityKey !== undefined && msg.visibilityKey !== remoteVisibilityKey()) ||
+    !acceptGraphResponse(msg)
   ) {
     return;
   }

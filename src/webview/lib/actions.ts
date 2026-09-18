@@ -5,6 +5,11 @@ import type { GitFileChange } from "@/backend/types";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
 import { captureFocus, restoreFocus } from "@/webview/lib/focus";
+import {
+  invalidateGraphRequest,
+  resetGraphRequests,
+  startGraphRequest
+} from "@/webview/lib/graph-requests";
 import { enterNavigation, historyOffset, leaveNavigation } from "@/webview/lib/navigation";
 import { sendRemoteAction } from "@/webview/lib/remote-actions";
 import {
@@ -53,6 +58,7 @@ import type {
 function requestBranches(repo: string) {
   vscode.postMessage({
     command: "loadBranches",
+    requestId: startGraphRequest("loadBranches", repo),
     repo,
     showRemoteBranches: showRemoteBranch.value,
     hiddenRemotes: hiddenRemotes.value,
@@ -64,6 +70,7 @@ function requestBranches(repo: string) {
 function requestCommits(repo: string, branch: CommitBranchType) {
   vscode.postMessage({
     command: "loadCommits",
+    requestId: startGraphRequest("loadCommits", repo),
     repo,
     branchName: displayedBranch(branch),
     maxCommits: maxCommits.value,
@@ -75,6 +82,7 @@ function requestCommits(repo: string, branch: CommitBranchType) {
 }
 
 function clearCommits() {
+  invalidateGraphRequest("loadCommits");
   commitList.value = undefined;
   commitHead.value = null;
   moreCommitsAvailable.value = false;
@@ -89,6 +97,7 @@ export function selectRepo(repo: string) {
   }
 
   leaveNavigation(selectedRepo.value);
+  resetGraphRequests();
   batch(() => {
     selectedRepo.value = repo;
     enterNavigation(repo);
@@ -341,6 +350,7 @@ export function refresh() {
 }
 
 export function closeCommitDetails() {
+  invalidateGraphRequest("commitDetails");
   batch(() => {
     expandedCommit.value = null;
     commitDetails.value = null;
@@ -364,7 +374,12 @@ export function toggleCommitDetails(hash: string) {
     return;
   }
 
-  vscode.postMessage({ command: "commitDetails", repo, commitHash: hash });
+  vscode.postMessage({
+    command: "commitDetails",
+    requestId: startGraphRequest("commitDetails", repo),
+    repo,
+    commitHash: hash
+  });
 }
 
 /**

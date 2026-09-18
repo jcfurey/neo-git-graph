@@ -67,12 +67,17 @@ type QueryPayloads = {
   };
 };
 
+export type GraphQueryCommand = "loadBranches" | "loadCommits" | "commitDetails";
+
+/** Keep transport identity out of the backend query results. */
+type GraphQueryIdentity<K> = K extends GraphQueryCommand ? { repo: string; requestId: string } : {};
+
 export type QueryRequest = {
-  [K in keyof QueryPayloads]: { command: K } & QueryPayloads[K]["request"];
+  [K in keyof QueryPayloads]: { command: K } & QueryPayloads[K]["request"] & GraphQueryIdentity<K>;
 }[keyof QueryPayloads];
 
 export type QueryResponse = {
-  [K in keyof QueryPayloads]: { command: K } & QueryPayloads[K]["response"];
+  [K in keyof QueryPayloads]: { command: K } & QueryPayloads[K]["response"] & GraphQueryIdentity<K>;
 }[keyof QueryPayloads];
 
 export type QueryResult<T extends keyof QueryPayloads> = QueryPayloads[T]["response"];

@@ -28,6 +28,9 @@
 
 ### Fixed
 
+- Keep detached-HEAD commits and their uncommitted changes visible in the all-branches graph.
+- Ignore superseded graph, branch, and commit-details replies, including stale errors, and cancel obsolete graph reads.
+- Include the webview-bridge regression tests in the extension test suite, with watcher recovery coverage.
 - Clip graph lines to the actual column width so wide graphs cannot overlap commit text.
 
 - Include staged-only submodule pointer changes in the workspace filter.
