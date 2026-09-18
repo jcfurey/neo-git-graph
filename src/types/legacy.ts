@@ -2,6 +2,7 @@ import type {
   ActionRequest,
   ActionResponse,
   GitFileChangeType,
+  GraphQueryCommand,
   QueryRequest,
   QueryResponse
 } from "@/backend/types";
@@ -78,6 +79,14 @@ export type RequestMessage =
   | RequestViewDiff;
 
 export type ResponseMessage =
+  | { command: "repoState"; repo: string; state: GitRepoState }
+  | {
+      command: "graphQueryError";
+      query: GraphQueryCommand;
+      repo: string;
+      requestId: string;
+      message: string;
+    }
   | { command: "fileHistory"; repo: string; path: string }
   | ActionResponse
   | QueryResponse

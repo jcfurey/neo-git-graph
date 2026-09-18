@@ -1,9 +1,10 @@
 import type { ResponseMessage } from "@/types";
 import { openFileHistory } from "@/webview/components/history/HistoryTools";
-import { selectRepo } from "@/webview/lib/actions";
+import { receiveRepoState, selectRepo } from "@/webview/lib/actions";
 
 import { handleActionResult } from "./handler/action-result";
 import { handleCommitDetails } from "./handler/commit-details";
+import { handleGraphQueryError } from "./handler/graph-query-error";
 import { handleLoadBranches } from "./handler/load-branches";
 import { handleLoadCommits } from "./handler/load-commits";
 import { handleRefresh } from "./handler/refresh";
@@ -18,6 +19,8 @@ type Handlers = {
 };
 
 const handlers: Handlers = {
+  repoState: receiveRepoState,
+  graphQueryError: handleGraphQueryError,
   fileHistory: (message) => {
     selectRepo(message.repo);
     openFileHistory(message.path);

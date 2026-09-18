@@ -8,6 +8,7 @@ import { Loading } from "@/webview/components/ui/Loading";
 import { Select } from "@/webview/components/ui/Select";
 import {
   loadMoreCommits,
+  refresh,
   selectBranch,
   setFocusDimming,
   toggleBranchFocus
@@ -28,6 +29,7 @@ import {
   displayedBranch,
   focusPaused,
   focusDimming,
+  graphErrors,
   headBranch,
   hiddenRemotes,
   showRemoteBranch,
@@ -80,6 +82,17 @@ export function GraphView() {
     return (
       <main class="p-3">
         <QueryStatus {...query} />
+      </main>
+    );
+  }
+
+  const graphError = graphErrors.value.loadBranches ?? graphErrors.value.loadCommits;
+  if (!active && graphError !== undefined) {
+    return (
+      <main class="space-y-3 p-3" data-graph-error>
+        <h2 class="font-semibold">{window.l10n.unableToLoad}</h2>
+        <QueryStatus loading={false} error={graphError || window.l10n.unableToLoad} />
+        <Button onClick={refresh}>{window.l10n.retry}</Button>
       </main>
     );
   }

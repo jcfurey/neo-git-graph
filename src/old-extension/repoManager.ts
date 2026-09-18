@@ -62,13 +62,25 @@ export function createRepoManager(extensionState: ExtensionState) {
     extensionState.saveRepos(repos);
   }
 
+  function updateHiddenRemotes(repo: string, names: string[]): GitRepoState | undefined {
+    const state = repos[repo] ?? { columnWidths: null };
+    const hiddenRemotes = [...new Set(names)].toSorted();
+    if (JSON.stringify(state.hiddenRemotes ?? []) === JSON.stringify(hiddenRemotes)) {
+      return undefined;
+    }
+    const next = { ...state, hiddenRemotes };
+    setRepoState(repo, next);
+    return next;
+  }
+
   return {
     getRepos,
     setRepos,
     addRepo,
     removeRepo,
     removeReposWithinFolder,
-    setRepoState
+    setRepoState,
+    updateHiddenRemotes
   };
 }
 

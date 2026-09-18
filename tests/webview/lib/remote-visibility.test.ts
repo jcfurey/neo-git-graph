@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, expect, it, vi } from "vitest";
 
 import {
   focusBranchInGraph,
+  receiveRepoState,
   selectBranch,
   selectRepo,
   setRemoteVisible,
@@ -125,4 +126,46 @@ it("ignores history and branch replies from older remote visibility choices", ()
   });
   expect(stores.commitHead.value).toBe("current");
   expect(stores.branchList.value).toEqual(["main"]);
+});
+
+it("restores saved remote choices and widths before accepting the graph for a reopened panel", () => {
+  stores.repoStates.value = {};
+  stores.selectedBranch.value = undefined;
+  stores.commitList.value = undefined;
+  receiveRepoState({
+    command: "repoState",
+    repo: "/repo",
+    state: { columnWidths: [90, 80, 80, 80], hiddenRemotes: ["origin"] }
+  });
+  expect(stores.hiddenRemotes.value).toEqual(["origin"]);
+  expect(stores.columnWidths.value).toEqual([90, 80, 80, 80]);
+  expect(latestGraphRequest("loadBranches").hiddenRemotes).toEqual(["origin"]);
+  handleLoadBranches({
+    ...latestGraphRequest("loadBranches"),
+    branches: ["main"],
+    head: "main",
+    isRepo: true
+  });
+  expect(latestGraphRequest("loadCommits").hiddenRemotes).toEqual(["origin"]);
+});
+
+it("applies migrated preferences without resetting column widths or another repository's graph", () => {
+  stores.repoStates.value = { "/repo": { columnWidths: [90, 80, 80, 80] } };
+  const widths = stores.columnWidths.value;
+  receiveRepoState({
+    command: "repoState",
+    repo: "/repo",
+    state: { columnWidths: null, hiddenRemotes: ["team/mirror"] }
+  });
+  expect(stores.columnWidths.value).toBe(widths);
+  expect(latestGraphRequest("loadCommits").hiddenRemotes).toEqual(["team/mirror"]);
+  vi.clearAllMocks();
+  receiveRepoState({
+    command: "repoState",
+    repo: "/other",
+    state: { columnWidths: null, hiddenRemotes: ["origin"] }
+  });
+  expect(stores.repoStates.value["/other"]?.hiddenRemotes).toEqual(["origin"]);
+  expect(stores.hiddenRemotes.value).toEqual(["team/mirror"]);
+  expect(vscodeApi.postMessage).not.toHaveBeenCalled();
 });

@@ -3,6 +3,7 @@ import type { ComponentChildren } from "preact";
 
 import type { GitFileChange } from "@/backend/types";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
+import type { ResponseMessage } from "@/types";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
 import { captureFocus, restoreFocus } from "@/webview/lib/focus";
 import {
@@ -31,6 +32,7 @@ import {
   expandedCommit,
   focusDimming,
   focusPaused,
+  graphErrors,
   headBranch,
   hiddenRemotes,
   maxCommits,
@@ -56,6 +58,7 @@ import type {
 } from "@/webview/types";
 
 function requestBranches(repo: string) {
+  graphErrors.value = { ...graphErrors.value, loadBranches: undefined };
   vscode.postMessage({
     command: "loadBranches",
     requestId: startGraphRequest("loadBranches", repo),
@@ -68,6 +71,7 @@ function requestBranches(repo: string) {
 }
 
 function requestCommits(repo: string, branch: CommitBranchType) {
+  graphErrors.value = { ...graphErrors.value, loadCommits: undefined };
   vscode.postMessage({
     command: "loadCommits",
     requestId: startGraphRequest("loadCommits", repo),
@@ -82,6 +86,7 @@ function requestCommits(repo: string, branch: CommitBranchType) {
 }
 
 function clearCommits() {
+  graphErrors.value = { ...graphErrors.value, loadCommits: undefined };
   invalidateGraphRequest("loadCommits");
   commitList.value = undefined;
   commitHead.value = null;
@@ -98,6 +103,7 @@ export function selectRepo(repo: string) {
 
   leaveNavigation(selectedRepo.value);
   resetGraphRequests();
+  graphErrors.value = {};
   batch(() => {
     selectedRepo.value = repo;
     enterNavigation(repo);
@@ -266,6 +272,24 @@ function saveHiddenRemotes(remotes: string[]) {
   };
   repoStates.value = { ...repoStates.value, [repo]: state };
   vscode.postMessage({ command: "saveRepoState", repo, state });
+}
+
+/** Apply persisted preferences without overwriting a column resize in progress. */
+export function receiveRepoState(message: Extract<ResponseMessage, { command: "repoState" }>) {
+  const current = repoStates.value[message.repo];
+  const hidden = message.state.hiddenRemotes ?? [];
+  const changed = JSON.stringify(current?.hiddenRemotes ?? []) !== JSON.stringify(hidden);
+  repoStates.value = {
+    ...repoStates.value,
+    [message.repo]: {
+      ...message.state,
+      ...current,
+      hiddenRemotes: hidden
+    }
+  };
+  if (changed && message.repo === selectedRepo.value) {
+    refreshRemoteVisibility();
+  }
 }
 
 /** Selecting a hidden branch reveals only its owning remote. */

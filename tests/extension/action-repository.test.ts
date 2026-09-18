@@ -41,7 +41,7 @@ it("runs an action against its requested repository even if the selected reposit
   const deps = {
     config: { gitPath: () => "git" },
     gitClient: { getInstance: () => ({ repo: "/another-repo" }), setRepo: vi.fn() },
-    repoManager: {},
+    repoManager: { getRepos: () => ({}) },
     avatarManager: {},
     extensionState: { setLastActiveRepo: vi.fn() },
     repoFileWatcher: { start: vi.fn() }

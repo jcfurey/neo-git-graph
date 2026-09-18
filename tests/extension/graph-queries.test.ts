@@ -24,6 +24,7 @@ beforeEach(() => {
 function setup() {
   const handlers = new Map<string, (message: unknown) => void | Promise<void>>();
   const post = vi.fn();
+  const setRepo = vi.fn();
   const lifetime = registerMessageHandlers(
     {
       post,
@@ -36,12 +37,14 @@ function setup() {
         dateType: () => "Author Date",
         showUncommittedChanges: () => true
       },
-      gitClient: { setRepo: vi.fn() },
+      gitClient: { setRepo },
+      repoManager: { getRepos: () => ({}) },
       extensionState: { setLastActiveRepo: vi.fn() }
     } as unknown as Parameters<typeof registerMessageHandlers>[1]
   );
   return {
     post,
+    setRepo,
     lifetime,
     receive: (message: { command: string; [key: string]: unknown }) =>
       handlers.get(message.command)!(message)
@@ -99,6 +102,7 @@ it("cancels reads across repository changes and panel disposal", async () => {
   mocks.commits.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
   const oldRead = receive(commitsRequest);
   await receive({ command: "selectRepo", repo: "/other" });
+  post.mockClear();
   expect(mocks.commits.mock.calls[0]?.[0].signal.aborted).toBe(true);
   const newRead = receive({ ...commitsRequest, repo: "/other", requestId: "second" });
   first.reject(new Error("cancelled"));
@@ -151,5 +155,45 @@ it("cancels obsolete details queries and includes identity on a current details 
     repo: "/repo",
     commitDetails: null
   });
+  lifetime.dispose();
+});
+
+it.each(["loadBranches", "loadCommits", "commitDetails"] as const)(
+  "reports %s failures with request identity",
+  async (command) => {
+    const { post, lifetime, receive } = setup();
+    const query =
+      command === "loadBranches"
+        ? mocks.branches
+        : command === "loadCommits"
+          ? mocks.commits
+          : mocks.details;
+    query.mockRejectedValue(new Error("Git read failed"));
+    await receive({ ...commitsRequest, command, commitHash: "hash" });
+    expect(post).toHaveBeenCalledExactlyOnceWith({
+      command: "graphQueryError",
+      query: command,
+      repo: "/repo",
+      requestId: "first",
+      message: "Git read failed"
+    });
+    lifetime.dispose();
+  }
+);
+
+it("reports repository setup failures and recovers on retry", async () => {
+  const { post, setRepo, lifetime, receive } = setup();
+  setRepo.mockImplementationOnce(() => {
+    throw new Error("Repository was removed");
+  });
+  await receive(commitsRequest);
+  expect(post).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ command: "graphQueryError", message: "Repository was removed" })
+  );
+  mocks.commits.mockResolvedValue(emptyCommits);
+  await receive({ ...commitsRequest, requestId: "retry" });
+  expect(post).toHaveBeenLastCalledWith(
+    expect.objectContaining({ command: "loadCommits", requestId: "retry" })
+  );
   lifetime.dispose();
 });

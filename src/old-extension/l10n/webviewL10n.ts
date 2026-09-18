@@ -45,6 +45,7 @@ export function getWebviewLocalizedStrings() {
     focusAncestorsHint: vscode.l10n.t("All ancestors: full colour · Other commits: gray"),
     showRemoteBranches: vscode.l10n.t("Show Remote Branches"),
     refresh: vscode.l10n.t("Refresh"),
+    retry: vscode.l10n.t("Retry"),
     close: vscode.l10n.t("Close"),
     loadMore: vscode.l10n.t("Load More Commits"),
     showAll: vscode.l10n.t("Show All"),

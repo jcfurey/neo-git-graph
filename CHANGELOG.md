@@ -28,6 +28,8 @@
 
 ### Fixed
 
+- Restore saved remote visibility when reopening the graph, preserve it on remote rename, and remove obsolete preferences after remote deletion.
+- Show graph-loading errors with a Retry button instead of empty history or an indefinite loading indicator.
 - Keep detached-HEAD commits and their uncommitted changes visible in the all-branches graph.
 - Ignore superseded graph, branch, and commit-details replies, including stale errors, and cancel obsolete graph reads.
 - Include the webview-bridge regression tests in the extension test suite, with watcher recovery coverage.

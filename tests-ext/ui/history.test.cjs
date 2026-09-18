@@ -70,6 +70,9 @@ async function connect(url, type) {
     if (message.method === "Runtime.executionContextDestroyed") {
       contexts.delete(message.params.executionContextId);
     }
+    if (message.method === "Runtime.executionContextsCleared") {
+      contexts.clear();
+    }
     if (message.id && pending.has(message.id)) {
       const { resolve, reject, timer } = pending.get(message.id);
       pending.delete(message.id);
@@ -81,10 +84,21 @@ async function connect(url, type) {
       }
     }
   });
+  ws.addEventListener("close", () => {
+    contexts.clear();
+    for (const { reject, timer } of pending.values()) {
+      clearTimeout(timer);
+      reject(new Error("CDP connection closed"));
+    }
+    pending.clear();
+  });
   const connection = {
     ws,
     contexts,
     call(method, params = {}) {
+      if (ws.readyState !== WebSocket.OPEN) {
+        return Promise.reject(new Error("CDP connection is not open"));
+      }
       return new Promise((resolve, reject) => {
         const id = ++sequence;
         const timer = setTimeout(() => {
@@ -134,6 +148,9 @@ async function findGraph() {
         }
       }
       for (const connection of connections) {
+        if (connection.ws.readyState !== WebSocket.OPEN) {
+          continue;
+        }
         for (const context of connection.contexts) {
           try {
             if (
@@ -1186,6 +1203,101 @@ suite("Git Graph workflow UI", function () {
       mobile: false
     });
   });
+  test("shows a graph error and retries after a Git configuration failure is repaired", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "retry-graph-base", dir);
+    await openRepo(dir);
+    const config = path.join(dir, ".git", "config");
+    const original = fs.readFileSync(config, "utf8");
+    try {
+      fs.writeFileSync(config, original + "\n[invalid config\n");
+      await button("Refresh");
+      await until(
+        () => graph.evaluate('!!document.querySelector("[data-graph-error] [role=alert]")'),
+        "recoverable graph error"
+      );
+      assert.match(
+        await graph.evaluate('document.querySelector("[data-graph-error]").innerText'),
+        /Unable to load Git Graph/
+      );
+      assert.doesNotMatch(
+        await graph.evaluate('document.querySelector("main").innerText'),
+        /No commits yet/
+      );
+    } finally {
+      fs.writeFileSync(config, original);
+    }
+    await button("Retry", 'document.querySelector("[data-graph-error]")');
+    await until(
+      () =>
+        graph.evaluate(
+          '!document.querySelector("[data-graph-error]") && [...document.querySelectorAll("tbody tr")].some(row => row.innerText.includes("retry-graph-base"))'
+        ),
+      "graph recovery after retry"
+    );
+  });
+
+  test("keeps a renamed remote hidden across panel reopening and clears its removed preference", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "rename-remote-base", dir);
+    git(["remote", "add", "team/upstream", dir], dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    const tip = git(["commit-tree", tree, "-p", base, "-m", "rename-remote-only"], dir);
+    git(["update-ref", "refs/remotes/team/upstream/topic", tip], dir);
+    await openRepo(dir);
+    if (!(await graph.evaluate('!!document.querySelector("nav[aria-label=Branches]")'))) {
+      await button("Branches", 'document.querySelector("header")');
+    }
+    const nav = `document.querySelector('nav[aria-label="Branches"]')`;
+    const eye = (name) =>
+      `${nav}.querySelector('button[aria-label="Show remote ${name} in the graph"]')`;
+    await until(() => graph.evaluate(visible(tip)), "remote history before hiding");
+    await button("Show remote team/upstream in the graph");
+    await until(
+      () => graph.evaluate(`${eye("team/upstream")}?.getAttribute('aria-pressed') === 'false'`),
+      "hidden remote"
+    );
+    await button("Actions for remote team/upstream");
+    await menu("Rename Remote…");
+    await fill(["team/mirror"]);
+    await button("Rename Remote");
+    await finished();
+    await until(
+      () =>
+        graph.evaluate(
+          `${eye("team/mirror")}?.getAttribute('aria-pressed') === 'false' && !${visible(tip)}`
+        ),
+      "hidden renamed remote"
+    );
+    await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+    await openRepo(dir);
+    await until(
+      () =>
+        graph.evaluate(
+          `${eye("team/mirror")}?.getAttribute('aria-pressed') === 'false' && !${visible(tip)}`
+        ),
+      "restored hidden remote in fresh panel"
+    );
+    await button("Actions for remote team/mirror");
+    await menu("Remove Remote…");
+    await button("Remove Remote");
+    await finished();
+    assert.equal(git(["remote"], dir), "");
+    git(["remote", "add", "team/mirror", dir], dir);
+    git(["update-ref", "refs/remotes/team/mirror/topic", tip], dir);
+    await button("Refresh");
+    await until(
+      () =>
+        graph.evaluate(
+          `${eye("team/mirror")}?.getAttribute('aria-pressed') === 'true' && ${visible(tip)}`
+        ),
+      "re-added remote is visible"
+    );
+  });
+
   test("hides individual remotes and restores their visibility without changing Git refs", async () => {
     const dir = directory();
     init(dir);

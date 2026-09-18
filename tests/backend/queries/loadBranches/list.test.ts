@@ -123,20 +123,15 @@ describe("loadBranches", () => {
     expect(result.branches.some((b) => b.startsWith("remotes/origin/"))).toBe(true);
   });
 
-  it("returns isRepo: false for a non-git directory", async () => {
-    const result = await loadBranches(simpleGit(os.tmpdir()), {
-      showRemoteBranches: false,
-      hard: false,
-      repo: os.tmpdir(),
-      gitPath: "git"
-    });
-    expect(result).toEqual({
-      repo: os.tmpdir(),
-      branches: [],
-      head: null,
-      hard: false,
-      isRepo: false
-    });
+  it("reports a non-git directory instead of returning an empty branch list", async () => {
+    await expect(
+      loadBranches(simpleGit(os.tmpdir()), {
+        showRemoteBranches: false,
+        hard: false,
+        repo: os.tmpdir(),
+        gitPath: "git"
+      })
+    ).rejects.toThrow();
   });
 
   it("passes hard flag through to the result", async () => {

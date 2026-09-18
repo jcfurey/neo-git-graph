@@ -31,22 +31,21 @@ visible in the implementation but has not been reproduced end to end; “Propose
       [details handler](src/webview/lib/handler/commit-details.ts),
       [existing cancellable query hook](src/webview/lib/use-repository-query.ts).
 
-- [ ] **Distinguish graph loading failures from empty history.** **Code review.** The commit
-      loader converts log/ref failures into empty results and status failures into zero changes.
-      Other failures, such as remote-visibility lookup errors, can escape without a graph error
-      response. Return useful errors and provide a retry path instead of an empty or pending view.
-      **Done when:** a removed repository, invalid revision, and failed Git invocation produce
-      recoverable errors, while a repository with no commits still shows the normal empty state.
+- [x] **Distinguish graph loading failures from empty history.** Completed 2026-09-18. Branch,
+      commit, ref, remote-visibility, and status failures now reach the view with request identity.
+      A localized error view offers Retry and preserves the normal empty state for unborn repos.
+      **Verified:** removed repositories, invalid revisions/executables, failed Git reads, stale
+      errors, and recovery through Retry are covered by backend, extension, and webview tests.
       Sources: [commit loader](src/backend/queries/loadCommits.ts),
       [message handlers](src/old-extension/messageHandler.ts).
 
-- [ ] **Preserve remote visibility when renaming or removing a remote.** **Code review.** Hidden
-      remotes are saved by name. Remote actions update Git configuration without migrating those
-      saved names, so a renamed hidden remote becomes visible and deleted names remain stored.
-      Migrate the preference after a successful rename and clean it up after removal; define how
-      settings are reconciled when remotes change outside the extension.
-      **Done when:** rename preserves visibility, removal does not leave a stale preference, and
-      failed Git operations preserve the original settings. Include names containing slashes.
+- [x] **Preserve remote visibility when renaming or removing a remote.** Completed 2026-09-18.
+      Successful remote actions migrate or remove saved preferences and update the view. Opening
+      the graph restores its saved repository preferences. Successful state refreshes prune missing
+      groups, retaining configured remotes and orphan groups with tracking refs. External renames
+      are treated as new visible groups; Git does not provide a reliable rename mapping.
+      **Verified:** exact names containing slashes, failed actions/refreshes, removal and re-addition,
+      external changes, panel restoration, and preserving unrelated column widths are covered.
       Sources: [remote actions](src/backend/actions/remotes.ts),
       [visibility preferences](src/webview/lib/actions.ts),
       [repository action handler](src/old-extension/messageHandler.ts).
@@ -109,6 +108,7 @@ visible in the implementation but has not been reproduced end to end; “Propose
 - [ ] **Define and test preference lifetime across reopening and repository switches.**
       **Investigate.** Individual hidden remotes use persisted repository state, focus preferences
       use webview state, and the global remote toggle is an in-memory signal shared across repos.
+      Hidden-remote restoration on panel reopening is now implemented and tested.
       Decide which choices should be per repository and survive closing the graph or restarting
       VS Code. Include horizontal scroll position in that decision.
       **Done when:** the chosen behavior is documented and tested across repository switches,
@@ -158,5 +158,6 @@ visible in the implementation but has not been reproduced end to end; “Propose
 
 ## Suggested next batch
 
-The first batch is complete. Continue with remote-preference migration and explicit graph error
-handling. Make fork packaging repeatable before the next local installation or release.
+The correctness batch is complete. Make fork packaging repeatable before the next local installation
+or release, then update publishing validation and the README. Continue with graph rendering and
+accessibility coverage after that.

@@ -40,7 +40,10 @@ it("cancels only matching reads, disposes outstanding reads, and lets mutations 
       onMessage: (command: string, handler: (message: unknown) => void | Promise<void>) =>
         handlers.set(command, handler)
     } as unknown as Parameters<typeof registerMessageHandlers>[0],
-    { config: { gitPath: () => "git" } } as unknown as Parameters<typeof registerMessageHandlers>[1]
+    {
+      config: { gitPath: () => "git" },
+      repoManager: { getRepos: () => ({}) }
+    } as unknown as Parameters<typeof registerMessageHandlers>[1]
   );
   const query = {
     command: "repositoryQuery",

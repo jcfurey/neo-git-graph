@@ -25,6 +25,7 @@ import type {
   QueryResult
 } from "@/backend/types";
 import { getSubmodulePaths } from "@/backend/utils/git";
+import { remoteForRef } from "@/backend/utils/remoteVisibility";
 import { isRepoWithinPath, normalizeRepoPath } from "@/backend/utils/repoPath";
 import { abbrevCommit } from "@/backend/utils/string";
 import type { Config } from "@/extension/config";
@@ -103,9 +104,9 @@ export function registerMessageHandlers(
       return;
     }
     cancelGraphQueries();
+    gitClient.setRepo(repo);
     currentRepo = repo;
     viewedRepos.add(repo);
-    gitClient.setRepo(repo);
     extensionState.setLastActiveRepo(repo);
     selectWatchedRepo(repo);
   }
@@ -159,6 +160,19 @@ export function registerMessageHandlers(
 
   registerAction("repositoryAction", async (git, msg) => {
     const effect = await runRepositoryAction(git, msg.action, config.gitPath());
+    if (msg.action.kind === "renameRemote" || msg.action.kind === "removeRemote") {
+      const action = msg.action;
+      const hidden = repoManager.getRepos()[msg.repo]?.hiddenRemotes ?? [];
+      const state = repoManager.updateHiddenRemotes(
+        msg.repo,
+        hidden.flatMap((name) =>
+          name !== action.name ? [name] : action.kind === "renameRemote" ? [action.newName] : []
+        )
+      );
+      if (state) {
+        bridge.post({ command: "repoState", repo: msg.repo, state });
+      }
+    }
     if (effect?.kind === "worktree") {
       await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(effect.path), true);
     } else if (effect?.kind === "conflict") {
@@ -245,6 +259,7 @@ export function registerMessageHandlers(
     queryControllers.set(msg.requestId, { repo: msg.repo, controller });
     let data: QueryResult<"repositoryQuery">["data"] = null;
     let status: string | null = null;
+    const savedState = msg.query.kind === "state" ? repoManager.getRepos()[msg.repo] : undefined;
     try {
       data = await repositoryQuery(
         gitClientFactory(msg.repo, config.gitPath(), controller.signal).getInstance(),
@@ -272,6 +287,26 @@ export function registerMessageHandlers(
     }
     if (controller.signal.aborted) {
       return;
+    }
+    if (
+      data?.kind === "state" &&
+      !busyRepos.has(msg.repo) &&
+      repoManager.getRepos()[msg.repo] === savedState
+    ) {
+      const names = data.state.remotes.map((remote) => remote.name);
+      // Keep orphan remote groups while their tracking refs still exist. External
+      // renames are new groups: Git does not retain a reliable rename mapping.
+      const groups = new Set([
+        ...names,
+        ...data.state.remoteBranches.map((ref) => remoteForRef(ref.name, names))
+      ]);
+      const state = repoManager.updateHiddenRemotes(
+        msg.repo,
+        (savedState?.hiddenRemotes ?? []).filter((name) => groups.has(name))
+      );
+      if (state) {
+        bridge.post({ command: "repoState", repo: msg.repo, state });
+      }
     }
     bridge.post({
       command: "repositoryQuery",
@@ -318,11 +353,11 @@ export function registerMessageHandlers(
         RequestMessage,
         { command: GraphQueryCommand }
       >;
-      setCurrentRepo(repo);
-      graphControllers.get(command)?.abort();
       const controller = new AbortController();
-      graphControllers.set(command, controller);
       try {
+        setCurrentRepo(repo);
+        graphControllers.get(command)?.abort();
+        graphControllers.set(command, controller);
         const data = await query(
           gitClientFactory(repo, config.gitPath(), controller.signal).getInstance(),
           message
@@ -337,7 +372,13 @@ export function registerMessageHandlers(
         }
       } catch (error: unknown) {
         if (!controller.signal.aborted) {
-          throw error;
+          bridge.post({
+            command: "graphQueryError",
+            query: command,
+            repo,
+            requestId,
+            message: error instanceof Error ? error.message : String(error)
+          });
         }
       } finally {
         if (graphControllers.get(command) === controller) {
@@ -384,7 +425,18 @@ export function registerMessageHandlers(
   // --- Infrastructure handlers ---
 
   bridge.onMessage("selectRepo", (msg) => {
-    setCurrentRepo(msg.repo);
+    bridge.post({
+      command: "repoState",
+      repo: msg.repo,
+      state: repoManager.getRepos()[msg.repo] ?? { columnWidths: null }
+    });
+    // Graph queries report failures to the view, including a repository that has
+    // disappeared. Selecting it alone must not leave an unhandled rejection.
+    try {
+      setCurrentRepo(msg.repo);
+    } catch (error: unknown) {
+      logger.debug(`Unable to select repository: ${msg.repo}`, error);
+    }
   });
 
   bridge.onMessage("fetchAvatar", (msg) => {

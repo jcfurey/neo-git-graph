@@ -27,40 +27,36 @@ async function getRefs(
   showRemoteBranches: boolean,
   excluded: ReadonlySet<string>
 ): Promise<GitRefData> {
-  try {
-    const args = ["show-ref"];
-    if (!showRemoteBranches) {
-      args.push("--heads", "--tags");
-    }
-    args.push("-d", "--head");
-    const stdout = await git.raw(args);
-    const refData: GitRefData = { head: null, refs: [] };
-    const lines = stdout.split(eolRegex);
-    for (const line of lines.slice(0, -1)) {
-      const parts = line.split(" ");
-      if (parts.length < 2) {
-        continue;
-      }
-      const hash = parts.shift()!;
-      const ref = parts.join(" ");
-      if (ref.startsWith("refs/heads/")) {
-        refData.refs.push({ hash, name: ref.substring(11), type: "head" });
-      } else if (ref.startsWith("refs/tags/")) {
-        refData.refs.push({
-          hash,
-          name: ref.endsWith("^{}") ? ref.substring(10, ref.length - 3) : ref.substring(10),
-          type: "tag"
-        });
-      } else if (ref.startsWith("refs/remotes/") && !excluded.has(ref.substring(13))) {
-        refData.refs.push({ hash, name: ref.substring(13), type: "remote" });
-      } else if (ref === "HEAD") {
-        refData.head = hash;
-      }
-    }
-    return refData;
-  } catch {
-    return { head: null, refs: [] };
+  const args = ["show-ref"];
+  if (!showRemoteBranches) {
+    args.push("--heads", "--tags");
   }
+  args.push("-d", "--head");
+  const stdout = await git.raw(args);
+  const refData: GitRefData = { head: null, refs: [] };
+  const lines = stdout.split(eolRegex);
+  for (const line of lines.slice(0, -1)) {
+    const parts = line.split(" ");
+    if (parts.length < 2) {
+      continue;
+    }
+    const hash = parts.shift()!;
+    const ref = parts.join(" ");
+    if (ref.startsWith("refs/heads/")) {
+      refData.refs.push({ hash, name: ref.substring(11), type: "head" });
+    } else if (ref.startsWith("refs/tags/")) {
+      refData.refs.push({
+        hash,
+        name: ref.endsWith("^{}") ? ref.substring(10, ref.length - 3) : ref.substring(10),
+        type: "tag"
+      });
+    } else if (ref.startsWith("refs/remotes/") && !excluded.has(ref.substring(13))) {
+      refData.refs.push({ hash, name: ref.substring(13), type: "remote" });
+    } else if (ref === "HEAD") {
+      refData.head = hash;
+    }
+  }
+  return refData;
 }
 
 async function getLog(
@@ -85,46 +81,38 @@ async function getLog(
       args.push(head);
     }
   }
-  try {
-    const stdout = await git.raw(args);
-    const lines = stdout.split(eolRegex);
-    const commits: GitLogEntry[] = [];
-    for (const line of lines.slice(0, -1)) {
-      const [hash, parents, author, email, date, message, ...extraFields] =
-        line.split(gitLogSeparator);
-      if (
-        hash === undefined ||
-        parents === undefined ||
-        author === undefined ||
-        email === undefined ||
-        date === undefined ||
-        message === undefined ||
-        extraFields.length > 0
-      ) {
-        break;
-      }
-      commits.push({
-        hash,
-        parentHashes: parents.split(" "),
-        author,
-        email,
-        date: parseInt(date),
-        message
-      });
+  const stdout = await git.raw(args);
+  const lines = stdout.split(eolRegex);
+  const commits: GitLogEntry[] = [];
+  for (const line of lines.slice(0, -1)) {
+    const [hash, parents, author, email, date, message, ...extraFields] =
+      line.split(gitLogSeparator);
+    if (
+      hash === undefined ||
+      parents === undefined ||
+      author === undefined ||
+      email === undefined ||
+      date === undefined ||
+      message === undefined ||
+      extraFields.length > 0
+    ) {
+      break;
     }
-    return commits;
-  } catch {
-    return [];
+    commits.push({
+      hash,
+      parentHashes: parents.split(" "),
+      author,
+      email,
+      date: parseInt(date),
+      message
+    });
   }
+  return commits;
 }
 
 async function countUnsavedChanges(git: SimpleGit) {
-  try {
-    const status = await git.status();
-    return status.files.length;
-  } catch {
-    return 0;
-  }
+  const status = await git.status();
+  return status.files.length;
 }
 
 /** `repo` and `branchName` are echoed back by the message layer, not by the query. */
