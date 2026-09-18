@@ -135,12 +135,17 @@ visible in the implementation but has not been reproduced end to end; “Propose
       [commit table](src/webview/components/commit/CommitTable.tsx),
       [benchmark](scripts/benchmark.mjs).
 
-- [ ] **Improve UI failure diagnostics and compatibility checks.** **Proposed.** Failure teardown
-      currently saves body text; add failure-time screenshots and webview/extension error logs.
-      Keep individual scenarios runnable independently. The harness currently targets stable
-      VS Code; add a supported-minimum smoke run when stable differs from the declared minimum.
-      **Done when:** a deliberately failing scenario produces useful CI artifacts and passes when
-      run alone after the fault is removed; minimum/stable compatibility is explicitly checked.
+- [x] **Improve UI failure diagnostics and compatibility checks.** Completed 2026-09-18.
+      Failures now save a workbench screenshot, webview text/DOM, recent browser console/errors,
+      the original error, and runtime metadata. Isolated profiles write VS Code and extension logs
+      directly to retained artifacts. Poll timeouts capture before scenario cleanup; unavailable
+      renderers leave a report with capture errors. Individual scenarios remain selectable by title.
+      **Verified:** an injected failure produces validated artifacts, then the same smoke scenario
+      passes alone on VS Code 1.138.0 and the declared minimum 1.125.0. Linux CI repeats this check
+      against stable and the manifest minimum, asserting the actual running versions and skipping
+      a duplicate minimum run when versions match. The full stable suite runs on all three platforms.
+      Local checks passed 49 extension/UI tests, 405 regression tests, and the disconnected-renderer
+      diagnostic test. [Testing instructions](docs/testing.md) cover reruns, overrides, and artifacts.
       Sources: [UI harness](tests-ext/ui/history.test.cjs),
       [VS Code test configuration](.vscode-test.mjs),
       [existing CI artifact collection](.github/workflows/ci.yaml).
@@ -164,6 +169,6 @@ visible in the implementation but has not been reproduced end to end; “Propose
 
 ## Suggested next batch
 
-Correctness, optional usability, fork packaging/documentation, graph/theme coverage, preference
-lifetime, and large-repository measurements are complete. Next improve UI failure diagnostics and
-minimum-version compatibility checks.
+All items in this reviewed backlog are complete. Future work can be added here as usage reveals
+new issues or measurements justify further performance changes; the deferred caching and
+virtualization tradeoffs are documented in [the performance report](docs/performance.md).

@@ -96,6 +96,8 @@ an existing `jcfurey.neo-git-graph` installation, including 0.9.4. The upstream
 duplicate graph commands. No temporary manifest edits are needed.
 
 See [Packaging and releases](docs/packaging.md) for package verification and release validation.
+See [VS Code UI tests](docs/testing.md) for individual scenarios, failure artifacts, and
+minimum-version compatibility checks.
 
 After installing, the **Get started with (neo) Git Graph** walkthrough appears on the Welcome page. Reopen it any time with the **Getting Started** entry in the graph's settings cog.
 

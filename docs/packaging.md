@@ -55,7 +55,9 @@ pnpm run check:release v0.9.5
 Pushing a matching `v<version>` tag triggers publishing. The workflow first rejects an unexpected
 publisher/name or mismatched tag. It then calls the CI workflow from that same commit, including
 format, lint, type and localization checks, release-check tests, backend/extension/webview tests,
-three-platform VS Code UI tests, and the Linux package upgrade/activation test.
+three-platform VS Code UI tests, Linux failure-diagnostic/minimum-version smoke checks, and the
+Linux package upgrade/activation test. See [VS Code UI tests](testing.md) for local commands and
+artifacts.
 
 The publish job runs only after validation succeeds. It downloads the tested VSIX artifact, checks
 its embedded identity/version against the tag, and passes that file to both registries without

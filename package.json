@@ -52,6 +52,7 @@
     "benchmark": "node scripts/benchmark.mjs",
     "benchmark:ui": "node esbuild.js --production && node scripts/benchmark-ui.cjs",
     "test:ext": "pnpm run compile && pnpm run compile-tests && vscode-test",
+    "test:ui-harness": "node --test tests-ext/ui/diagnostics.unit.cjs && node esbuild.js --production && pnpm run compile-tests && node scripts/test-ui-harness.cjs",
     "compile-tests": "tsc -p tests-ext/tsconfig.json && tsc-alias -p tests-ext/tsconfig.json",
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc -p . --watch",

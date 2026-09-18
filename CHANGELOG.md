@@ -7,6 +7,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Added
 
+- Failure-time UI screenshots, DOM snapshots, browser errors, and extension logs, with an automated failure/recovery check and a minimum-version VS Code smoke test in CI.
 - Repeatable backend focus and VS Code interaction benchmarks for large histories, with timing reports and hover CPU profiles in Linux CI.
 - Graph topology and rendering regression coverage for complex merges, partial history, both graph styles, zoom, resizing, and expanded details.
 - Keyboard and contrast checks for graph focus and remote visibility in built-in light, dark, and high-contrast themes.

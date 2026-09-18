@@ -6,6 +6,9 @@ const os = require("node:os");
 const path = require("node:path");
 
 const vscode = require("vscode");
+
+const createDiagnostics = require("./diagnostics.cjs");
+
 const port = Number(process.env.NGG_CDP_PORT);
 const artifacts = process.env.NGG_ARTIFACTS || path.join(os.tmpdir(), "ngg-ui-artifacts");
 fs.mkdirSync(artifacts, { recursive: true });
@@ -15,6 +18,23 @@ const connections = [];
 const dirs = [];
 let graph;
 let repo;
+const diagnostics = createDiagnostics({
+  artifacts,
+  connections,
+  graph: () => graph,
+  runtime: {
+    time: new Date().toISOString(),
+    vscode: vscode.version,
+    minimum: process.env.NGG_MINIMUM_VSCODE_VERSION,
+    requested: process.env.NGG_EXPECTED_VSCODE_VERSION,
+    installation: process.env.NGG_VSCODE_PATH || "downloaded",
+    extension: process.env.NGG_EXTENSION_ID,
+    platform: process.platform,
+    arch: process.arch,
+    node: process.versions.node,
+    logs: process.env.NGG_VSCODE_LOGS
+  }
+});
 const visible = (hash) => `!!document.querySelector('tr[data-commit-hash="${hash}"]')`;
 function git(args, cwd = repo) {
   return cp.execFileSync("git", args, { cwd, stdio: "pipe" }).toString().trim();
@@ -131,7 +151,10 @@ async function until(fn, label, timeout = 15000) {
     }
     await delay(100);
   }
-  throw new Error("Timed out: " + label + (last ? "\n" + last : ""));
+  const error = new Error("Timed out: " + label + (last ? "\n" + last : ""));
+  // Capture before a scenario's finally block restores its repository, theme, or viewport.
+  await diagnostics.capture(error, "poll timeout");
+  throw error;
 }
 async function connect(url, type) {
   const ws = new WebSocket(url);
@@ -144,6 +167,7 @@ async function connect(url, type) {
   let sequence = 0;
   ws.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
+    diagnostics.record({ type, url }, message);
     if (message.method === "Runtime.executionContextCreated") {
       contexts.add(message.params.context.id);
     }
@@ -174,6 +198,8 @@ async function connect(url, type) {
   });
   const connection = {
     ws,
+    type,
+    url,
     contexts,
     call(method, params = {}) {
       if (ws.readyState !== WebSocket.OPEN) {
@@ -202,7 +228,9 @@ async function connect(url, type) {
       return response.result.value;
     }
   };
+  connections.push(connection);
   await connection.call("Runtime.enable");
+  await connection.call("Log.enable").catch(() => {});
   if (type === "page") {
     await connection.call("Emulation.setDeviceMetricsOverride", {
       width: 1440,
@@ -211,19 +239,22 @@ async function connect(url, type) {
       mobile: false
     });
   }
-  connections.push(connection);
   return connection;
 }
 async function findGraph() {
-  const connected = new Set();
   return until(
     async () => {
       const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
       for (const target of targets.filter(
         (t) => t.webSocketDebuggerUrl && ["page", "iframe"].includes(t.type)
       )) {
-        if (!connected.has(target.id)) {
-          connected.add(target.id);
+        if (
+          !connections.some(
+            (connection) =>
+              connection.url === target.webSocketDebuggerUrl &&
+              connection.ws.readyState === WebSocket.OPEN
+          )
+        ) {
           await connect(target.webSocketDebuggerUrl, target.type);
         }
       }
@@ -345,39 +376,39 @@ async function headerChoice(label, option) {
 suite("Git Graph workflow UI", function () {
   this.timeout(120000);
   suiteSetup(async () => {
-    repo = directory();
-    init(repo);
-    commit("f", "ui-base");
-    commit("a", "ui-first");
-    commit("b", "ui-second");
-    git(["tag", "v-ui"]);
-    const extension = vscode.extensions.getExtension(process.env.NGG_EXTENSION_ID);
-    assert.ok(extension);
-    await extension.activate();
-    await vscode.commands.executeCommand("workbench.action.closeSidebar");
-    await vscode.commands.executeCommand("workbench.action.closeAuxiliaryBar");
-    await openRepo(repo);
+    try {
+      const minimum = process.env.NGG_MINIMUM_VSCODE_VERSION;
+      assert.ok(
+        vscode.version.localeCompare(minimum, "en", { numeric: true }) >= 0,
+        `VS Code ${vscode.version} is older than the declared minimum ${minimum}`
+      );
+      const expected = process.env.NGG_EXPECTED_VSCODE_VERSION;
+      if (/^\d+\.\d+\.\d+$/.test(expected)) {
+        assert.equal(vscode.version, expected, "The requested VS Code version must actually run");
+      }
+      repo = directory();
+      init(repo);
+      commit("f", "ui-base");
+      commit("a", "ui-first");
+      commit("b", "ui-second");
+      git(["tag", "v-ui"]);
+      const extension = vscode.extensions.getExtension(process.env.NGG_EXTENSION_ID);
+      assert.ok(extension);
+      await extension.activate();
+      await vscode.commands.executeCommand("workbench.action.closeSidebar");
+      await vscode.commands.executeCommand("workbench.action.closeAuxiliaryBar");
+      await openRepo(repo);
+    } catch (error) {
+      await diagnostics.capture(error, "suite setup");
+      throw error;
+    }
+  });
+  setup(function () {
+    diagnostics.start(this.currentTest.fullTitle());
   });
   teardown(async function () {
     if (this.currentTest?.state === "failed") {
-      try {
-        const body = await graph.evaluate("document.body.innerText");
-        process.stderr.write("FAILED UI BODY\n" + body + "\n");
-        fs.writeFileSync(
-          path.join(artifacts, this.currentTest.title.replace(/[^a-z0-9]+/gi, "-") + ".txt"),
-          body
-        );
-      } catch {}
-    }
-  });
-  suiteTeardown(async function () {
-    if (this.currentTest?.state === "failed") {
-      try {
-        fs.writeFileSync(
-          path.join(artifacts, "failed-body.txt"),
-          await graph.evaluate("document.body.innerText")
-        );
-      } catch {}
+      await diagnostics.capture(this.currentTest.err, "test failure");
     }
   });
   suiteTeardown(async () => {
@@ -388,6 +419,64 @@ suite("Git Graph workflow UI", function () {
     for (const dir of dirs) {
       await fs.promises.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
+  });
+
+  test("checks VS Code compatibility and graph controls", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "compatibility-base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    const remote = git(["commit-tree", tree, "-p", base, "-m", "compatibility-remote"], dir);
+    git(["remote", "add", "origin", dir], dir);
+    git(["update-ref", "refs/remotes/origin/topic", remote], dir);
+    commit("main", "compatibility-main", dir);
+    await openRepo(dir);
+    await until(() => graph.evaluate(visible(remote)), "compatibility remote history");
+    await contextRef("main");
+    await menu("Focus this branch");
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('tr[data-commit-hash="${remote}"]')?.dataset.branchRelation === 'unrelated'`
+        ),
+      "compatibility branch focus"
+    );
+    const nav = `document.querySelector('nav[aria-label="Branches"]')`;
+    if (!(await graph.evaluate("!!" + nav))) {
+      await button("Branches", 'document.querySelector("header")');
+    }
+    await button("Show remote origin in the graph", nav);
+    await until(
+      () => graph.evaluate(`!${visible(remote)} && ${visible(base)}`),
+      "compatibility remote visibility"
+    );
+    await button("Show remote origin in the graph", nav);
+    await until(() => graph.evaluate(visible(remote)), "compatibility remote restored");
+
+    if (process.env.NGG_DIAGNOSTIC_FAULT === "1") {
+      const channel = vscode.window.createOutputChannel("NGG diagnostic probe", { log: true });
+      channel.error("NGG extension diagnostic marker");
+      await graph.evaluate(`(() => {
+        const marker = document.createElement('p');
+        marker.textContent = 'NGG visible diagnostic marker';
+        document.body.prepend(marker);
+        console.error('NGG console diagnostic marker');
+        setTimeout(() => { throw new Error('NGG uncaught diagnostic marker'); }, 0);
+      })()`);
+      try {
+        await until(() => false, "NGG intentional diagnostic failure", 300);
+      } finally {
+        // Verify capture happened before cleanup, even when teardown sees a recovered view.
+        await graph.evaluate("document.body.firstElementChild.remove()");
+        channel.dispose();
+      }
+    }
+    await openRepo(repo);
+    fs.writeFileSync(
+      path.join(artifacts, "compatibility-smoke.json"),
+      JSON.stringify({ vscode: vscode.version, passed: true }) + "\n"
+    );
   });
 
   if (process.env.NGG_BENCH_UI === "1") {
