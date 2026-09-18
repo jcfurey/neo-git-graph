@@ -54,6 +54,7 @@ export function getWebviewLocalizedStrings() {
     graph: vscode.l10n.t("Graph"),
     scrollGraphHorizontally: vscode.l10n.t("Scroll graph horizontally"),
     revealSelectedLane: vscode.l10n.t("Reveal selected lane"),
+    resizeColumn: vscode.l10n.t("Resize {0} column"),
     description: vscode.l10n.t("Description"),
     date: vscode.l10n.t("Date"),
     author: vscode.l10n.t("Author"),

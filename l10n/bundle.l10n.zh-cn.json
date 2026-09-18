@@ -451,5 +451,6 @@
   "Show remote {0} in the graph": "在图中显示远程仓库 {0}",
   "Hide remote {0} from the graph": "在图中隐藏远程仓库 {0}",
   "Scroll graph horizontally": "水平滚动图形",
-  "Reveal selected lane": "显示所选提交的轨道"
+  "Reveal selected lane": "显示所选提交的轨道",
+  "Resize {0} column": "调整{0}列宽"
 }

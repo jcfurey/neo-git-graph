@@ -37,6 +37,86 @@ function commit(file, value, cwd = repo) {
   git(["commit", "-m", value], cwd);
 }
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function keypress(key, modifiers = 0) {
+  const codes = {
+    Tab: 9,
+    Enter: 13,
+    " ": 32,
+    ArrowLeft: 37,
+    ArrowUp: 38,
+    ArrowRight: 39,
+    ArrowDown: 40,
+    Home: 36,
+    End: 35
+  };
+  for (const type of ["keyDown", "keyUp"]) {
+    await connections[0].call("Input.dispatchKeyEvent", {
+      type,
+      key,
+      code: key === " " ? "Space" : key,
+      windowsVirtualKeyCode: codes[key],
+      modifiers,
+      ...(type === "keyDown" && key === "Enter" ? { text: "\r" } : {})
+    });
+  }
+}
+
+// Resolve CSS colours in Chromium, including color-mix, alpha, and ancestor opacity.
+// Text/focus thresholds follow https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html
+// and https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html (not a full accessibility audit).
+async function contrast(selector, property = "color") {
+  return graph.evaluate(`(() => {
+    const element = document.querySelector(${JSON.stringify(selector)});
+    if (!element) throw new Error('Missing contrast target');
+    const context = document.createElement('canvas').getContext('2d');
+    const pixel = () => [...context.getImageData(0, 0, 1, 1).data].slice(0, 3);
+    const ancestors = []; let opacity = 1;
+    for (let node = element; node; node = node.parentElement) { ancestors.unshift(node); opacity *= Number(getComputedStyle(node).opacity); }
+    context.fillStyle = getComputedStyle(document.body).getPropertyValue('--vscode-editor-background');
+    context.fillRect(0, 0, 1, 1);
+    const backgrounds = ${JSON.stringify(property)} === 'outlineColor' && parseFloat(getComputedStyle(element).outlineOffset) >= 0 ? ancestors.slice(0, -1) : ancestors;
+    for (const node of backgrounds) { context.fillStyle = getComputedStyle(node).backgroundColor; context.fillRect(0, 0, 1, 1); }
+    const background = pixel();
+    context.globalAlpha = opacity;
+    context.fillStyle = getComputedStyle(element)[${JSON.stringify(property)}];
+    context.fillRect(0, 0, 1, 1);
+    const foreground = pixel();
+    const luminance = rgb => rgb.map(channel => { const c = channel / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; })
+      .reduce((total, channel, index) => total + channel * [0.2126, 0.7152, 0.0722][index], 0);
+    const light = luminance(foreground), dark = luminance(background);
+    return { ratio: (Math.max(light, dark) + 0.05) / (Math.min(light, dark) + 0.05), foreground, background, opacity,
+      outlineOffset: getComputedStyle(element).outlineOffset };
+  })()`);
+}
+
+async function visibleKeyboardFocus(selector) {
+  await until(async () => {
+    const state = await graph.evaluate(`(() => {
+    const element = document.querySelector(${JSON.stringify(selector)});
+    const style = getComputedStyle(element), rect = element.getBoundingClientRect();
+    return { focused: element === document.activeElement, visible: element.matches(':focus-visible'),
+      outline: style.outlineStyle, width: parseFloat(style.outlineWidth),
+      top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right,
+      height: innerHeight, viewportWidth: innerWidth, scale: devicePixelRatio,
+      active: document.activeElement?.outerHTML.slice(0, 300) };
+    })()`);
+    assert.ok(
+      state.focused &&
+        state.visible &&
+        state.outline !== "none" &&
+        state.width * state.scale >= 0.99 &&
+        state.top >= -1 &&
+        state.bottom <= state.height + 1 &&
+        state.left >= -1 &&
+        state.right <= state.viewportWidth + 1,
+      JSON.stringify(state)
+    );
+    return true;
+  }, `visible keyboard focus: ${selector}`);
+  const measured = await contrast(selector, "outlineColor");
+  assert.ok(measured.ratio >= 3, `focus contrast for ${selector}: ${JSON.stringify(measured)}`);
+}
+
 async function until(fn, label, timeout = 15000) {
   const deadline = Date.now() + timeout;
   let last;
@@ -1409,19 +1489,28 @@ suite("Git Graph workflow UI", function () {
     await openRepo(repo);
   });
 
-  test("clips wide graphs to their column and scrolls lanes without moving commit text", async () => {
-    const dir = directory();
-    init(dir);
-    commit("base", "wide-base", dir);
-    const base = git(["rev-parse", "HEAD"], dir);
-    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
-    for (let index = 0; index < 14; index++) {
-      const hash = git(["commit-tree", tree, "-p", base, "-m", "wide-lane-" + index], dir);
-      git(["branch", "lane-" + index, hash], dir);
-    }
-    await openRepo(dir);
-    const measure = () =>
-      graph.evaluate(`(() => {
+  for (const style of ["rounded", "angular"]) {
+    test(`clips wide graphs after scrolling, resizing, zoom and details (${style})`, async () => {
+      const config = vscode.workspace.getConfiguration("neo-git-graph");
+      const originalStyle = config.inspect("graphStyle").globalValue;
+      const windowConfig = vscode.workspace.getConfiguration("window");
+      const originalZoom = windowConfig.inspect("zoomLevel").globalValue;
+      const originalPixelRatio = await graph.evaluate("devicePixelRatio");
+      try {
+        await config.update("graphStyle", style, vscode.ConfigurationTarget.Global);
+        await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+        const dir = directory();
+        init(dir);
+        commit("base", "wide-base", dir);
+        const base = git(["rev-parse", "HEAD"], dir);
+        const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+        for (let index = 0; index < 14; index++) {
+          const hash = git(["commit-tree", tree, "-p", base, "-m", "wide-lane-" + index], dir);
+          git(["branch", "lane-" + index, hash], dir);
+        }
+        await openRepo(dir);
+        const measure = () =>
+          graph.evaluate(`(() => {
       const viewport = document.querySelector('[data-graph-viewport]');
       const scroll = document.querySelector('[data-graph-scroll]');
       const table = document.querySelector('table');
@@ -1432,70 +1521,71 @@ suite("Git Graph workflow UI", function () {
         dots: [...viewport.querySelectorAll('circle')].map(dot => dot.getBoundingClientRect().x),
         rows: [...table.querySelectorAll('tr[data-commit-hash]')].map(row => row.dataset.commitHash) };
     })()`);
-    await until(async () => {
-      const state = await measure();
-      return state.rows.length === 15 && state.scrollWidth > state.width;
-    }, "wide graph overflow");
-    let before = await measure();
-    assert.ok(
-      before.clipRight <= before.descriptionLeft + 1,
-      "graph cannot paint over description"
-    );
-    assert.equal(before.overflow, "hidden");
-    await graph.evaluate(`(() => {
+        await until(async () => {
+          const state = await measure();
+          return state.rows.length === 15 && state.scrollWidth > state.width;
+        }, "wide graph overflow");
+        let before = await measure();
+        assert.ok(
+          before.clipRight <= before.descriptionLeft + 1,
+          "graph cannot paint over description"
+        );
+        assert.equal(before.overflow, "hidden");
+        await graph.evaluate(`(() => {
       const scroll = document.querySelector('[data-graph-scroll]');
       scroll.scrollLeft = 10000; scroll.dispatchEvent(new Event('scroll'));
     })()`);
-    let after = await measure();
-    assert.ok(after.scrollLeft > 0);
-    assert.equal(after.viewportScroll, after.scrollLeft);
-    assert.equal(after.descriptionLeft, before.descriptionLeft);
-    assert.deepEqual(after.rows, before.rows);
-    assert.ok(after.dots[0] < before.dots[0]);
-    before = after;
-    await graph.evaluate(`document.querySelector('[data-graph-scroll]').focus()`);
-    await connections[0].call("Input.dispatchKeyEvent", {
-      type: "keyDown",
-      key: "ArrowLeft",
-      code: "ArrowLeft",
-      windowsVirtualKeyCode: 37
-    });
-    await connections[0].call("Input.dispatchKeyEvent", {
-      type: "keyUp",
-      key: "ArrowLeft",
-      code: "ArrowLeft",
-      windowsVirtualKeyCode: 37
-    });
-    await until(
-      async () => (await measure()).scrollLeft < before.scrollLeft,
-      "keyboard graph scrolling"
-    );
-    const keyboard = await measure();
-    assert.equal(keyboard.viewportScroll, keyboard.scrollLeft);
-    await graph.evaluate(
-      `document.querySelector('tbody td').dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, shiftKey: true, deltaY: 20 }))`
-    );
-    assert.ok((await measure()).scrollLeft > keyboard.scrollLeft, "Shift+wheel scrolls graph");
-    await connections[0].call("Emulation.setDeviceMetricsOverride", {
-      width: 650,
-      height: 850,
-      deviceScaleFactor: 1,
-      mobile: false
-    });
-    await until(async () => {
-      const state = await measure();
-      return (
-        (await graph.evaluate("innerWidth < 700")) && state.clipRight <= state.descriptionLeft + 1
-      );
-    }, "narrow window graph clipping");
-    await connections[0].call("Emulation.setDeviceMetricsOverride", {
-      width: 1440,
-      height: 1000,
-      deviceScaleFactor: 1,
-      mobile: false
-    });
-    await until(() => graph.evaluate("innerWidth > 1000"), "restored window size");
-    await graph.evaluate(`(() => {
+        let after = await measure();
+        assert.ok(after.scrollLeft > 0);
+        assert.equal(after.viewportScroll, after.scrollLeft);
+        assert.equal(after.descriptionLeft, before.descriptionLeft);
+        assert.deepEqual(after.rows, before.rows);
+        assert.ok(after.dots[0] < before.dots[0]);
+        before = after;
+        await graph.evaluate(`document.querySelector('[data-graph-scroll]').focus()`);
+        await connections[0].call("Input.dispatchKeyEvent", {
+          type: "keyDown",
+          key: "ArrowLeft",
+          code: "ArrowLeft",
+          windowsVirtualKeyCode: 37
+        });
+        await connections[0].call("Input.dispatchKeyEvent", {
+          type: "keyUp",
+          key: "ArrowLeft",
+          code: "ArrowLeft",
+          windowsVirtualKeyCode: 37
+        });
+        await until(
+          async () => (await measure()).scrollLeft < before.scrollLeft,
+          "keyboard graph scrolling"
+        );
+        const keyboard = await measure();
+        assert.equal(keyboard.viewportScroll, keyboard.scrollLeft);
+        await graph.evaluate(
+          `document.querySelector('tbody td').dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, shiftKey: true, deltaY: 20 }))`
+        );
+        assert.ok((await measure()).scrollLeft > keyboard.scrollLeft, "Shift+wheel scrolls graph");
+        await connections[0].call("Emulation.setDeviceMetricsOverride", {
+          width: 650,
+          height: 850,
+          deviceScaleFactor: 1,
+          mobile: false
+        });
+        await until(async () => {
+          const state = await measure();
+          return (
+            (await graph.evaluate("innerWidth < 700")) &&
+            state.clipRight <= state.descriptionLeft + 1
+          );
+        }, "narrow window graph clipping");
+        await connections[0].call("Emulation.setDeviceMetricsOverride", {
+          width: 1440,
+          height: 1000,
+          deviceScaleFactor: 1,
+          mobile: false
+        });
+        await until(() => graph.evaluate("innerWidth > 1000"), "restored window size");
+        await graph.evaluate(`(() => {
       const cell = document.querySelector('thead th');
       const grip = cell.querySelector('[role=separator]');
       const rect = cell.getBoundingClientRect();
@@ -1503,49 +1593,303 @@ suite("Git Graph workflow UI", function () {
       window.dispatchEvent(new MouseEvent('mousemove', { clientX: rect.left + 40 }));
       window.dispatchEvent(new MouseEvent('mouseup'));
     })()`);
-    await until(async () => (await measure()).width < before.width, "narrower graph column");
-    before = await measure();
-    assert.ok(before.clipRight <= before.descriptionLeft + 1);
-    await graph.evaluate(
-      `document.querySelector('tbody td').dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: -50 }))`
-    );
-    after = await measure();
-    assert.ok(after.scrollLeft < before.scrollLeft);
-    assert.equal(after.viewportScroll, after.scrollLeft);
-    assert.equal(after.descriptionLeft, before.descriptionLeft);
-    await graph.evaluate(`document.querySelector('tr[data-commit-hash] td:nth-child(2)').click()`);
-    await until(
-      () =>
-        graph.evaluate(
-          `(() => {
+        await until(async () => (await measure()).width < before.width, "narrower graph column");
+        before = await measure();
+        assert.ok(before.clipRight <= before.descriptionLeft + 1);
+        await graph.evaluate(
+          `document.querySelector('tbody td').dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: -50 }))`
+        );
+        after = await measure();
+        assert.ok(after.scrollLeft < before.scrollLeft);
+        assert.equal(after.viewportScroll, after.scrollLeft);
+        assert.equal(after.descriptionLeft, before.descriptionLeft);
+        await graph.evaluate(
+          `document.querySelector('tr[data-commit-hash] td:nth-child(2)').click()`
+        );
+        await until(
+          () =>
+            graph.evaluate(
+              `(() => {
             const selected = document.querySelector('tr[aria-selected="true"]');
             return selected && document.querySelector('td[colspan="4"]')?.textContent.includes(selected.dataset.commitHash);
           })()`
-        ),
-      "commit selection and expansion after scrolling"
-    );
-    assert.ok(
-      await graph.evaluate(`(() => {
+            ),
+          "commit selection and expansion after scrolling"
+        );
+        assert.ok(
+          await graph.evaluate(`(() => {
       const rows = [...document.querySelectorAll('tr[data-commit-hash]')];
       return [...document.querySelectorAll('[data-graph-viewport] circle')].every((dot, index) => {
         const vertex = dot.getBoundingClientRect(); const row = rows[index].getBoundingClientRect();
         return Math.abs(vertex.top + vertex.height / 2 - (row.top + row.height / 2)) < 2;
       });
     })()`),
-      "graph stays aligned with rows and expanded details"
-    );
-    const screenshot = await connections[0].call("Page.captureScreenshot");
-    fs.writeFileSync(
-      path.join(artifacts, "wide-graph-scroll.png"),
-      Buffer.from(screenshot.data, "base64")
-    );
-    await headerChoice("Branch", "main");
-    await until(
-      async () => (await measure()).rows.length === 1 && (await measure()).viewportScroll === 0,
-      "scroll clamps after graph shrinks"
-    );
-    await openRepo(repo);
-  });
+          "graph stays aligned with rows and expanded details"
+        );
+        assert.equal(
+          await graph.evaluate(
+            `[...document.querySelectorAll('[data-graph-viewport] path')].some(path => path.getAttribute('d').includes('C'))`
+          ),
+          style === "rounded",
+          "configured graph style"
+        );
+        const pixelRatio = await graph.evaluate("devicePixelRatio");
+        await vscode.commands.executeCommand("workbench.action.zoomIn");
+        await until(
+          () => graph.evaluate(`devicePixelRatio > ${pixelRatio}`),
+          "workbench zoom applied"
+        );
+        const zoomed = await measure();
+        assert.ok(zoomed.clipRight <= zoomed.descriptionLeft + 1, "zoom preserves graph clipping");
+        assert.ok(
+          await graph.evaluate(`(() => {
+      const rows = [...document.querySelectorAll('tr[data-commit-hash]')];
+      return [...document.querySelectorAll('[data-graph-viewport] circle')].every((dot, index) => {
+        const vertex = dot.getBoundingClientRect(); const row = rows[index].getBoundingClientRect();
+        return Math.abs(vertex.top + vertex.height / 2 - (row.top + row.height / 2)) < 2;
+      });
+    })()`),
+          "zoom keeps graph dots aligned with expanded rows"
+        );
+        await graph.evaluate(
+          `(() => { const scroll = document.querySelector('[data-graph-scroll]'); scroll.scrollLeft = 10000; scroll.dispatchEvent(new Event('scroll')); })()`
+        );
+        assert.equal(
+          (await measure()).descriptionLeft,
+          zoomed.descriptionLeft,
+          "panning after zoom keeps text fixed"
+        );
+        const screenshot = await connections[0].call("Page.captureScreenshot");
+        fs.writeFileSync(
+          path.join(artifacts, `wide-graph-scroll-${style}.png`),
+          Buffer.from(screenshot.data, "base64")
+        );
+        await headerChoice("Branch", "main");
+        await until(
+          async () => (await measure()).rows.length === 1 && (await measure()).viewportScroll === 0,
+          "scroll clamps after graph shrinks"
+        );
+      } finally {
+        await config.update("graphStyle", originalStyle, vscode.ConfigurationTarget.Global);
+        await windowConfig.update("zoomLevel", originalZoom, vscode.ConfigurationTarget.Global);
+        await vscode.commands.executeCommand("workbench.action.zoomReset");
+        await connections[0].call("Emulation.setDeviceMetricsOverride", {
+          width: 1440,
+          height: 1000,
+          deviceScaleFactor: 1,
+          mobile: false
+        });
+        await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+        await openRepo(repo);
+        await until(
+          () => graph.evaluate(`Math.abs(devicePixelRatio - ${originalPixelRatio}) < 0.01`),
+          "restored workbench zoom"
+        );
+      }
+    });
+  }
+
+  for (const [theme, kind] of [
+    ["Light Modern", "vscode-light"],
+    ["Dark Modern", "vscode-dark"],
+    ["Default High Contrast", "vscode-high-contrast"],
+    ["Default High Contrast Light", "vscode-high-contrast-light"]
+  ]) {
+    test(`keeps focus and remote controls readable and keyboard accessible (${theme})`, async () => {
+      const workbench = vscode.workspace.getConfiguration("workbench");
+      const originalTheme = workbench.inspect("colorTheme").globalValue;
+      try {
+        const dir = directory();
+        init(dir);
+        commit("base", "theme-base", dir);
+        const base = git(["rev-parse", "HEAD"], dir);
+        const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+        const main = git(["commit-tree", tree, "-p", base, "-m", "theme-main"], dir);
+        const topic = git(["commit-tree", tree, "-p", base, "-m", "theme-merged"], dir);
+        const merge = git(["commit-tree", tree, "-p", main, "-p", topic, "-m", "theme-merge"], dir);
+        git(["update-ref", "refs/heads/main", merge], dir);
+        for (let lane = 0; lane < 14; lane++) {
+          const hash = git(["commit-tree", tree, "-p", base, "-m", `theme-side-${lane}`], dir);
+          git(["branch", `side-${lane}`, hash], dir);
+        }
+        const remote = git(["commit-tree", tree, "-p", base, "-m", "theme-remote"], dir);
+        git(["remote", "add", "origin", "."], dir);
+        git(["update-ref", "refs/remotes/origin/topic", remote], dir);
+        const refs = git(["show-ref"], dir);
+        await openRepo(dir);
+        await workbench.update("colorTheme", theme, vscode.ConfigurationTarget.Global);
+        await until(
+          () => graph.evaluate(`document.body.classList.contains(${JSON.stringify(kind)})`),
+          `applied ${theme}`
+        );
+        const nav = 'nav[aria-label="Branches"]';
+        if (!(await graph.evaluate(`!!document.querySelector('${nav}')`))) {
+          await button("Branches", 'document.querySelector("header")');
+        }
+        await headerChoice("View", "Focus direct history");
+        await headerChoice("Branch", "main");
+        await until(
+          () =>
+            graph.evaluate(
+              `!!document.querySelector('tr[data-branch-relation="merged"]') && !!document.querySelector('tr[data-branch-relation="unrelated"]')`
+            ),
+          "focus relations ready"
+        );
+        const eye = `${nav} button[aria-label='Show remote origin in the graph']`;
+        await until(
+          () => graph.evaluate(`!!document.querySelector(${JSON.stringify(eye)})`),
+          "named remote visibility control"
+        );
+        await graph.evaluate(`document.querySelector(${JSON.stringify(eye)}).focus()`);
+        await keypress("Tab", 8);
+        await keypress("Tab");
+        await visibleKeyboardFocus(eye);
+        const visibleIcon = await graph.evaluate(
+          `document.querySelector(${JSON.stringify(eye)}).innerHTML`
+        );
+        await keypress(" ");
+        await until(
+          () =>
+            graph.evaluate(
+              `document.querySelector(${JSON.stringify(eye)}).getAttribute('aria-pressed') === 'false' && !${visible(remote)}`
+            ),
+          "keyboard hides remote"
+        );
+        assert.notEqual(
+          await graph.evaluate(`document.querySelector(${JSON.stringify(eye)}).innerHTML`),
+          visibleIcon,
+          "hidden status changes icon shape as well as the accessible pressed state"
+        );
+        const remoteLabel = `${nav} button[title='origin/topic']`;
+        const hiddenText = await contrast(remoteLabel);
+        assert.ok(
+          hiddenText.ratio >= 4.5,
+          `hidden remote text in ${theme}: ${JSON.stringify(hiddenText)}`
+        );
+        await graph.evaluate(`document.querySelector(${JSON.stringify(remoteLabel)}).focus()`);
+        await keypress("Tab");
+        await keypress("Tab", 8);
+        await visibleKeyboardFocus(remoteLabel);
+        await graph.evaluate(`document.querySelector(${JSON.stringify(eye)}).focus()`);
+        await keypress("Enter");
+        await until(
+          () =>
+            graph.evaluate(
+              `${visible(remote)} && document.querySelector(${JSON.stringify(eye)}).getAttribute('aria-pressed') === 'true'`
+            ),
+          "keyboard reveals remote"
+        );
+        const dimming = 'select[aria-label="Dimming"]';
+        await graph.evaluate(`document.querySelector('${dimming}').focus()`);
+        await keypress("Home");
+        await until(
+          () => graph.evaluate(`document.querySelector('${dimming}').value === 'subtle'`),
+          "keyboard selects subtle dimming"
+        );
+        await visibleKeyboardFocus(dimming);
+        const colours = () =>
+          graph.evaluate(`({
+          lines: [...document.querySelectorAll('path[data-branch-relation="unrelated"]')].map(path => getComputedStyle(path).stroke),
+          text: getComputedStyle(document.querySelector('tr[data-branch-relation="unrelated"]')).color
+        })`);
+        const subtle = await colours();
+        for (const relation of ["direct", "merged", "unrelated"]) {
+          const text = await contrast(`tr[data-branch-relation='${relation}'] td:nth-child(2)`);
+          assert.ok(text.ratio >= 4.5, `${relation} text in ${theme}: ${JSON.stringify(text)}`);
+        }
+        await keypress("End");
+        await until(
+          () => graph.evaluate(`document.querySelector('${dimming}').value === 'strong'`),
+          "keyboard selects strong dimming"
+        );
+        const strong = await colours();
+        assert.equal(strong.text, subtle.text, "strong dimming keeps readable text");
+        assert.notDeepEqual(strong.lines, subtle.lines, "dimming levels are distinguishable");
+        for (const label of ["Pause focus", "Resume focus"]) {
+          await graph.evaluate(
+            `[...document.querySelectorAll('button')].find(button => button.textContent.trim() === ${JSON.stringify(label)}).focus()`
+          );
+          await keypress("Enter");
+          await until(
+            () =>
+              graph.evaluate(
+                `document.querySelector('[data-focus-branch="main"]').textContent === ${JSON.stringify(label === "Pause focus" ? "Paused" : "Focus")}`
+              ),
+            `keyboard ${label}`
+          );
+          await visibleKeyboardFocus("button:focus");
+        }
+        await connections[0].call("Emulation.setDeviceMetricsOverride", {
+          width: 650,
+          height: 850,
+          deviceScaleFactor: 1,
+          mobile: false
+        });
+        await until(() => graph.evaluate("innerWidth < 700"), "narrow theme viewport");
+        const grip = 'thead th:nth-child(2) [role="separator"]';
+        await graph.evaluate(`document.querySelector('${grip}').focus()`);
+        await keypress("ArrowLeft");
+        await visibleKeyboardFocus(grip);
+        assert.ok(
+          await graph.evaluate(
+            `document.querySelector('${grip}').getAttribute('aria-label')?.includes('Graph')`
+          ),
+          "graph resize handle has an accessible name"
+        );
+        const scroll = "[data-graph-scroll]";
+        await graph.evaluate(
+          `(() => { const element = document.querySelector('${scroll}'); element.scrollLeft = 0; element.focus(); })()`
+        );
+        await keypress("ArrowRight");
+        await until(
+          () => graph.evaluate(`document.querySelector('${scroll}').scrollLeft > 0`),
+          "keyboard pans narrow graph"
+        );
+        await visibleKeyboardFocus(scroll);
+        const hashes = await graph.evaluate(`(() => {
+          const dots = [...document.querySelectorAll('[data-graph-viewport] circle')];
+          const index = dots.reduce((best, dot, i) => +dot.getAttribute('cx') > +dots[best].getAttribute('cx') ? i : best, 0);
+          const rows = [...document.querySelectorAll('tr[data-commit-hash]')];
+          rows[index].focus(); return rows[index].dataset.commitHash;
+        })()`);
+        await keypress(" ");
+        await until(
+          () =>
+            graph.evaluate(
+              `document.querySelector('tr[data-commit-hash="${hashes}"]').getAttribute('aria-selected') === 'true'`
+            ),
+          "keyboard selects a commit"
+        );
+        await graph.evaluate(
+          `(() => { const element = document.querySelector('${scroll}'); element.scrollLeft = 0; element.dispatchEvent(new Event('scroll')); })()`
+        );
+        const reveal = 'button[aria-label="Reveal selected lane"]';
+        await graph.evaluate(`document.querySelector('${reveal}').focus()`);
+        await keypress("Enter");
+        await visibleKeyboardFocus(reveal);
+        assert.ok(
+          await graph.evaluate(`document.querySelector('${scroll}').scrollLeft > 0`),
+          "keyboard reveals selected lane"
+        );
+        const screenshot = await connections[0].call("Page.captureScreenshot");
+        fs.writeFileSync(
+          path.join(artifacts, `theme-${kind}.png`),
+          Buffer.from(screenshot.data, "base64")
+        );
+        assert.equal(git(["show-ref"], dir), refs);
+        assert.equal(git(["branch", "--show-current"], dir), "main");
+      } finally {
+        await workbench.update("colorTheme", originalTheme, vscode.ConfigurationTarget.Global);
+        await connections[0].call("Emulation.setDeviceMetricsOverride", {
+          width: 1440,
+          height: 1000,
+          deviceScaleFactor: 1,
+          mobile: false
+        });
+        await openRepo(repo);
+      }
+    });
+  }
 
   test("reveals selected lanes and keeps graph scrolling accessible deep in history", async () => {
     const dir = directory();

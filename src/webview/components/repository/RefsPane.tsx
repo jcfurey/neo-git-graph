@@ -139,7 +139,7 @@ function Row({
     <div
       class={`group flex items-center gap-1 pr-1 ${
         active ? "bg-row-head" : menuOpen ? "bg-btn-hover" : "hover:bg-row-hover"
-      } ${dimmed ? "opacity-60" : ""}`}
+      } ${dimmed ? "text-muted" : ""}`}
       style={{ paddingLeft: 8 + depth * 12 }}
       onContextMenu={menu && ((event) => openContextMenu(event, source, menu()))}
     >

@@ -84,20 +84,23 @@ visible in the implementation but has not been reproduced end to end; “Propose
       behavior from this backlog and the packaging guide explains verification and release gates.
       Sources: [README](README.md), [changelog](CHANGELOG.md).
 
-- [ ] **Expand graph geometry and rendering regression coverage.** **Proposed.** Build on the
-      existing wide-graph UI test with focused layout/stroke tests for lane reuse, octopus merges,
-      criss-cross merges, and parents beyond the loaded page or a shallow-history boundary.
-      Exercise rounded and angular graphs, resizing after scrolling, zoom, and expanded details.
-      **Done when:** tests verify lane connections, clipping, and row/details alignment rather
-      than only checking that elements exist; commit text remains fixed during lane scrolling.
+- [x] **Expand graph geometry and rendering regression coverage.** Completed 2026-09-18.
+      Added topology checks for lane/color reuse, octopus and criss-cross merges, unloaded parents,
+      shallow roots, and uncommitted edges. Stroke checks follow rendered connections across
+      expanded details in both styles, including combined vertical segments and lane-change corners.
+      **Verified:** 23 new layout/stroke cases plus VS Code checks for both styles after scrolling,
+      resizing, zoom, and details expansion; graph clipping/alignment and fixed text positions hold.
       Sources: [graph implementation](src/webview/graph),
       [workflow UI tests](tests-ext/ui/history.test.cjs).
 
-- [ ] **Cover theme contrast and keyboard access for the new controls.** **Proposed.** Exercise
-      subtle/strong focus dimming and remote visibility in light, dark, and high-contrast themes.
-      Check accessible names, visible keyboard focus, and horizontal scrolling at narrow widths.
-      **Done when:** focus state and hidden-remote state remain understandable without relying
-      only on color, and all new controls work through the keyboard with readable commit text.
+- [x] **Cover theme contrast and keyboard access for the new controls.** Completed 2026-09-18.
+      Added real keyboard and computed-contrast checks in Light Modern, Dark Modern, High Contrast,
+      and High Contrast Light. Both dimming levels, remote visibility, pause/resume, column resizing,
+      lane scrolling, and lane reveal are covered, including narrow windows and non-color state cues.
+      **Fixed:** hidden remote rows now use muted text instead of whole-row opacity; resize handles
+      have localized accessible names and focus outlines; native select outlines sit outside the
+      dropdown background. Tested text meets 4.5:1 and focus outlines 3:1 in these built-in themes;
+      this is targeted regression coverage rather than a full accessibility audit.
       Sources: [commit table](src/webview/components/commit/CommitTable.tsx),
       [refs pane tests](tests/webview/components/repository/RefsPane.test.ts),
       [workflow UI tests](tests-ext/ui/history.test.cjs).
@@ -154,7 +157,7 @@ visible in the implementation but has not been reproduced end to end; “Propose
 
 ## Suggested next batch
 
-Correctness, optional usability, and fork packaging/documentation are complete. Continue with graph
-geometry and theme/keyboard coverage, then resolve preference lifetime and measure large-repository
-performance. Improve UI failure diagnostics and minimum-version compatibility checks alongside those
-tests.
+Correctness, optional usability, fork packaging/documentation, and graph/theme coverage are complete.
+Next resolve preference lifetime across panel reopening and repository switches, then measure
+large-repository performance. Improve UI failure diagnostics and minimum-version compatibility checks
+alongside those tests.

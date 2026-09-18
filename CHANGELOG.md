@@ -7,6 +7,8 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Added
 
+- Graph topology and rendering regression coverage for complex merges, partial history, both graph styles, zoom, resizing, and expanded details.
+- Keyboard and contrast checks for graph focus and remote visibility in built-in light, dark, and high-contrast themes.
 - Per-remote graph visibility controls with saved choices, consistent history searches, and automatic reveal when selecting a hidden remote branch.
 - Horizontal scrolling within the Graph column for wide histories, using a scrollbar, trackpad or Shift+mouse wheel.
 - Sticky column headings keep graph scrolling accessible deep in history; selecting a commit reveals its lane, with a **Reveal selected lane** button to return after panning.
@@ -35,6 +37,9 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Fixed
 
+- Keep hidden remote labels readable using the theme's muted text color instead of fading the entire row.
+- Give keyboard column-resize handles localized names and visible focus outlines.
+- Place native select focus outlines outside the dropdown background for clearer contrast in dark themes.
 - Restore saved remote visibility when reopening the graph, preserve it on remote rename, and remove obsolete preferences after remote deletion.
 - Show graph-loading errors with a Retry button instead of empty history or an indefinite loading indicator.
 - Keep detached-HEAD commits and their uncommitted changes visible in the all-branches graph.

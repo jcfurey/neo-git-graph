@@ -125,11 +125,11 @@ describe("RefsPane", () => {
       stores.showRemoteBranch.value = false;
     });
     const remote = row("origin/feature").parentElement!;
-    expect(remote.classList.contains("opacity-60")).toBe(true);
+    expect(remote.classList.contains("text-muted")).toBe(true);
     act(() => row("origin/feature").click());
     expect(stores.showRemoteBranch.value).toBe(true);
     expect(stores.selectedBranch.value).toBe("remotes/origin/feature");
-    expect(row("origin/feature").parentElement!.classList.contains("opacity-60")).toBe(false);
+    expect(row("origin/feature").parentElement!.classList.contains("text-muted")).toBe(false);
   });
 
   it("opens the graph at a tag and offers the tag menu", () => {

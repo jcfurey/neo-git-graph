@@ -38,7 +38,8 @@ const HEADER_CLASS =
   "relative h-8 overflow-hidden border-b border-line px-3 text-left font-semibold" +
   " text-ellipsis whitespace-nowrap";
 
-const HANDLE_CLASS = "absolute top-0 h-full w-1.5 cursor-col-resize";
+const HANDLE_CLASS =
+  "absolute top-0 h-full w-1.5 cursor-col-resize focus:outline-1 focus:-outline-offset-1 focus:outline-focus";
 
 const GRAPH_CLIP = `width: var(--graph-viewport-width, 0px); top: var(--graph-top, ${TABLE_HEADER_HEIGHT}px);`;
 
@@ -54,10 +55,12 @@ const MAX_GRAPH_COLUMN = 240;
  */
 function ResizeHandle({
   boundary,
+  title,
   side,
   resize
 }: {
   boundary: number;
+  title: string;
   side: "left" | "right";
   resize: ColumnResize;
 }) {
@@ -65,6 +68,7 @@ function ResizeHandle({
     <span
       role="separator"
       aria-orientation="vertical"
+      aria-label={window.l10n.resizeColumn.replace("{0}", title)}
       tabIndex={side === "left" ? 0 : undefined}
       class={`${HANDLE_CLASS} ${side === "left" ? "left-0 border-l border-line-soft" : "right-0"}`}
       onMouseDown={(event) => resize.startResize(boundary, event)}
@@ -176,7 +180,14 @@ export function CommitTable({
                 key={title}
                 class={HEADER_CLASS + (index === 0 && graphScroll.overflow ? " pb-2" : "")}
               >
-                {index > 0 && <ResizeHandle boundary={index - 1} side="left" resize={resize} />}
+                {index > 0 && (
+                  <ResizeHandle
+                    boundary={index - 1}
+                    title={titles[index - 1]!}
+                    side="left"
+                    resize={resize}
+                  />
+                )}
                 {title}
                 {index === 1 && graphScroll.overflow && (
                   <button
@@ -204,7 +215,7 @@ export function CommitTable({
                   </div>
                 )}
                 {index < titles.length - 1 && (
-                  <ResizeHandle boundary={index} side="right" resize={resize} />
+                  <ResizeHandle boundary={index} title={title} side="right" resize={resize} />
                 )}
               </th>
             ))}
