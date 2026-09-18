@@ -11,7 +11,12 @@ import {
   resetGraphRequests,
   startGraphRequest
 } from "@/webview/lib/graph-requests";
-import { enterNavigation, historyOffset, leaveNavigation } from "@/webview/lib/navigation";
+import {
+  enterNavigation,
+  historyOffset,
+  leaveNavigation,
+  restoreGraphPreferences
+} from "@/webview/lib/navigation";
 import { sendRemoteAction } from "@/webview/lib/remote-actions";
 import {
   repositoryRevision,
@@ -238,7 +243,7 @@ export function saveColumnWidths(widths: Array<number>) {
   vscode.postMessage({
     command: "saveRepoState",
     repo,
-    state
+    state: { columnWidths: state.columnWidths }
   });
 }
 
@@ -271,12 +276,18 @@ function saveHiddenRemotes(remotes: string[]) {
     hiddenRemotes: remotes.toSorted()
   };
   repoStates.value = { ...repoStates.value, [repo]: state };
-  vscode.postMessage({ command: "saveRepoState", repo, state });
+  vscode.postMessage({
+    command: "saveRepoState",
+    repo,
+    state: { hiddenRemotes: state.hiddenRemotes }
+  });
 }
 
 /** Apply persisted preferences without overwriting a column resize in progress. */
 export function receiveRepoState(message: Extract<ResponseMessage, { command: "repoState" }>) {
   const current = repoStates.value[message.repo];
+  const restorePreferences =
+    current?.graphPreferences === undefined && message.state.graphPreferences !== undefined;
   const hidden = message.state.hiddenRemotes ?? [];
   const changed = JSON.stringify(current?.hiddenRemotes ?? []) !== JSON.stringify(hidden);
   repoStates.value = {
@@ -287,8 +298,15 @@ export function receiveRepoState(message: Extract<ResponseMessage, { command: "r
       hiddenRemotes: hidden
     }
   };
-  if (changed && message.repo === selectedRepo.value) {
-    refreshRemoteVisibility();
+  if (message.repo === selectedRepo.value) {
+    batch(() => {
+      if (restorePreferences && selectedBranch.value === undefined) {
+        restoreGraphPreferences(message.repo);
+      }
+      if (changed || restorePreferences) {
+        refreshRemoteVisibility();
+      }
+    });
   }
 }
 

@@ -8,6 +8,16 @@ import type {
 } from "@/backend/types";
 
 export type GitRepoSet = { [repo: string]: GitRepoState };
+export type BranchDisplay = "filter" | "focus" | "ancestors";
+export type FocusDimming = "subtle" | "strong";
+export type GraphPreferences = {
+  branchDisplay: BranchDisplay;
+  /** `*` explicitly clears focus; an absent target uses the current branch. */
+  focusBranch?: string;
+  focusPaused: boolean;
+  focusDimming: FocusDimming;
+  showRemoteBranches: boolean;
+};
 export type GitRepoState = {
   /**
    * Width of the graph, date, author and commit column of the commit table, in
@@ -17,6 +27,8 @@ export type GitRepoState = {
   columnWidths: number[] | null;
   /** Remote groups hidden from this repository's graph. */
   hiddenRemotes?: string[];
+  /** View choices kept per repository in this VS Code workspace. */
+  graphPreferences?: GraphPreferences;
 };
 
 export type Avatar = {
@@ -48,7 +60,8 @@ export type RequestSelectRepo = {
 export type RequestSaveRepoState = {
   command: "saveRepoState";
   repo: string;
-  state: GitRepoState;
+  /** Only changed fields, so independent preference updates cannot overwrite each other. */
+  state: Partial<GitRepoState>;
 };
 
 export type RequestViewDiff = {

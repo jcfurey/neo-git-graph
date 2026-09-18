@@ -25,6 +25,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Changed
 
+- Save focus mode, target, dimming, pause state, and Show Remote Branches per repository across graph reopening and VS Code restarts; document temporary search and scrolling state.
 - Make fork VSIX packaging repeatable with `pnpm run package:vsix`, and verify upgrades and activation in an isolated VS Code profile.
 - Gate tag publishing on matching fork identity/version and the full validation workflow; publish the same VSIX that passed package checks.
 - Refresh fork installation instructions, shipped features, and remaining work in the README.
@@ -37,6 +38,8 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Fixed
 
+- Keep explicitly cleared focus cleared after reopening, and save a current-branch fallback when the old target disappears.
+- Merge individual preference updates so focus, column widths, and remote visibility cannot overwrite one another.
 - Keep hidden remote labels readable using the theme's muted text color instead of fading the entire row.
 - Give keyboard column-resize handles localized names and visible focus outlines.
 - Place native select focus outlines outside the dropdown background for clearer contrast in dark themes.

@@ -23,6 +23,7 @@ import { latestGraphRequest, setupWebviewTest } from "@tests/webview/test-utils"
 beforeAll(() => setupWebviewTest());
 beforeEach(() => {
   resetGraphRequests();
+  stores.repoStates.value = {};
   stores.selectedRepo.value = "/repo";
   stores.selectedBranch.value = "*";
   stores.branchDisplay.value = "filter";
@@ -54,7 +55,9 @@ it("focuses local branch labels without checking out and resumes the selected vi
     .onClick();
   expect(stores.focusPaused.value).toBe(false);
   expect(stores.branchDisplay.value).toBe("ancestors");
-  expect(vscodeApi.postMessage).not.toHaveBeenCalled();
+  expect(
+    vscodeApi.postMessage.mock.calls.every(([message]) => message.command === "saveRepoState")
+  ).toBe(true);
   expect(
     refMenu({ ...ref, type: "tag" }, false).some((entry) => entry?.title === "focusThisBranch")
   ).toBe(false);
@@ -68,11 +71,12 @@ it("reveals a hidden remote branch for focus without checkout or fetch", () => {
   expect(stores.branchFocusTarget.value).toBe("remotes/origin/topic");
   expect(stores.showRemoteBranch.value).toBe(true);
   expect(stores.headBranch.value).toBe("main");
-  expect(vscodeApi.postMessage.mock.calls.map(([message]) => message.command)).toEqual([
-    "loadBranches",
-    "loadCommits"
-  ]);
-  expect(vscodeApi.postMessage).toHaveBeenLastCalledWith(
+  expect(
+    vscodeApi.postMessage.mock.calls
+      .map(([message]) => message.command)
+      .filter((command) => command !== "saveRepoState")
+  ).toEqual(["loadBranches", "loadCommits"]);
+  expect(latestGraphRequest("loadCommits")).toEqual(
     expect.objectContaining({ branchName: "", showRemoteBranches: true })
   );
 });
@@ -91,7 +95,9 @@ it("pauses and resumes without replacing loaded history, its target or expansion
   expect(stores.commitList.value).toBe(rows);
   expect(stores.expandedCommit.value).toBe("old-commit");
   expect(stores.maxCommits.value).toBe(600);
-  expect(vscodeApi.postMessage).not.toHaveBeenCalled();
+  expect(
+    vscodeApi.postMessage.mock.calls.every(([message]) => message.command === "saveRepoState")
+  ).toBe(true);
   selectBranch("*");
   toggleBranchFocus();
   expect(stores.branchFocusTarget.value).toBeUndefined();
@@ -131,7 +137,9 @@ it("focuses the current branch from Show All without replacing rows or checking 
   setBranchDisplay("ancestors");
   expect(stores.commitList.value).toBe(rows);
   expect(stores.maxCommits.value).toBe(600);
-  expect(vscodeApi.postMessage).not.toHaveBeenCalled();
+  expect(
+    vscodeApi.postMessage.mock.calls.every(([message]) => message.command === "saveRepoState")
+  ).toBe(true);
   selectBranch("*");
   expect(stores.commitList.value).toBe(rows);
 });
@@ -158,11 +166,11 @@ it("loads all branches for focus and ignores an older filtered response", () => 
   handleLoadCommits({ ...response, branchName: "" });
   expect(stores.commitList.value).toEqual([]);
   loadMoreCommits();
-  expect(vscodeApi.postMessage).toHaveBeenLastCalledWith(
+  expect(latestGraphRequest("loadCommits")).toEqual(
     expect.objectContaining({ command: "loadCommits", branchName: "" })
   );
   setBranchDisplay("filter");
-  expect(vscodeApi.postMessage).toHaveBeenLastCalledWith(
+  expect(latestGraphRequest("loadCommits")).toEqual(
     expect.objectContaining({ command: "loadCommits", branchName: "main" })
   );
   handleLoadCommits({ ...response, branchName: "" });

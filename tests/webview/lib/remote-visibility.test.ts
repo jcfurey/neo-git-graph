@@ -39,13 +39,13 @@ it("persists individual choices per repository and preserves them through the gl
     expect.objectContaining({
       command: "saveRepoState",
       repo: "/repo",
-      state: { columnWidths: [100, 300, 100, 100, 100], hiddenRemotes: ["origin"] }
+      state: { hiddenRemotes: ["origin"] }
     })
   );
   setShowRemoteBranch(false);
   setShowRemoteBranch(true);
   expect(stores.hiddenRemotes.value).toEqual(["origin"]);
-  expect(vscodeApi.postMessage).toHaveBeenLastCalledWith(
+  expect(latestGraphRequest("loadCommits")).toEqual(
     expect.objectContaining({
       command: "loadCommits",
       hiddenRemotes: ["origin"],

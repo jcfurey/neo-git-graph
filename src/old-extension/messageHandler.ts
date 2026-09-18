@@ -444,7 +444,11 @@ export function registerMessageHandlers(
   });
 
   bridge.onMessage("saveRepoState", (msg) => {
-    repoManager.setRepoState(msg.repo, msg.state);
+    repoManager.setRepoState(msg.repo, {
+      columnWidths: null,
+      ...repoManager.getRepos()[msg.repo],
+      ...msg.state
+    });
   });
 
   bridge.onMessage("viewDiff", async (msg) => {

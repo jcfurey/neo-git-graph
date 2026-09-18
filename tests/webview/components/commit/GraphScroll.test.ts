@@ -118,3 +118,20 @@ it("reveals keyboard row navigation and does not consume ordinary vertical wheel
   expect(wheel.defaultPrevented).toBe(false);
   expect(scrollbar().scrollLeft).toBe(before);
 });
+
+it("resets temporary horizontal panning when returning to a repository or recreating its table", () => {
+  act(() => pan(120));
+  act(() => {
+    selectedRepo.value = "/another";
+  });
+  act(() => {
+    selectedRepo.value = "/repo";
+  });
+  expect(scrollbar().scrollLeft).toBe(0);
+  expect(viewport().scrollLeft).toBe(0);
+  act(() => pan(120));
+  act(() => render(null, container));
+  act(() => draw());
+  expect(scrollbar().scrollLeft).toBe(0);
+  expect(viewport().scrollLeft).toBe(0);
+});

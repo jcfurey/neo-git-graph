@@ -1378,6 +1378,169 @@ suite("Git Graph workflow UI", function () {
     );
   });
 
+  test("restores repository view preferences after switching, closing and reloading the graph", async () => {
+    const first = directory();
+    const second = directory();
+    for (const dir of [first, second]) {
+      init(dir);
+      commit("base", "preferences-base", dir);
+      git(["branch", "topic"], dir);
+      git(["remote", "add", "origin", dir], dir);
+      const base = git(["rev-parse", "HEAD"], dir);
+      const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+      for (let index = 0; index < 16; index++) {
+        const tip = git(["commit-tree", tree, "-p", base, "-m", `preferences-lane-${index}`], dir);
+        git(["update-ref", `refs/heads/lane-${index}`, tip], dir);
+      }
+      const remote = git(["commit-tree", tree, "-p", base, "-m", "preferences-remote-only"], dir);
+      git(["update-ref", "refs/remotes/origin/topic", remote], dir);
+    }
+    const refsBefore = git(["show-ref"], first);
+    const nav = `document.querySelector('nav[aria-label="Branches"]')`;
+    const eye = `${nav}?.querySelector('button[aria-label="Show remote origin in the graph"]')`;
+    const remoteRow = `[...document.querySelectorAll('tbody tr')].some(row => row.textContent.includes('preferences-remote-only'))`;
+    const pan = async () => {
+      await graph.evaluate(`(() => {
+        const scroll = document.querySelector('[data-graph-scroll]');
+        scroll.scrollLeft = 10000; scroll.dispatchEvent(new Event('scroll'));
+      })()`);
+      await until(
+        () => graph.evaluate("document.querySelector('[data-graph-scroll]')?.scrollLeft > 0"),
+        "manual panning"
+      );
+    };
+    const checkFirst = (remotesShown = false) =>
+      until(
+        () =>
+          graph.evaluate(`
+      !!document.querySelector('header button[title="ancestors"]') &&
+      !!document.querySelector('[data-focus-branch="topic"][data-focus-paused="true"]') &&
+      document.querySelector('select[aria-label="Dimming"]')?.value === 'strong' &&
+      ${eye}?.getAttribute('aria-pressed') === 'false' && !${remoteRow} &&
+      ${nav}?.querySelector('button[aria-label="Show Remote Branches"]')?.getAttribute('aria-pressed') === '${remotesShown}'
+    `),
+        "first repository preferences"
+      );
+    const checkStart = () =>
+      until(
+        () =>
+          graph.evaluate(`
+      document.querySelector('[data-graph-scroll]')?.scrollLeft === 0 &&
+      document.querySelector('[data-graph-viewport]')?.scrollLeft === 0
+    `),
+        "temporary pan reset"
+      );
+    try {
+      await openRepo(first);
+      if (!(await graph.evaluate("!!" + nav))) {
+        await button("Branches", 'document.querySelector("header")');
+      }
+      await contextRef("topic");
+      await menu("Focus this branch");
+      await headerChoice("View", "Focus all ancestors");
+      await graph.evaluate(`(() => {
+        const dimming = document.querySelector('select[aria-label="Dimming"]');
+        dimming.value = 'strong'; dimming.dispatchEvent(new Event('change', { bubbles: true }));
+      })()`);
+      await button("Pause focus");
+      await button("Show remote origin in the graph");
+      await button("Show Remote Branches", nav);
+      await checkFirst();
+      await pan();
+      const position = await graph.evaluate(
+        "document.querySelector('[data-graph-scroll]').scrollLeft"
+      );
+      await button("Refresh");
+      await checkFirst();
+      assert.equal(
+        await graph.evaluate("document.querySelector('[data-graph-scroll]').scrollLeft"),
+        position
+      );
+
+      await openRepo(second);
+      await until(
+        () =>
+          graph.evaluate(`
+        !!document.querySelector('header button[title="filter"]') &&
+        ${eye}?.getAttribute('aria-pressed') === 'true' && ${remoteRow}
+      `),
+        "independent repository defaults"
+      );
+      await checkStart();
+      await contextRef("main");
+      await menu("Focus this branch");
+      await openRepo(first);
+      await checkFirst();
+      await checkStart();
+      await pan();
+      await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+      await openRepo(first);
+      await checkFirst();
+      await checkStart();
+      // Turning all remotes on must retain the individual hidden choice.
+      await button("Show Remote Branches", nav);
+      await checkFirst(true);
+      await button("Show remote origin in the graph");
+      await until(() => graph.evaluate(remoteRow), "remote restored after panel recreation");
+      await button("Show remote origin in the graph");
+      await button("Show Remote Branches", nav);
+      await pan();
+      await graph.evaluate("window.__preferenceReloadMarker = true");
+      await vscode.commands.executeCommand("workbench.action.webview.reloadWebviewAction");
+      await until(async () => {
+        graph = await findGraph();
+        return !(await graph.evaluate("!!window.__preferenceReloadMarker"));
+      }, "fresh webview after reload");
+      await openRepo(first);
+      await checkFirst();
+      await checkStart();
+      await openRepo(second);
+      await until(
+        () =>
+          graph.evaluate(`
+        !!document.querySelector('header button[title="focus"]') &&
+        !!document.querySelector('[data-focus-branch="main"][data-focus-paused="false"]') &&
+        document.querySelector('select[aria-label="Dimming"]')?.value === 'subtle' && ${remoteRow}
+      `),
+        "second repository restored after reload"
+      );
+      await openRepo(first);
+      await checkFirst();
+      assert.equal(git(["show-ref"], first), refsBefore);
+      assert.equal(git(["branch", "--show-current"], first), "main");
+
+      git(["branch", "-m", "topic", "renamed-topic"], first);
+      await button("Refresh");
+      await until(
+        () =>
+          graph.evaluate(
+            `!!document.querySelector('[data-focus-branch="main"][data-focus-paused="true"]')`
+          ),
+        "renamed focus target falls back to current branch"
+      );
+      await headerChoice("Branch", "renamed-topic");
+      git(["branch", "-D", "renamed-topic"], first);
+      await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+      await openRepo(first);
+      await until(
+        () => graph.evaluate(`!!document.querySelector('[data-focus-branch="main"]')`),
+        "deleted saved target falls back on reopening"
+      );
+      await button("Clear focus");
+      await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+      await openRepo(first);
+      await until(
+        () =>
+          graph.evaluate(
+            `!!document.querySelector('header button[title="*"]') && !document.querySelector('[data-focus-branch]')`
+          ),
+        "explicitly cleared focus stays cleared"
+      );
+    } finally {
+      await openRepo(repo);
+    }
+  });
+
   test("hides individual remotes and restores their visibility without changing Git refs", async () => {
     const dir = directory();
     init(dir);

@@ -41,7 +41,7 @@ export function handleLoadBranches(msg: LoadBranchesMessage) {
         ? savedFocusBranch(msg.repo)
         : undefined;
     const fallback =
-      remembered && msg.branches.includes(remembered)
+      remembered && (remembered === SHOW_ALL_BRANCHES || msg.branches.includes(remembered))
         ? remembered
         : branchDisplay.value !== "filter" || getWebviewConfig().showCurrentBranchByDefault
           ? (msg.head ?? SHOW_ALL_BRANCHES)

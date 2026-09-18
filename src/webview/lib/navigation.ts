@@ -1,13 +1,15 @@
 import { computed, signal } from "@preact/signals";
 
 import type { HistoryEntry, HistoryFilter } from "@/backend/types";
-import type { SidebarPane } from "@/types";
+import type { GraphPreferences, SidebarPane } from "@/types";
 import {
   branchDisplay,
-  branchFocusTarget,
   focusDimming,
   focusPaused,
-  selectedRepo
+  repoStates,
+  selectedBranch,
+  selectedRepo,
+  showRemoteBranch
 } from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
 import type { BranchDisplay, FocusDimming } from "@/webview/types";
@@ -85,19 +87,50 @@ export function leaveNavigation(repo: string | undefined) {
     filter: historyFilter.value,
     saved: savedFilters.value,
     branchDisplay: branchDisplay.value,
-    focusBranch: branchFocusTarget.value,
+    focusBranch:
+      branchDisplay.value === "filter"
+        ? undefined
+        : (selectedBranch.value ?? savedFocusBranch(repo)),
     focusPaused: focusPaused.value,
     focusDimming: focusDimming.value,
     scroll: window.scrollY
   };
   persist();
+  // Initial branch loading has not resolved the saved target yet. Do not replace it
+  // with defaults if a scroll event or quick repository switch occurs meanwhile.
+  if (selectedBranch.value === undefined) {
+    return;
+  }
+  const graphPreferences: GraphPreferences = {
+    branchDisplay: branchDisplay.value,
+    ...(branchDisplay.value !== "filter" ? { focusBranch: selectedBranch.value } : {}),
+    focusPaused: focusPaused.value,
+    focusDimming: focusDimming.value,
+    showRemoteBranches: showRemoteBranch.value
+  };
+  const state = repoStates.value[repo];
+  if (JSON.stringify(state?.graphPreferences) === JSON.stringify(graphPreferences)) {
+    return;
+  }
+  repoStates.value = {
+    ...repoStates.value,
+    [repo]: { columnWidths: null, ...state, graphPreferences }
+  };
+  vscode.postMessage({ command: "saveRepoState", repo, state: { graphPreferences } });
+}
+
+export function restoreGraphPreferences(repo: string) {
+  // Accept old webview state until this repository has durable preferences.
+  const state = repoStates.value[repo]?.graphPreferences ?? saved.repos[repo];
+  branchDisplay.value = state?.branchDisplay ?? "filter";
+  focusPaused.value = state?.focusPaused ?? false;
+  focusDimming.value = state?.focusDimming ?? "subtle";
+  showRemoteBranch.value = repoStates.value[repo]?.graphPreferences?.showRemoteBranches ?? true;
 }
 
 export function enterNavigation(repo: string) {
   const state = saved.repos[repo];
-  branchDisplay.value = state?.branchDisplay ?? "filter";
-  focusPaused.value = state?.focusPaused ?? false;
-  focusDimming.value = state?.focusDimming ?? "subtle";
+  restoreGraphPreferences(repo);
   historyFilter.value = { ...emptyFilter(), ...state?.filter };
   savedFilters.value = state?.saved ?? [];
   historyOffset.value = 0;
@@ -107,7 +140,8 @@ export function enterNavigation(repo: string) {
 }
 
 export function savedFocusBranch(repo: string) {
-  return saved.repos[repo]?.focusBranch;
+  const preferences = repoStates.value[repo]?.graphPreferences;
+  return preferences === undefined ? saved.repos[repo]?.focusBranch : preferences.focusBranch;
 }
 
 export function setHistoryFilter(filter: HistoryFilter) {

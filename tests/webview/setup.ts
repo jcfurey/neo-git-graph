@@ -1,7 +1,7 @@
 import { vi } from "vitest";
 
 export const vscodeApi = {
-  getState: vi.fn(() => undefined),
+  getState: vi.fn<() => unknown>(() => undefined),
   setState: vi.fn(),
   postMessage: vi.fn()
 };

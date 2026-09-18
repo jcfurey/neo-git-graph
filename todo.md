@@ -105,14 +105,16 @@ visible in the implementation but has not been reproduced end to end; “Propose
       [refs pane tests](tests/webview/components/repository/RefsPane.test.ts),
       [workflow UI tests](tests-ext/ui/history.test.cjs).
 
-- [ ] **Define and test preference lifetime across reopening and repository switches.**
-      **Investigate.** Individual hidden remotes use persisted repository state, focus preferences
-      use webview state, and the global remote toggle is an in-memory signal shared across repos.
-      Hidden-remote restoration on panel reopening is now implemented and tested.
-      Decide which choices should be per repository and survive closing the graph or restarting
-      VS Code. Include horizontal scroll position in that decision.
-      **Done when:** the chosen behavior is documented and tested across repository switches,
-      panel disposal/recreation, and reload; a deleted or renamed focus target has a clear fallback.
+- [x] **Define and test preference lifetime across reopening and repository switches.** Completed
+      2026-09-18. Focus mode/target, pause, dimming, and the all-remotes toggle now join hidden remotes
+      and column widths in persisted workspace state per repository. Preference patches preserve
+      other fields; old webview focus state migrates when loaded. Horizontal panning stays temporary,
+      preserving refresh/resize position but resetting on repository switches, panel reopening, and
+      reload. Search filters and vertical position remain scoped to the open panel.
+      **Verified:** unit tests recreate webview modules and extension state; a VS Code workflow
+      switches repositories, closes/reopens the panel, and reloads its webview. Missing/renamed focus
+      targets fall back to the current branch (Show All when detached), and explicit Clear focus
+      stays cleared. [Preference lifetimes](docs/preferences.md) documents the behavior and defaults.
       Sources: [navigation persistence](src/webview/lib/navigation.ts),
       [stores](src/webview/lib/stores.ts),
       [graph scroll state](src/webview/components/commit/useGraphScroll.ts).
@@ -157,7 +159,6 @@ visible in the implementation but has not been reproduced end to end; “Propose
 
 ## Suggested next batch
 
-Correctness, optional usability, fork packaging/documentation, and graph/theme coverage are complete.
-Next resolve preference lifetime across panel reopening and repository switches, then measure
-large-repository performance. Improve UI failure diagnostics and minimum-version compatibility checks
-alongside those tests.
+Correctness, optional usability, fork packaging/documentation, graph/theme coverage, and preference
+lifetime are complete. Next measure large-repository performance. Improve UI failure diagnostics and
+minimum-version compatibility checks alongside those tests.

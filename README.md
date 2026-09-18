@@ -43,7 +43,7 @@ This fork:
 
 ## Features
 
-- **Branch focus**: Choose **View → Focus direct history** or **Focus all ancestors** to keep related history bright and dim unrelated branches. Choose subtle or strong dimming, pause/resume the target, or clear focus without changing checkout.
+- **Branch focus**: Choose **View → Focus direct history** or **Focus all ancestors** to keep related history bright and dim unrelated branches. Choose subtle or strong dimming, pause/resume the target, or clear focus without changing checkout. These choices are saved per repository across reopening and VS Code restarts.
 - **Individual remote visibility**: Hide each remote with its eye button in the Branches pane. Choices survive reopening and repository switches; hiding changes the view, not Git refs. Selecting a hidden branch reveals it, and an explicit revision search can still open hidden history.
 - **Wide and deep graphs**: Resize the Graph column or scroll its lanes with the scrollbar, trackpad, or Shift+wheel. Sticky headings keep the scrollbar accessible; selecting a commit reveals its lane, and **Reveal selected lane** returns to it after panning. Refresh preserves manual positioning and commit text stays fixed.
 - Review push/pull commits, fetch across workspace repositories, and apply reviewed fast-forward updates.
@@ -73,6 +73,7 @@ This fork:
 - **Devcontainer support**: Works in remote and container environments
 
 See [Working from the graph](docs/git-actions.md) for the available actions and their behavior.
+See [View preferences](docs/preferences.md) for what is saved per repository and when navigation resets.
 
 ## Installation
 
