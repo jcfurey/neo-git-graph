@@ -58,6 +58,7 @@ function commit(file, value, cwd = repo) {
 }
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function keypress(key, modifiers = 0) {
+  const letter = /^[a-z]$/i.test(key);
   const codes = {
     Tab: 9,
     Enter: 13,
@@ -73,12 +74,33 @@ async function keypress(key, modifiers = 0) {
     await connections[0].call("Input.dispatchKeyEvent", {
       type,
       key,
-      code: key === " " ? "Space" : key,
-      windowsVirtualKeyCode: codes[key],
+      code: key === " " ? "Space" : letter ? `Key${key.toUpperCase()}` : key,
+      windowsVirtualKeyCode: codes[key] ?? (letter ? key.toUpperCase().charCodeAt(0) : undefined),
       modifiers,
-      ...(type === "keyDown" && key === "Enter" ? { text: "\r" } : {})
+      ...(type === "keyDown" && (key === "Enter" || letter)
+        ? { text: key === "Enter" ? "\r" : key }
+        : {})
     });
   }
+}
+
+async function keyboardSelect(selector, label, value) {
+  await graph.evaluate(`document.querySelector(${JSON.stringify(selector)}).focus()`);
+  // Re-enter by keyboard to reset native type-ahead and verify the select is a tab stop.
+  await keypress("Tab");
+  await keypress("Tab", 8);
+  await visibleKeyboardFocus(selector);
+  // Home/End do not change a closed native select on macOS; type-ahead works on every OS.
+  for (const character of label.toLowerCase()) {
+    await keypress(character);
+  }
+  await until(
+    () =>
+      graph.evaluate(
+        `document.querySelector(${JSON.stringify(selector)}).value === ${JSON.stringify(value)}`
+      ),
+    `keyboard selects ${value}`
+  );
 }
 
 // Resolve CSS colours in Chromium, including color-mix, alpha, and ancestor opacity.
@@ -1892,11 +1914,15 @@ suite("Git Graph workflow UI", function () {
           code: "ArrowLeft",
           windowsVirtualKeyCode: 37
         });
-        await until(
-          async () => (await measure()).scrollLeft < before.scrollLeft,
-          "keyboard graph scrolling"
-        );
-        const keyboard = await measure();
+        // Native scrolling and its scroll event can arrive in separate frames.
+        const keyboard = await until(async () => {
+          const state = await measure();
+          return (
+            state.scrollLeft < before.scrollLeft &&
+            state.viewportScroll === state.scrollLeft &&
+            state
+          );
+        }, "keyboard graph scrolling");
         assert.equal(keyboard.viewportScroll, keyboard.scrollLeft);
         await graph.evaluate(
           `document.querySelector('tbody td').dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, shiftKey: true, deltaY: 20 }))`
@@ -2117,28 +2143,26 @@ suite("Git Graph workflow UI", function () {
           "keyboard reveals remote"
         );
         const dimming = 'select[aria-label="Dimming"]';
-        await graph.evaluate(`document.querySelector('${dimming}').focus()`);
-        await keypress("Home");
-        await until(
-          () => graph.evaluate(`document.querySelector('${dimming}').value === 'subtle'`),
-          "keyboard selects subtle dimming"
-        );
+        await keyboardSelect(dimming, "Subtle", "subtle");
         await visibleKeyboardFocus(dimming);
         const colours = () =>
-          graph.evaluate(`({
-          lines: [...document.querySelectorAll('path[data-branch-relation="unrelated"]')].map(path => getComputedStyle(path).stroke),
-          text: getComputedStyle(document.querySelector('tr[data-branch-relation="unrelated"]')).color
-        })`);
+          until(
+            () =>
+              graph.evaluate(`(() => {
+          const row = document.querySelector('tr[data-branch-relation="unrelated"]');
+          const lines = [...document.querySelectorAll('path[data-branch-relation="unrelated"]')];
+          // Revealing a remote reloads commits before the asynchronous focus query completes.
+          if (!row || !lines.length) return null;
+          return { lines: lines.map(path => getComputedStyle(path).stroke), text: getComputedStyle(row).color };
+        })()`),
+            "branch focus colours"
+          );
         const subtle = await colours();
         for (const relation of ["direct", "merged", "unrelated"]) {
           const text = await contrast(`tr[data-branch-relation='${relation}'] td:nth-child(2)`);
           assert.ok(text.ratio >= 4.5, `${relation} text in ${theme}: ${JSON.stringify(text)}`);
         }
-        await keypress("End");
-        await until(
-          () => graph.evaluate(`document.querySelector('${dimming}').value === 'strong'`),
-          "keyboard selects strong dimming"
-        );
+        await keyboardSelect(dimming, "Strong", "strong");
         const strong = await colours();
         assert.equal(strong.text, subtle.text, "strong dimming keeps readable text");
         assert.notDeepEqual(strong.lines, subtle.lines, "dimming levels are distinguishable");
