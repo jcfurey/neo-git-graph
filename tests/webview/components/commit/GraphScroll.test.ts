@@ -143,15 +143,15 @@ it("keeps one keyboard entry point when focus changes or its commit leaves the l
       .map((row) => row.dataset.commitHash);
   const dirty = { ...commits[0]!, hash: "*", parentHashes: [commits[0]!.hash] };
   act(() => draw([dirty, ...commits]));
-  expect(tabStops()).toEqual([commits[0]!.hash]);
+  expect(tabStops()).toEqual(["*"]);
   act(() => {
     focusedCommit.value = commits[8]!.hash;
   });
   expect(tabStops()).toEqual([commits[8]!.hash]);
   act(() => draw([dirty, ...commits.slice(0, 5)]));
-  expect(tabStops()).toEqual([commits[0]!.hash]);
+  expect(tabStops()).toEqual(["*"]);
   act(() => draw([dirty]));
-  expect(tabStops()).toEqual([]);
+  expect(tabStops()).toEqual(["*"]);
 });
 
 it("emphasizes only the hovered graph dot and keeps selection emphasized after leaving", () => {

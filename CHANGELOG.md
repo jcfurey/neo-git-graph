@@ -2,10 +2,12 @@
 
 ## [Unreleased]
 
-Current fork build: **`jcfurey.neo-git-graph@0.9.5`**. The manifest now carries the fork identity
+Current fork build: **`jcfurey.neo-git-graph@0.9.6`**. The manifest now carries the fork identity
 directly, continuing the locally installed 0.9.x builds. Historical upstream releases remain below.
 
 ### Added
+
+- Click the Uncommitted Changes row to browse staged, unstaged, untracked, and conflicted files and open their native diff or merge editor.
 
 - Failure-time UI screenshots, DOM snapshots, browser errors, and extension logs, with an automated failure/recovery check and a minimum-version VS Code smoke test in CI.
 - Repeatable backend focus and VS Code interaction benchmarks for large histories, with timing reports and hover CPU profiles in Linux CI.
@@ -39,6 +41,9 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 - Open the search row on demand from the header or with `/`, give advanced menu items plain-language names, and explain how to undo in the reset, checkout, delete, drop, rebase and force-push dialogs.
 
 ### Fixed
+
+- Make uncommitted changes keyboard accessible, restore focus when closing details, count individual untracked files, and remove placeholder commit metadata from the changes row.
+- Resolve staged diff contents to immutable blobs so reopening a file after staging shows the current changes.
 
 - Avoid scanning all loaded commits for every row's keyboard tab stop; keep graph hover updates from rerendering text rows and reuse unchanged graph line paths.
 - Keep explicitly cleared focus cleared after reopening, and save a current-branch fallback when the old target disappears.

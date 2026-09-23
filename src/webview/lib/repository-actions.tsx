@@ -159,6 +159,7 @@ export function sendRepositoryAction(action: RepositoryAction, repo = selectedRe
     window.l10n.runningGitAction,
     {
       background:
+        action.kind === "viewWorkingTreeFile" ||
         action.kind === "viewRangeFile" ||
         action.kind === "viewHistoricalFile" ||
         action.kind === "previewFileRestore",

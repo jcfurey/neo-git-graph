@@ -12,6 +12,7 @@ import {
 } from "@/backend/actions/rebase";
 import { manageRemote } from "@/backend/actions/remotes";
 import { runWorkflowAction } from "@/backend/actions/workflows";
+import { viewWorkingTreeFile } from "@/backend/actions/workingTree";
 import { loadOperation, loadStashes, loadWorktrees } from "@/backend/queries/repository";
 import type { RepositoryAction, StashDetails } from "@/backend/types";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
@@ -23,6 +24,15 @@ export type RepositoryEffect =
   | { kind: "document"; text: string }
   | { kind: "diff"; left: string | null; right: string | null; before: string; after: string }
   | { kind: "historicalFile"; hash: string; path: string }
+  | {
+      kind: "workingTreeDiff";
+      before: string;
+      after: string;
+      left: string | null;
+      right: string | null;
+      workingPath: string | null;
+      staged: boolean;
+    }
   | { kind: "restoreDiff"; hash: string; sourcePath: string; destination: string; exists: boolean }
   | void;
 
@@ -45,6 +55,8 @@ export async function runRepositoryAction(
   binary = "git"
 ): Promise<RepositoryEffect> {
   switch (action.kind) {
+    case "viewWorkingTreeFile":
+      return viewWorkingTreeFile(git, action.path, action.group);
     case "submodulePointer":
     case "fetch":
     case "sync":

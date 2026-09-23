@@ -61,7 +61,7 @@ type QueryPayloads = {
       head: string | null;
       moreCommitsAvailable: boolean;
       hard: boolean;
-      /** Number of unsaved changes. `0` when the uncommitted row is absent. */
+      /** Number of changed files. `0` when the uncommitted row is absent. */
       uncommittedChanges: number;
     };
   };

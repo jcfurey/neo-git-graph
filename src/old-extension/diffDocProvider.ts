@@ -41,7 +41,7 @@ export class DiffDocProvider implements vscode.TextDocumentContentProvider {
       return "";
     }
     return (this.forRepo?.(request.repo) ?? this.gitClient().cwd(request.repo))
-      .show([`${request.commit}:${request.filePath}`])
+      .show([request.blob ? request.commit : `${request.commit}:${request.filePath}`])
       .catch(() => "")
       .then((data) => {
         let doc = new DiffDocument(data);
@@ -73,7 +73,17 @@ export function encodeDiffDocUri(repo: string, path: string, commit: string): vs
 
 export function decodeDiffDocUri(uri: vscode.Uri) {
   let queryArgs = decodeUriQueryArgs(uri.query);
-  return { filePath: uri.path, commit: queryArgs.commit, repo: queryArgs.repo };
+  return {
+    filePath: uri.path,
+    commit: queryArgs.commit,
+    repo: queryArgs.repo,
+    ...(queryArgs.blob === "1" ? { blob: true } : {})
+  };
+}
+
+export function encodeDiffBlobUri(repo: string, path: string, blob: string | null): vscode.Uri {
+  const uri = encodeDiffDocUri(repo, path, blob ?? "0".repeat(40));
+  return uri.with({ query: uri.query + "&blob=1" });
 }
 
 function decodeUriQueryArgs(query: string) {

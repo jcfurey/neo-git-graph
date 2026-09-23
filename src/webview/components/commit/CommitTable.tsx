@@ -9,6 +9,7 @@ import { CommitRow } from "@/webview/components/commit/CommitRow";
 import type { ColumnResize } from "@/webview/components/commit/useColumnResize";
 import { useColumnResize } from "@/webview/components/commit/useColumnResize";
 import { useGraphScroll } from "@/webview/components/commit/useGraphScroll";
+import { WorkingTreeDetails } from "@/webview/components/commit/WorkingTreeDetails";
 import { RevealIcon } from "@/webview/components/ui/Icons";
 import {
   COMMIT_DETAILS_HEIGHT,
@@ -112,9 +113,7 @@ export function CommitTable({
   const sized = columnWidths.value !== null;
   const focusedHash = focusedCommit.value;
   const canReveal = commits.some((commit) => commit.hash === focusedHash);
-  const tabStopHash = canReveal
-    ? focusedHash
-    : commits.find((commit) => commit.hash !== UNCOMMITTED_CHANGES)?.hash;
+  const tabStopHash = canReveal ? focusedHash : commits[0]?.hash;
   const commitRows = useMemo(
     () => new Map(commits.map((commit, index) => [commit.hash, index])),
     [commits]
@@ -247,13 +246,14 @@ export function CommitTable({
                 relation={relations[index] ?? "normal"}
                 keepMergedBright={keepMergedBright}
                 expanded={index === expandedRow}
-                onSelect={
-                  commit.hash === UNCOMMITTED_CHANGES
-                    ? undefined
-                    : () => toggleCommitDetails(commit.hash)
-                }
+                onSelect={() => toggleCommitDetails(commit.hash)}
               />
-              {index === expandedRow && <CommitDetails details={commitDetails.value} />}
+              {index === expandedRow &&
+                (commit.hash === UNCOMMITTED_CHANGES ? (
+                  <WorkingTreeDetails />
+                ) : (
+                  <CommitDetails details={commitDetails.value} />
+                ))}
             </Fragment>
           ))}
         </tbody>

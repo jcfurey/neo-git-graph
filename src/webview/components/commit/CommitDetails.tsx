@@ -78,16 +78,49 @@ function Summary({ details }: { details: GitCommitDetails }) {
  * commit it belongs to. Its height is fixed, because the graph is drawn to it.
  */
 export function CommitDetails({ details }: { details: GitCommitDetails | null }) {
-  const row = useRef<HTMLTableRowElement>(null);
-  useScrollIntoView(row);
-
   const nodes = useMemo(
     () => (details === null ? [] : buildFileTree(details.fileChanges)),
     [details]
   );
 
   return (
-    <tr ref={row} style={`height: ${COMMIT_DETAILS_HEIGHT}px`}>
+    <DetailsRow>
+      {details === null ? (
+        <Loading class="h-full" />
+      ) : (
+        <div class="flex h-full">
+          <Summary details={details} />
+          <div class="mr-8 grow overflow-x-hidden overflow-y-scroll border-r border-line py-1">
+            <FileTree nodes={nodes} commitHash={details.hash} />
+          </div>
+        </div>
+      )}
+    </DetailsRow>
+  );
+}
+
+/** Shared fixed-height frame keeps the graph aligned with either details panel. */
+export function DetailsRow({ children }: { children: ComponentChildren }) {
+  const row = useRef<HTMLTableRowElement>(null);
+  useScrollIntoView(row);
+  function close() {
+    const owner = row.current?.previousElementSibling as HTMLElement | null;
+    closeCommitDetails();
+    owner?.focus({ preventScroll: true });
+  }
+  return (
+    <tr
+      ref={row}
+      data-details-row
+      style={`height: ${COMMIT_DETAILS_HEIGHT}px`}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          close();
+        }
+      }}
+    >
       <td />
       <td
         colSpan={4}
@@ -97,24 +130,14 @@ export function CommitDetails({ details }: { details: GitCommitDetails | null })
           class="overflow-hidden"
           style={`height: ${COMMIT_DETAILS_HEIGHT - SEPARATOR_HEIGHT}px`}
         >
-          {details === null ? (
-            <Loading class="h-full" />
-          ) : (
-            <div class="flex h-full">
-              <Summary details={details} />
-              {/* The right margin keeps the scrollbar clear of the close button. */}
-              <div class="mr-8 grow overflow-x-hidden overflow-y-scroll border-r border-line py-1">
-                <FileTree nodes={nodes} commitHash={details.hash} />
-              </div>
-            </div>
-          )}
+          {children}
         </div>
         <button
           type="button"
           class="absolute top-1 right-1 cursor-pointer opacity-60 hover:opacity-100"
           title={window.l10n.close}
           aria-label={window.l10n.close}
-          onClick={closeCommitDetails}
+          onClick={close}
         >
           <Icon class="size-6" viewBox="0 0 12 16">
             <path d="M7.48 8l3.75 3.75-1.48 1.48L6 9.48l-3.75 3.75-1.48-1.48L4.52 8 .77 4.25l1.48-1.48L6 6.52l3.75-3.75 1.48 1.48L7.48 8z" />

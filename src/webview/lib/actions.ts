@@ -4,7 +4,7 @@ import type { ComponentChildren } from "preact";
 import type { GitFileChange } from "@/backend/types";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
 import type { ResponseMessage } from "@/types";
-import { SHOW_ALL_BRANCHES } from "@/webview/constants";
+import { SHOW_ALL_BRANCHES, UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { captureFocus, restoreFocus } from "@/webview/lib/focus";
 import {
   invalidateGraphRequest,
@@ -407,12 +407,13 @@ export function toggleCommitDetails(hash: string) {
   }
 
   const repo = selectedRepo.value;
+  invalidateGraphRequest("commitDetails");
   batch(() => {
     expandedCommit.value = hash;
     commitDetails.value = null;
   });
 
-  if (repo === undefined) {
+  if (repo === undefined || hash === UNCOMMITTED_CHANGES) {
     return;
   }
 

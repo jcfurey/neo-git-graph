@@ -190,6 +190,15 @@ export function getWebviewLocalizedStrings() {
     detailCommitter: vscode.l10n.t("Committer: {0}"),
 
     uncommittedChanges: vscode.l10n.t("Uncommitted Changes ({0})"),
+    viewWorkingTreeChanges: vscode.l10n.t("Click or press Enter to view uncommitted changes."),
+    workingTreeHint: vscode.l10n.t(
+      "Select a file to view its changes. Conflicted files open the merge editor."
+    ),
+    unstagedChanges: vscode.l10n.t("Unstaged Changes"),
+    stagedChanges: vscode.l10n.t("Staged Changes"),
+    untrackedFiles: vscode.l10n.t("Untracked Files"),
+    conflicts: vscode.l10n.t("Conflicts"),
+    noWorkingTreeChanges: vscode.l10n.t("No uncommitted changes."),
 
     // File tooltips
     tooltipBinaryFile: vscode.l10n.t("This is a binary file, unable to view diff."),

@@ -27,7 +27,7 @@
 
 This repository maintains **`jcfurey.neo-git-graph`**, based on
 [asispts/neo-git-graph](https://github.com/asispts/neo-git-graph). Its current build version is
-**0.9.5**. The upstream authors and MIT license are retained.
+**0.9.6**. The upstream authors and MIT license are retained.
 
 The original [Git Graph](https://github.com/mhutchie/vscode-git-graph) by mhutchie changed its license in May 2019.
 This fork is based on the last MIT-licensed commit, [`4af8583`](https://github.com/mhutchie/vscode-git-graph/commit/4af8583a42082b2c230d2c0187d4eaff4b69c665).
@@ -62,7 +62,7 @@ This fork:
 - **Remote actions**: Push local branches to a chosen remote, set upstream tracking, pull the current branch with fast-forward only, and fetch updates with optional pruning
 - **Remote branch checkout**: Reuse and fast-forward an existing local branch, or create a new tracking branch
 - **Branches pane**: Browse local branches, remotes, tags and stashes beside the graph; select or focus a branch, check out, fetch or apply inline, and hide individual remotes or all remote branches
-- **Graph view**: See branches, tags, and uncommitted changes in one graph
+- **Graph view**: See branches, tags, and uncommitted changes in one graph. Click the Uncommitted Changes row (or press Enter) to browse unstaged, staged, untracked, and conflicted files, then select a file to open its diff or merge editor.
 - **Commit details**: Click a commit to see message, files, and diffs
 - **Branch actions**: Create, checkout, rename, delete, and merge
 - **Tag actions**: Create, delete, and push tags
@@ -84,7 +84,7 @@ git clone https://github.com/jcfurey/neo-git-graph.git
 cd neo-git-graph
 pnpm install --frozen-lockfile
 pnpm run package:vsix
-code --install-extension ./neo-git-graph-0.9.5.vsix --force
+code --install-extension ./neo-git-graph-0.9.6.vsix --force
 ```
 
 Alternatively, use **Extensions → … → Install from VSIX…** and select the generated file.

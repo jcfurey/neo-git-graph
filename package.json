@@ -1,7 +1,7 @@
 {
   "name": "neo-git-graph",
   "displayName": "(neo) Git Graph",
-  "version": "0.9.5",
+  "version": "0.9.6",
   "description": "%description%",
   "categories": [
     "SCM Providers",

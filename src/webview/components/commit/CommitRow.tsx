@@ -33,7 +33,7 @@ type CommitRowProps = {
   keepMergedBright?: boolean;
   /** The details view of this commit is open. */
   expanded: boolean;
-  /** Open or close the details view. Absent for the uncommitted changes row. */
+  /** Open or close the details view. */
   onSelect: (() => void) | undefined;
   /** Bring this commit's lane into view after explicit row navigation. */
   onRevealLane?: (hash: string) => void;
@@ -117,41 +117,42 @@ export function CommitRow({
         rowClass(isHead, expanded || marked, onSelect !== undefined, menuOpen) +
         " branch-focus-row focus:outline-1 focus:-outline-offset-1 focus:outline-focus"
       }
-      data-commit-hash={uncommitted ? undefined : commit.hash}
+      data-commit-hash={commit.hash}
       data-branch-relation={relation === "merged" && keepMergedBright ? "direct" : relation}
       data-emphasized={isHead || uncommitted || expanded || marked || menuOpen}
-      tabIndex={uncommitted ? undefined : tabStop ? 0 : -1}
-      aria-selected={marked}
+      tabIndex={tabStop ? 0 : -1}
+      aria-selected={uncommitted ? expanded : marked}
+      aria-expanded={expanded}
       onFocus={() => {
-        if (!uncommitted) {
-          focusedCommit.value = commit.hash;
-          onRevealLane?.(commit.hash);
-        }
+        focusedCommit.value = commit.hash;
+        onRevealLane?.(commit.hash);
       }}
-      title={window.l10n.selectCommitsHint}
+      title={uncommitted ? window.l10n.viewWorkingTreeChanges : window.l10n.selectCommitsHint}
       style={{
         "--branch-colour": focusColour(colour, "normal"),
         "--branch-display-colour": focusColour(colour, relation, keepMergedBright)
       }}
       onClick={(event) => {
-        if (uncommitted) {
-          return;
-        }
         focusedCommit.value = commit.hash;
         onRevealLane?.(commit.hash);
         event.currentTarget.focus({ preventScroll: true });
+        if (uncommitted) {
+          selectedCommits.value = [];
+          onSelect?.();
+          return;
+        }
         selectCommitRows(commit, rows, event.ctrlKey || event.metaKey, event.shiftKey);
         if (!event.ctrlKey && !event.metaKey && !event.shiftKey) {
           onSelect?.();
         }
       }}
       onKeyDown={(event) => {
-        if (uncommitted || event.target !== event.currentTarget) {
+        if (event.target !== event.currentTarget) {
           return;
         }
         if (["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) {
           event.preventDefault();
-          const available = rows.filter((row) => row.hash !== "*");
+          const available = rows;
           const index = available.findIndex((row) => row.hash === commit.hash);
           const next =
             available[
@@ -167,19 +168,29 @@ export function CommitRow({
           if (next) {
             focusedCommit.value = next.hash;
             onRevealLane?.(next.hash);
-            selectCommitRows(next, rows, false, event.shiftKey);
+            if (next.hash !== UNCOMMITTED_CHANGES) {
+              selectCommitRows(next, rows, false, event.shiftKey);
+            } else if (!event.shiftKey) {
+              selectedCommits.value = [];
+            }
             event.currentTarget
               .closest("table")
               ?.querySelector<HTMLElement>(`tr[data-commit-hash="${next.hash}"]`)
               ?.focus();
           }
-        } else if (event.key === "Enter") {
+        } else if (event.key === "Enter" || (uncommitted && event.key === " ")) {
           event.preventDefault();
+          if (uncommitted) {
+            selectedCommits.value = [];
+          }
           onSelect?.();
         } else if (event.key === " ") {
           event.preventDefault();
           selectCommitRows(commit, rows, true, event.shiftKey);
-        } else if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+        } else if (
+          !uncommitted &&
+          (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey))
+        ) {
           event.preventDefault();
           const rect = event.currentTarget.getBoundingClientRect();
           openContextMenu(
@@ -233,14 +244,17 @@ export function CommitRow({
           )}
         </div>
       </td>
-      <td class={CELL_CLASS} title={date.title}>
-        {date.value}
+      <td class={CELL_CLASS} title={uncommitted ? undefined : date.title}>
+        {uncommitted ? null : date.value}
       </td>
-      <td class={`${CELL_CLASS} max-w-31`} title={`${commit.author} <${commit.email}>`}>
-        {commit.author}
+      <td
+        class={`${CELL_CLASS} max-w-31`}
+        title={uncommitted ? undefined : `${commit.author} <${commit.email}>`}
+      >
+        {uncommitted ? null : commit.author}
       </td>
-      <td class={`${CELL_CLASS} font-mono`} title={commit.hash}>
-        {abbrevCommit(commit.hash)}
+      <td class={`${CELL_CLASS} font-mono`} title={uncommitted ? undefined : commit.hash}>
+        {uncommitted ? null : abbrevCommit(commit.hash)}
       </td>
     </tr>
   );

@@ -1,0 +1,183 @@
+// @vitest-environment jsdom
+import { h, render } from "preact";
+import { act } from "preact/test-utils";
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
+
+import type { HistoryEntry, QueryRequest, WorkingTreeFile } from "@/backend/types";
+import { CommitTable } from "@/webview/components/commit/CommitTable";
+import { handleCommitDetails } from "@/webview/lib/handler/commit-details";
+import { focusedCommit, selectedCommits } from "@/webview/lib/navigation";
+import { handleRepositoryQuery } from "@/webview/lib/repository-actions";
+import { dialog, expandedCommit, selectedRepo, uncommittedChanges } from "@/webview/lib/stores";
+
+import { vscodeApi } from "@tests/webview/setup";
+import { setupWebviewTest } from "@tests/webview/test-utils";
+
+const commit: HistoryEntry = {
+  hash: "a".repeat(40),
+  parentHashes: [],
+  author: "Author",
+  email: "a@test",
+  date: 0,
+  message: "First commit",
+  refs: []
+};
+const dirty = { ...commit, hash: "*", author: "*", parentHashes: [commit.hash] };
+let container: HTMLDivElement;
+const row = (hash = "*") =>
+  container.querySelector<HTMLTableRowElement>(`tr[data-commit-hash="${hash}"]`)!;
+const draw = () =>
+  render(
+    h(CommitTable, { commits: [dirty, commit], head: commit.hash, headBranch: "main" }),
+    container
+  );
+const request = () =>
+  vscodeApi.postMessage.mock.calls
+    .map(([message]) => message as QueryRequest)
+    .findLast(
+      (message) => message.command === "repositoryQuery" && message.query.kind === "workingTree"
+    )!;
+const reply = (files: WorkingTreeFile[], status: string | null = null) => {
+  const message = request();
+  if (message.command !== "repositoryQuery") {
+    throw new Error("Missing working tree request");
+  }
+  act(() =>
+    handleRepositoryQuery({
+      requestId: message.requestId,
+      repo: message.repo,
+      data: status ? null : { kind: "workingTree", files },
+      status
+    })
+  );
+};
+const key = (hash: string, value: string, shiftKey = false) =>
+  act(() => {
+    row(hash).dispatchEvent(
+      new KeyboardEvent("keydown", { key: value, shiftKey, bubbles: true, cancelable: true })
+    );
+  });
+
+beforeAll(() => setupWebviewTest());
+beforeEach(() => {
+  selectedRepo.value = "/repo";
+  expandedCommit.value = null;
+  focusedCommit.value = null;
+  selectedCommits.value = [];
+  uncommittedChanges.value = 2;
+  dialog.value = null;
+  vscodeApi.postMessage.mockClear();
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    }
+  );
+  vi.spyOn(window, "scrollBy").mockImplementation(() => {});
+  container = document.createElement("div");
+  document.body.append(container);
+  act(draw);
+});
+afterEach(() => {
+  act(() => render(null, container));
+  container.remove();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+it("opens grouped changes from the graph and sends the chosen diff without a blocking dialog", () => {
+  act(() => row().click());
+  expect(expandedCommit.value).toBe("*");
+  expect(row().getAttribute("aria-expanded")).toBe("true");
+  expect(request()).toMatchObject({ repo: "/repo", query: { kind: "workingTree" } });
+  expect(
+    vscodeApi.postMessage.mock.calls.some(([message]) => message.command === "commitDetails")
+  ).toBe(false);
+  expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+  expect([...row().cells].slice(2).map((cell) => cell.textContent)).toEqual(["", "", ""]);
+  reply([
+    { path: "f", oldPath: "f", status: "M", group: "unstaged" },
+    { path: "f", oldPath: "f", status: "M", group: "staged" },
+    { path: "new.txt", oldPath: "new.txt", status: "?", group: "untracked" }
+  ]);
+  expect(container.querySelectorAll("section")).toHaveLength(3);
+  act(() =>
+    container
+      .querySelector<HTMLButtonElement>('section[aria-label="stagedChanges"] button')!
+      .click()
+  );
+  expect(vscodeApi.postMessage).toHaveBeenCalledWith(
+    expect.objectContaining({
+      command: "repositoryAction",
+      repo: "/repo",
+      action: { kind: "viewWorkingTreeFile", path: "f", group: "staged" }
+    })
+  );
+  expect(dialog.value).toBeNull();
+  act(() => row().click());
+  expect(container.querySelector("[data-working-tree-details]")).toBeNull();
+});
+
+it("supports keyboard navigation, Enter, Space and Escape without selecting the synthetic commit", () => {
+  expect(row().tabIndex).toBe(0);
+  act(() => row(commit.hash).focus());
+  key(commit.hash, "ArrowUp");
+  expect(document.activeElement).toBe(row());
+  key("*", "Enter");
+  expect(expandedCommit.value).toBe("*");
+  expect(selectedCommits.value).toEqual([]);
+  key("*", " ");
+  expect(expandedCommit.value).toBeNull();
+  key("*", " ");
+  const close = container.querySelector<HTMLButtonElement>('[aria-label="close"]')!;
+  act(() => {
+    close.focus();
+    close.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  });
+  expect(expandedCommit.value).toBeNull();
+  expect(document.activeElement).toBe(row());
+  key("*", "ArrowDown", true);
+  expect(selectedCommits.value.map((entry) => entry.hash)).toEqual([commit.hash]);
+  key(commit.hash, "Home", true);
+  expect(selectedCommits.value.every((entry) => entry.hash !== "*")).toBe(true);
+});
+
+it("shows errors, retries on refresh and reports an empty working tree", () => {
+  act(() => row().click());
+  reply([], "Could not read Git status");
+  expect(container.querySelector('[role="alert"]')?.textContent).toBe("Could not read Git status");
+  const previous = request();
+  act(() =>
+    container.querySelector<HTMLButtonElement>("[data-working-tree-details] button")!.click()
+  );
+  expect(request()).not.toEqual(previous);
+  reply([]);
+  expect(container.textContent).toContain("noWorkingTreeChanges");
+});
+
+it("ignores a late commit error after switching to working changes and cancels on close", () => {
+  act(() => row(commit.hash).click());
+  const pending = vscodeApi.postMessage.mock.calls
+    .map(([message]) => message as QueryRequest)
+    .findLast((message) => message.command === "commitDetails")!;
+  act(() => row().click());
+  act(() =>
+    handleCommitDetails({
+      command: "commitDetails",
+      repo: pending.repo,
+      requestId: pending.requestId,
+      commitDetails: null
+    })
+  );
+  expect(expandedCommit.value).toBe("*");
+  expect(dialog.value).toBeNull();
+  const working = request();
+  act(() => container.querySelector<HTMLButtonElement>('[aria-label="close"]')!.click());
+  expect(vscodeApi.postMessage).toHaveBeenCalledWith({
+    command: "cancelRepositoryQuery",
+    repo: "/repo",
+    requestId: working.requestId
+  });
+  expect(document.activeElement).toBe(row());
+});

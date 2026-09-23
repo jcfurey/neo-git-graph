@@ -14,6 +14,7 @@ import {
   loadCleanupPlan,
   submoduleComparison
 } from "@/backend/queries/workflows";
+import { loadWorkingTree } from "@/backend/queries/workingTree";
 import { loadWorkspace } from "@/backend/queries/workspace";
 import type {
   OperationKind,
@@ -235,6 +236,8 @@ export async function repositoryQuery(
   }
 ): Promise<RepositoryQueryData> {
   switch (query.kind) {
+    case "workingTree":
+      return { kind: "workingTree", files: await loadWorkingTree(git) };
     case "branchFocus":
       return { kind: "branchFocus", ...(await loadBranchFocus(git, query.branch, query.hashes)) };
     case "bisect":

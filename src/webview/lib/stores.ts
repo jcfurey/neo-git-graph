@@ -22,7 +22,7 @@ export const moreCommitsAvailable = signal<boolean>(false);
 export const graphErrors = signal<
   Partial<Record<"loadBranches" | "loadCommits", string | undefined>>
 >({});
-/** Number of unsaved changes. `0` when the uncommitted row is absent. */
+/** Number of changed files. `0` when the uncommitted row is absent. */
 export const uncommittedChanges = signal<number>(0);
 
 /** Hash of the commit whose details view is open, or `null` when none is open. */

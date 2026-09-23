@@ -111,7 +111,7 @@ async function getLog(
 }
 
 async function countUnsavedChanges(git: SimpleGit) {
-  const status = await git.status();
+  const status = await git.status(["--untracked-files=all"]);
   return status.files.length;
 }
 

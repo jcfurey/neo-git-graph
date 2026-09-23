@@ -33,7 +33,7 @@ import { logger } from "@/extension/util/logger";
 import { selectWatchedRepo } from "@/extension/watchers/git-repo.watcher";
 import { invalidateWorkspaceScan, scanWorkspaceRepos } from "@/extension/workspace-scan";
 import { AvatarManager } from "@/old-extension/avatarManager";
-import { encodeDiffDocUri } from "@/old-extension/diffDocProvider";
+import { encodeDiffBlobUri, encodeDiffDocUri } from "@/old-extension/diffDocProvider";
 import { ExtensionState } from "@/old-extension/extensionState";
 import type { RequestMessage, ResponseMessage } from "@/types";
 
@@ -199,6 +199,21 @@ export function registerMessageHandlers(
           (effect.left?.slice(0, 8) ?? "∅") +
           " ↔ " +
           (effect.right?.slice(0, 8) ?? "∅") +
+          ")",
+        { preview: true }
+      );
+    } else if (effect?.kind === "workingTreeDiff") {
+      await vscode.commands.executeCommand(
+        "vscode.diff",
+        encodeDiffBlobUri(msg.repo, effect.before, effect.left),
+        effect.workingPath
+          ? vscode.Uri.file(effect.workingPath)
+          : encodeDiffBlobUri(msg.repo, effect.after, effect.right),
+        effect.after +
+          " (" +
+          (effect.staged
+            ? vscode.l10n.t("Staged Changes")
+            : vscode.l10n.t("Working Tree Changes")) +
           ")",
         { preview: true }
       );

@@ -664,6 +664,76 @@ suite("Git Graph workflow UI", function () {
     await openRepo(repo);
   });
 
+  test("opens uncommitted files from the graph with separate staged and working diffs", async () => {
+    const dir = directory();
+    init(dir);
+    commit("file # spaces.txt", "committed\n", dir);
+    const file = "file # spaces.txt";
+    fs.writeFileSync(path.join(dir, file), "staged\n");
+    git(["add", "--", file], dir);
+    fs.writeFileSync(path.join(dir, file), "working\n");
+    fs.mkdirSync(path.join(dir, "new"));
+    fs.writeFileSync(path.join(dir, "new/a.txt"), "untracked\n");
+    fs.writeFileSync(path.join(dir, "new/b.txt"), "another\n");
+    await openRepo(dir);
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('tr[data-commit-hash="*"]')?.textContent.includes('Uncommitted Changes (3)')`
+        ),
+      "changed file count"
+    );
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="*"]').click()`);
+    const loaded = () =>
+      graph.evaluate(
+        `document.querySelectorAll('[data-working-tree-details] section').length === 3 && !document.querySelector('[aria-busy="true"]')`
+      );
+    await until(loaded, "grouped changes");
+    const screenshot = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "uncommitted-changes.png"),
+      Buffer.from(screenshot.data, "base64")
+    );
+
+    async function openFile(group, name, before, after, working) {
+      await graph.evaluate(`(() => {
+        const section = document.querySelector('section[aria-label=${JSON.stringify(group)}]');
+        [...section.querySelectorAll('button')].find(button => button.title === ${JSON.stringify(name)}).click();
+      })()`);
+      const input = await until(() => {
+        const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
+        return tab?.input instanceof vscode.TabInputTextDiff ? tab.input : null;
+      }, "native file diff");
+      const left = await vscode.workspace.openTextDocument(input.original);
+      const right = await vscode.workspace.openTextDocument(input.modified);
+      assert.equal(left.getText(), before);
+      assert.equal(right.getText(), after);
+      assert.equal(input.modified.scheme, working ? "file" : "neo-git-graph");
+      await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+      await openRepo(dir);
+      await until(loaded, "refreshed changes");
+    }
+
+    await openFile("Staged Changes", file, "committed\n", "staged\n", false);
+    await openFile("Unstaged Changes", file, "staged\n", "working\n", true);
+    await openFile("Untracked Files", "new/a.txt", "", "untracked\n", true);
+    // Reopening must resolve the new index blob even while old documents are cached.
+    git(["add", "--", file], dir);
+    fs.writeFileSync(path.join(dir, file), "working again\n");
+    await button("Refresh");
+    await until(loaded, "changed staged content");
+    await openFile("Staged Changes", file, "committed\n", "working\n", false);
+    await button("Close", 'document.querySelector("[data-details-row]")');
+    assert.equal(await graph.evaluate(`document.activeElement?.dataset.commitHash`), "*");
+    await graph.evaluate(
+      `document.activeElement.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true}))`
+    );
+    await until(loaded, "keyboard-opened changes");
+    assert.equal(git(["show", ":" + file], dir), "working");
+    assert.equal(fs.readFileSync(path.join(dir, file), "utf8"), "working again\n");
+    await openRepo(repo);
+  });
+
   test("configures remotes and upstreams, pushes/deletes tags, pops stashes, and manages worktrees", async () => {
     const bare = directory();
     git(["clone", "--bare", repo, bare]);

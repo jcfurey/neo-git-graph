@@ -452,5 +452,14 @@
   "Hide remote {0} from the graph": "在圖中隱藏遠端儲存庫 {0}",
   "Scroll graph horizontally": "水平捲動圖形",
   "Reveal selected lane": "顯示所選提交的軌道",
-  "Resize {0} column": "調整{0}欄寬"
+  "Resize {0} column": "調整{0}欄寬",
+  "Click or press Enter to view uncommitted changes.": "按一下或按 Enter 檢視未提交的變更。",
+  "Select a file to view its changes. Conflicted files open the merge editor.": "選取檔案以檢視變更。有衝突的檔案會在合併編輯器中開啟。",
+  "Unstaged Changes": "未暫存的變更",
+  "Staged Changes": "已暫存的變更",
+  "Untracked Files": "未追蹤的檔案",
+  "Conflicts": "衝突",
+  "No uncommitted changes.": "沒有未提交的變更。",
+  "Working Tree Changes": "工作目錄變更",
+  "The file's changes moved or disappeared. Refresh the graph and try again.": "檔案的變更已移動或消失。請重新整理圖形後再試一次。"
 }
