@@ -17,7 +17,9 @@ const requested = process.env.NGG_VSCODE_VERSION || "stable";
 const version = requested === "minimum" ? minimum : requested;
 const artifacts = resolvePath(process.env.NGG_ARTIFACTS || "test-results");
 // Each run gets a disposable repository and a free debugger port, including on CI.
-const runRoot = realpathSync.native(mkdtempSync(join(tmpdir(), "ngg-extension-tests-")));
+// macOS's default temp path can exceed VS Code's 103-byte IPC socket path limit.
+const tempRoot = process.platform === "darwin" ? "/tmp" : tmpdir();
+const runRoot = realpathSync.native(mkdtempSync(join(tempRoot, "ngg-extension-tests-")));
 const workspaceFolder = join(runRoot, "workspace");
 const logs = join(artifacts, "vscode-logs", basename(runRoot));
 mkdirSync(logs, { recursive: true });

@@ -50,15 +50,23 @@ it.each(["removed repository", "invalid Git executable"])(
 it.each(["show-ref", "log", "remote"])("propagates %s failures", async (command) => {
   const client = simpleGit(repo);
   const original = client.raw.bind(client);
+  const pending: PromiseLike<unknown>[] = [];
   vi.spyOn(client, "raw").mockImplementation((...args) => {
     if (Array.isArray(args[0]) && args[0][0] === command) {
       return Promise.reject(new Error("Git read denied")) as ReturnType<typeof client.raw>;
     }
-    return original(...args);
+    const task = original(...args);
+    pending.push(task);
+    return task;
   });
-  await expect(
-    loadCommits(client, { ...input, hiddenRemotes: command === "remote" ? ["origin"] : [] })
-  ).rejects.toThrow("Git read denied");
+  try {
+    await expect(
+      loadCommits(client, { ...input, hiddenRemotes: command === "remote" ? ["origin"] : [] })
+    ).rejects.toThrow("Git read denied");
+  } finally {
+    // A rejected Promise.all can leave sibling Git processes holding the repo open on Windows.
+    await Promise.allSettled(pending);
+  }
 });
 
 it("does not report a clean working tree when status fails", async () => {
