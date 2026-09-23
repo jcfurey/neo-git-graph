@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { HistoryEntry, RepositoryQueryData } from "@/backend/types";
 import { CommitRow } from "@/webview/components/commit/CommitRow";
-import { openBatch } from "@/webview/components/history/HistoryTools";
+import { openBatch, openRestoreFile } from "@/webview/components/history/HistoryTools";
 import { SearchBar } from "@/webview/components/history/SearchBar";
 import { RebaseEditor } from "@/webview/components/repository/RebaseEditor";
 import { Dialog } from "@/webview/components/ui/Dialog";
@@ -207,6 +207,52 @@ describe("history navigation and query lifetime", () => {
 });
 
 describe("previews, background actions and progress", () => {
+  it("waits for the native restore preview to finish before accepting another action", () => {
+    const plan = {
+      source: "a".repeat(40),
+      sourcePath: "old.txt",
+      destination: "current.txt",
+      snapshot: "snapshot",
+      dirty: false
+    };
+    openRestoreFile(plan.source, plan.sourcePath, plan.destination);
+    const form = dialog.value;
+    if (form?.kind !== "form") {
+      throw new Error("Expected restore form");
+    }
+    form.onSubmit([plan.destination]);
+    respond({ kind: "restorePlan", plan });
+    act(() => render(h(Dialog, {}), container));
+    const original = dialog.value;
+    const controls = () =>
+      [...container.querySelectorAll("button")].filter((button) =>
+        ["restorePreview", "restoreHistoricalFile"].includes(button.textContent!)
+      );
+    expect(controls()).toHaveLength(2);
+    expect(controls().every((button) => !button.disabled)).toBe(true);
+    click("restorePreview");
+    const preview = lastRequest();
+    expect(preview.action).toEqual({ kind: "previewFileRestore", plan });
+    expect(dialog.value).toBe(original);
+    expect(controls().every((button) => button.disabled)).toBe(true);
+    vscodeApi.postMessage.mockClear();
+    click("restorePreview");
+    click("restoreHistoricalFile");
+    expect(vscodeApi.postMessage).not.toHaveBeenCalled();
+    act(() =>
+      handleActionResult({
+        command: "repositoryAction",
+        requestId: preview.requestId,
+        repo: preview.repo,
+        status: null
+      })
+    );
+    expect(dialog.value).toBe(original);
+    expect(controls().every((button) => !button.disabled)).toBe(true);
+    click("restoreHistoricalFile");
+    expect(lastRequest().action).toEqual({ kind: "restoreFile", plan });
+  });
+
   it("keeps comparison open when a native diff finishes", () => {
     openContentDialog("Comparison", "files");
     const original = dialog.value;

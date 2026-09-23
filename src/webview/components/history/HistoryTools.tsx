@@ -11,6 +11,7 @@ import { Button } from "@/webview/components/ui/Button";
 import { Checkbox } from "@/webview/components/ui/Checkbox";
 import { Select } from "@/webview/components/ui/Select";
 import { closeDialog, openContentDialog, openFormDialog } from "@/webview/lib/actions";
+import { activity } from "@/webview/lib/activity";
 import {
   emptyFilter,
   focusHistory,
@@ -271,6 +272,8 @@ export function openFileHistory(file: string, revision = "") {
 }
 
 function RestorePreview({ plan, repo }: { plan: FileRestorePlan; repo: string }) {
+  // The native diff can become visible before the extension finishes opening it.
+  const busy = activity.value.some((entry) => entry.repo === repo && entry.finished === null);
   return (
     <div class="space-y-3 text-left">
       <p>
@@ -289,11 +292,15 @@ function RestorePreview({ plan, repo }: { plan: FileRestorePlan; repo: string })
         </p>
       )}
       <div class="flex flex-wrap gap-2">
-        <Button onClick={() => sendRepositoryAction({ kind: "previewFileRestore", plan }, repo)}>
+        <Button
+          disabled={busy}
+          onClick={() => sendRepositoryAction({ kind: "previewFileRestore", plan }, repo)}
+        >
           {window.l10n.restorePreview}
         </Button>
         <Button
           variant="primary"
+          disabled={busy}
           onClick={() => sendRepositoryAction({ kind: "restoreFile", plan }, repo)}
         >
           {window.l10n.restoreHistoricalFile}
