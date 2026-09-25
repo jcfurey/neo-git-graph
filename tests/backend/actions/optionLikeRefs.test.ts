@@ -1,5 +1,6 @@
 import * as cp from "node:child_process";
 import * as fs from "node:fs";
+import * as path from "node:path";
 
 import { simpleGit } from "simple-git";
 import { afterEach, describe, expect, it } from "vitest";
@@ -150,11 +151,13 @@ describe("refs whose names look like options", () => {
 
   it("merges the branch named -D and names the merge after it", async () => {
     const { repo, tips } = fixture();
+    // A case-insensitive filesystem resolves the short name -D to the loose tag -d first.
+    const shadowed = fs.existsSync(path.join(repo, ".git", "refs", "tags", "-D"));
     await mergeBranch(simpleGit(repo), { branchName: "-D", createNewCommit: true });
     expect(rev(repo, "HEAD^2")).toBe(tips["refs/heads/-D"]);
     expect(
       cp.execFileSync("git", ["log", "-1", "--format=%s"], { cwd: repo }).toString().trim()
-    ).toBe("Merge branch '-D'");
+    ).toBe(shadowed ? "Merge branch 'refs/heads/-D'" : "Merge branch '-D'");
   });
 
   it("merges a branch, not a tag with the same name", async () => {

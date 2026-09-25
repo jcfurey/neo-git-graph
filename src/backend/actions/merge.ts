@@ -3,18 +3,16 @@ import type { SimpleGit } from "simple-git";
 import type { ActionPayload } from "@/backend/types";
 
 /**
- * Git names the merge commit after the argument, so keep the short name unless Git would resolve
- * it to another ref first: a root ref such as `HEAD`, `refs/<name>`, or a same-named tag.
+ * Git names the merge commit after the argument, so keep the short name only when Git resolves it
+ * to the branch. A same-named tag, `refs/<name>`, or on a case-insensitive filesystem a tag that
+ * differs only in case, would take precedence over the branch.
  */
 async function branchArgument(git: SimpleGit, branch: string) {
   const ref = `refs/heads/${branch}`;
-  const earlier = [`refs/${branch}`, `refs/tags/${branch}`];
-  const shadowed =
-    /^[A-Z_]+$/.test(branch) ||
-    (await git.raw(["for-each-ref", "--format=%(refname)", ...earlier]))
-      .split("\n")
-      .some((name) => earlier.includes(name));
-  return shadowed ? ref : branch;
+  const resolved = await git
+    .raw(["rev-parse", "--verify", "--quiet", "--symbolic-full-name", "--end-of-options", branch])
+    .catch(() => "");
+  return resolved.trim() === ref ? branch : ref;
 }
 
 export async function mergeBranch(
