@@ -1578,26 +1578,28 @@ suite("Git Graph workflow UI", function () {
     const dir = directory();
     init(dir);
     commit("base", "retry-graph-base", dir);
+    // The repository watcher refreshes the graph when .git/config changes. Break an included
+    // file outside the repository instead, so only Refresh and Retry reload the graph.
+    const included = path.join(directory(), "included.gitconfig");
+    fs.writeFileSync(included, "[core]\n");
+    git(["config", "include.path", included], dir);
     await openRepo(dir);
-    const config = path.join(dir, ".git", "config");
-    const original = fs.readFileSync(config, "utf8");
     try {
-      fs.writeFileSync(config, original + "\n[invalid config\n");
+      fs.writeFileSync(included, "[invalid config\n");
       await button("Refresh");
       await until(
-        () => graph.evaluate('!!document.querySelector("[data-graph-error] [role=alert]")'),
+        () =>
+          graph.evaluate(
+            'document.querySelector("[data-graph-error] [role=alert]") !== null && /Unable to load Git Graph/.test(document.querySelector("[data-graph-error]").innerText)'
+          ),
         "recoverable graph error"
-      );
-      assert.match(
-        await graph.evaluate('document.querySelector("[data-graph-error]").innerText'),
-        /Unable to load Git Graph/
       );
       assert.doesNotMatch(
         await graph.evaluate('document.querySelector("main").innerText'),
         /No commits yet/
       );
     } finally {
-      fs.writeFileSync(config, original);
+      fs.writeFileSync(included, "[core]\n");
     }
     await button("Retry", 'document.querySelector("[data-graph-error]")');
     await until(
