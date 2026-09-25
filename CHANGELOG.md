@@ -42,6 +42,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Fixed
 
+- Recognize repositories by Git's output and exit status instead of English or German "not a repository" text, so scanning behaves the same in every language.
 - Accept a `git.path` that contains spaces or parentheses, such as `C:\Program Files\Git\bin\git.exe`, or lists several paths, and prefer the Git that VS Code's own Git extension found.
 - Stop background reads from rewriting or locking the index while you commit, and keep refreshing the graph after reads; only actions that change a repository pause its file watcher.
 - Detect merge conflicts from Git's exit status instead of its English output, so a conflicted merge in another language is no longer reported as successful, and explain how to continue or abort it.

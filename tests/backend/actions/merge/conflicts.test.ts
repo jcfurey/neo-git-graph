@@ -75,8 +75,15 @@ it.each(binaries)("reports a conflicted merge with %s output", async (_, binary)
 
 it("reports other merge failures with Git's own message", async () => {
   fs.writeFileSync(path.join(repo, "f"), "uncommitted");
-  await expect(
-    mergeBranch(createGit(repo, "git"), { branchName: "topic", createNewCommit: true }, "git")
-  ).rejects.toThrow(/overwritten/);
+  const error = await mergeBranch(
+    createGit(repo, "git"),
+    { branchName: "topic", createNewCommit: true },
+    "git"
+  ).catch((reason: unknown) => reason);
+  // Git's message is in the user's language, so only check that it is Git's, not ours.
+  expect(error).toBeInstanceOf(Error);
+  expect((error as Error).message).not.toContain("The merge stopped on conflicts");
+  expect((error as Error).message.trim()).not.toBe("");
+  expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe("uncommitted");
   expect(fs.existsSync(path.join(repo, ".git", "MERGE_HEAD"))).toBe(false);
 });

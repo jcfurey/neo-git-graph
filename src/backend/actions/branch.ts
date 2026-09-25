@@ -60,5 +60,5 @@ export async function checkoutBranch(
   }
 
   await git.checkout(input.branchName);
-  await git.merge(["--ff-only", `refs/remotes/${input.remoteBranch}`]);
+  await git.raw(["merge", "--ff-only", `refs/remotes/${input.remoteBranch}`]);
 }

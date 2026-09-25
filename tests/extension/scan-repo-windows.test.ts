@@ -16,8 +16,8 @@ vi.mock("vscode", () => ({
     getConfiguration: () => ({ get: (_key: string, defaultValue: unknown) => defaultValue })
   }
 }));
-vi.mock("simple-git", () => ({ simpleGit: () => ({ checkIsRepo: async () => true }) }));
 vi.mock("@/backend/utils/git", () => ({
+  isGitRepository: async () => true,
   getSubmodulePaths: async (repo: string) =>
     repo === "c:/workspace" ? ["C:/workspace/child module"] : []
 }));

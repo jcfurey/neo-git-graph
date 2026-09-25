@@ -1,11 +1,25 @@
+import type { SimpleGit } from "simple-git";
+
 import { createGit } from "@/backend/gitClient";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 
-export async function isGitRepository(repoPath: string, gitPath: string): Promise<boolean> {
+/**
+ * Whether Git runs inside a work tree. Git reports "not a repository" in the user's language, so
+ * the answer comes from the output and exit status alone, as Git recommends for scripts.
+ */
+export function isWorkTree(git: SimpleGit): Promise<boolean> {
+  return git.raw(["rev-parse", "--is-inside-work-tree"]).then(
+    (output) => output.trim() === "true",
+    () => false
+  );
+}
+
+export function isGitRepository(repoPath: string, gitPath: string): Promise<boolean> {
   try {
-    return await createGit(repoPath, gitPath).checkIsRepo();
+    return isWorkTree(createGit(repoPath, gitPath));
   } catch {
-    return false;
+    // The client rejects a directory that does not exist.
+    return Promise.resolve(false);
   }
 }
 

@@ -72,12 +72,24 @@ jobs:
       - name: Run tests
         run: pnpm run test
 
-      # Settings such as log.showSignature and color.ui=always must not change parsed output.
-      - name: Run backend and extension tests with a hostile Git configuration
+      # Git translates its messages but not its plumbing, porcelain, or -z output, and reports
+      # failures through its exit status. Parsing must not depend on the user's configuration,
+      # such as log.showSignature or color.ui=always, or on the language of Git's messages.
+      - name: Run backend and extension tests with a hostile Git configuration in German
         if: runner.os == 'Linux'
         env:
           NGG_HOSTILE_GIT_CONFIG: "1"
-        run: pnpm exec vitest run --project backend --project extension
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends language-pack-de
+          # Ubuntu ships Git's translations in the language pack.
+          if [ ! -f /usr/share/locale/de/LC_MESSAGES/git.mo ]; then
+            export GIT_TEXTDOMAINDIR=/usr/share/locale-langpack
+          fi
+          export LANG=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 LANGUAGE=de
+          # Stop unless Git really speaks German, so the step cannot pass in English.
+          git -C "$(mktemp -d)" rev-parse --git-dir 2>&1 | grep "Kein Git-Repository"
+          pnpm exec vitest run --project backend --project extension
 
       - name: Run extension and UI tests (Linux)
         if: runner.os == 'Linux'

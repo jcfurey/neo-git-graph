@@ -3,8 +3,7 @@ import path from "node:path";
 
 import * as vscode from "vscode";
 
-import { createGit } from "@/backend/gitClient";
-import { getSubmodulePaths } from "@/backend/utils/git";
+import { getSubmodulePaths, isGitRepository } from "@/backend/utils/git";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { extConfig } from "@/extension/config";
 import { logger } from "@/extension/util/logger";
@@ -34,12 +33,7 @@ async function scanDirectory(
   directory: string,
   depth: number
 ): Promise<GitRepo[]> {
-  const isRepo = await createGit(directory, gitBinary)
-    .checkIsRepo()
-    .catch((error: unknown) => {
-      logger.warn(`Failed to check Git repository: ${directory}; Git binary: ${gitBinary}`, error);
-      return false;
-    });
+  const isRepo = await isGitRepository(directory, gitBinary);
 
   if (isRepo) {
     const submodules = await getSubmodulePaths(directory, gitBinary);

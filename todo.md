@@ -82,35 +82,26 @@ improvements rather than confirmed defects.
       Sources: [diff document provider](src/old-extension/diffDocProvider.ts),
       [registration](src/extension/legacy.ts).
 
-- [ ] **Neutralize user Git configuration and locale in parsed Git output.** Backend processes
-      inherit `log.showSignature`, `color.ui=always`, and the user's locale. **Reproduced:** with
-      `log.showSignature=true`, the graph stops at the first signed commit with no Load more,
-      details for signed commits do not open, history search and the push, pull, and batch previews
-      fail, and the rebase editor shows signature text as part of the message. `color.ui=always`
-      corrupts the branch list and adds ANSI codes to stash patches; with it in the global
-      configuration, 18 backend tests fail. Simulated German `git branch` output produces a phantom
-      `(HEAD` branch.
-      **Accept:** every parsed Git process runs with `log.showSignature=false`, `color.ui=never`,
-      and a fixed locale, through both the simple-git client configuration and `runGit`. A
-      signed-commit test covers the graph, details, history, sync and batch plans, rebase messages,
-      and bisect subjects. Unit and VS Code tests run with a fixture global configuration and
-      `GIT_CONFIG_NOSYSTEM=1`, and a CI job runs the backend suite with a hostile configuration and a
-      non-English locale. The `LANG` pin is removed from the branch test.
-      **Partly done 2026-09-25:** the simple-git client and `runGit` pass `log.showSignature=false`,
+- [x] **Neutralize user Git configuration and locale in parsed Git output.** Completed 2026-09-25,
+      following Git's own convention instead of a fixed locale: Git translates messages meant for
+      people, but not plumbing output, `--porcelain` and `-z` formats, or exit statuses. Users
+      therefore keep Git's messages in their language, and the backend never parses message
+      text. The simple-git client and `runGit` pass `log.showSignature=false`,
       `status.showUntrackedFiles=all`, and `never` for `color.ui` and the per-command color
       settings. Git hands these to its child processes, which also stops `worktree remove` from
-      deleting a worktree whose untracked files `status.showUntrackedFiles=no` hid. Backend tests
-      use the product client, unit and VS Code tests read `tests/fixtures/gitconfig` with
-      `GIT_CONFIG_NOSYSTEM=1`, and Linux CI reruns the backend and extension suites with
-      `tests/fixtures/hostile.gitconfig`. A signed-commit test covers the graph, details, history,
+      deleting untracked files that `status.showUntrackedFiles=no` hid. Branch listing reads
+      `for-each-ref`, merges judge conflicts by exit status, and repository detection reads
+      `rev-parse --is-inside-work-tree` output instead of simple-git's check for English or German
+      "not a repository" text. A fixed locale was rejected: simple-git refuses a custom environment
+      that contains `EDITOR`, `PAGER`, or `GIT_ASKPASS`, and it would show every user Git's errors
+      in English.
+      **Verified:** backend tests use the product client, and unit and VS Code tests read
+      `tests/fixtures/gitconfig` with `GIT_CONFIG_NOSYSTEM=1`. Linux CI reruns the backend and
+      extension suites with `tests/fixtures/hostile.gitconfig` and German Git messages, and fails
+      if Git's messages are not German. A signed-commit test covers the graph, details, history,
       sync and batch plans, rebase messages, and bisect subjects; without the overrides the graph
-      loads no commits. The `LANG` pin is gone.
-      **Remaining:** a fixed locale. simple-git rejects a custom environment that contains
-      `EDITOR`, `PAGER`, `GIT_ASKPASS`, or `SSH_ASKPASS`, and forcing `LC_ALL=C` would also
-      show Git's own error messages in English. The known locale-dependent parsers are branch
-      listing (fixed with `for-each-ref`) and merge conflict detection (the next P2 item), so
-      decide whether a fixed locale is still wanted. A non-English CI run would also need tests
-      that match Git's English error text, such as "would be overwritten", to stop doing so.
+      loads no commits. Tests assert Git's failures by behavior rather than English wording, and
+      the `LANG` pin is gone. All 287 backend and extension tests pass locally in German.
       Sources: [Git client](src/backend/gitClient.ts), [runGit](src/backend/utils/runGit.ts),
       [test helpers](tests/backend/helpers.ts).
 
