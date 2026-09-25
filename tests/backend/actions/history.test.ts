@@ -166,6 +166,51 @@ describe("file restoration", () => {
     );
     expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe("new local edits");
   });
+
+  it.each(["a submodule", "an uninitialized submodule", "an untracked clone", "an ignored clone"])(
+    "refuses to restore through %s and leaves its file unchanged",
+    async (kind) => {
+      fs.mkdirSync(path.join(repo, "vendor"));
+      const vendored = commit("vendor/x", "superproject history", "vendor a file");
+      read(["rm", "-r", "-q", "--", "vendor"]);
+      read(["commit", "-m", "unvendor"]);
+      const nested = makeRepo();
+      dirs.push(nested);
+      commit("x", "nested history", "nested file", nested);
+      if (kind.endsWith("submodule")) {
+        read(["-c", "protocol.file.allow=always", "submodule", "add", "-q", nested, "vendor"]);
+        read(["commit", "-m", "add submodule"]);
+        if (kind === "an uninitialized submodule") {
+          read(["submodule", "deinit", "-q", "-f", "--", "vendor"]);
+        }
+      } else {
+        read(["clone", "-q", nested, "vendor"]);
+        if (kind === "an ignored clone") {
+          commit(".gitignore", "vendor/\n", "ignore vendor");
+        }
+      }
+      const local = path.join(repo, "vendor", "x");
+      if (kind !== "an uninitialized submodule") {
+        fs.writeFileSync(local, "uncommitted nested edits");
+      }
+      const plan = {
+        source: vendored,
+        sourcePath: "vendor/x",
+        destination: "vendor/x",
+        snapshot: "",
+        dirty: false
+      };
+
+      await expect(loadRestorePlan(git(), vendored, "vendor/x", "vendor/x")).rejects.toThrow(
+        "nested repository"
+      );
+      await expect(run({ kind: "previewFileRestore", plan })).rejects.toThrow("nested repository");
+      await expect(run({ kind: "restoreFile", plan })).rejects.toThrow("nested repository");
+      expect(fs.existsSync(local) && fs.readFileSync(local, "utf8")).toBe(
+        kind === "an uninitialized submodule" ? false : "uncommitted nested edits"
+      );
+    }
+  );
 });
 
 describe("ordered actions and fixup", () => {

@@ -377,6 +377,7 @@
   "Git returned an unexpected history record.": "Git 傳回了非預期的歷史紀錄。",
   "Choose a file path inside the repository.": "請選擇儲存庫內的檔案路徑。",
   "A parent of this file is not a normal directory.": "此檔案的某個上層路徑不是一般目錄。",
+  "This file is inside a submodule or nested repository. Open that repository instead.": "此檔案位於子模組或巢狀儲存庫中。請改為開啟該儲存庫。",
   "Choose a file, not a directory.": "請選擇檔案，而不是目錄。",
   "This submodule pointer changed or is conflicted. Refresh the workspace.": "此子模組指標已變更或存在衝突。請重新整理工作區。",
   "Initialize the submodule before inspecting its commits.": "請先初始化子模組，再檢視其提交。",

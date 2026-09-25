@@ -42,6 +42,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Fixed
 
+- Refuse to restore a file into a submodule or nested repository, where the superproject cannot see or warn about local edits.
 - Pass existing branch and tag names to Git so that names such as `-d` or `--output=x`, which fetches can create, are never read as options, and filter or merge a branch rather than a tag with the same name.
 - Open `neo-git-graph:` documents only for full object IDs in repositories the extension has opened, so links and other extensions cannot pass options such as `--output` to `git show`.
 - Make uncommitted changes keyboard accessible, restore focus when closing details, count individual untracked files, and remove placeholder commit metadata from the changes row.

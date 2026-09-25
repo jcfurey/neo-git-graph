@@ -377,6 +377,7 @@
   "Git returned an unexpected history record.": "Git 返回了意外的历史记录。",
   "Choose a file path inside the repository.": "请选择仓库内的文件路径。",
   "A parent of this file is not a normal directory.": "此文件的某个上级路径不是普通目录。",
+  "This file is inside a submodule or nested repository. Open that repository instead.": "此文件位于子模块或嵌套仓库中。请改为打开该仓库。",
   "Choose a file, not a directory.": "请选择文件，而不是目录。",
   "This submodule pointer changed or is conflicted. Refresh the workspace.": "此子模块指针已更改或存在冲突。请刷新工作区。",
   "Initialize the submodule before inspecting its commits.": "请先初始化子模块，再查看其提交。",

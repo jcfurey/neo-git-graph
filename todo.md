@@ -16,15 +16,15 @@ improvements rather than confirmed defects.
 
 ## P1 — Data safety, security, and correctness
 
-- [ ] **Refuse to restore a file through a submodule or nested repository.** Restore File Contents
-      writes into a nested repository's work tree when a parent of the destination is a submodule
-      or an untracked or ignored nested clone. The superproject's `git status` cannot see the nested
-      file, so no local-changes warning appears. **Reproduced:** uncommitted edits to `vendor/x`,
-      inside both a submodule and an untracked clone, were replaced by the superproject's
-      historical content without a warning.
-      **Accept:** planning and restoring reject a destination below a gitlink or below a directory
-      containing `.git`. Backend tests cover a submodule, an untracked nested clone, and an ignored
-      nested clone, and assert that the nested file is unchanged.
+- [x] **Refuse to restore a file through a submodule or nested repository.** Completed
+      2026-09-25. The shared work-tree path check, used by planning, previewing, and restoring,
+      rejects a destination whose parent directory contains `.git` or has a gitlink in the index,
+      which also covers a submodule that is not checked out. The error asks the user to open that
+      repository instead.
+      **Verified:** backend tests cover a checked-out submodule, an uninitialized submodule, an
+      untracked nested clone, and an ignored nested clone. Planning, preview, and restore each
+      reject the destination, and the nested file keeps its uncommitted edits. All four tests fail
+      against the previous check.
       Sources: [path checks](src/backend/utils/history.ts),
       [restore plan](src/backend/queries/history.ts), [restore action](src/backend/actions/history.ts).
 

@@ -75,13 +75,20 @@ export function repoFile(value: string) {
 
 export const literalPath = (value: string) => ":(literal)" + repoFile(value);
 
-/** Refuse traversal through a symlink; Git may create missing parent directories. */
+/**
+ * Refuse traversal through a symlink, a submodule, or a nested repository: the superproject's
+ * status cannot see local changes inside another repository. Git may create missing parent
+ * directories.
+ */
 export async function checkedWorktreePath(git: SimpleGit, file: string) {
   const root = (await git.raw(["rev-parse", "--show-toplevel"])).replace(/\n$/, "");
   const relative = repoFile(file);
-  let directory = root;
-  for (const part of relative.split("/").slice(0, -1)) {
-    directory = path.join(directory, part);
+  const parents = relative
+    .split("/")
+    .slice(0, -1)
+    .map((_, index, parts) => parts.slice(0, index + 1).join("/"));
+  for (const parent of parents) {
+    const directory = path.join(root, parent);
     try {
       // Validate each ancestor before inspecting anything below it.
       // eslint-disable-next-line no-await-in-loop
@@ -89,13 +96,37 @@ export async function checkedWorktreePath(git: SimpleGit, file: string) {
       if (!stat.isDirectory() || stat.isSymbolicLink()) {
         throw new Error(l10n.t("A parent of this file is not a normal directory."));
       }
+      // eslint-disable-next-line no-await-in-loop
+      if (await lstat(path.join(directory, ".git")).then(Boolean, () => false)) {
+        throw nestedRepositoryError();
+      }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
         throw error;
       }
     }
   }
+  // An index entry at a parent path is a gitlink, which marks a submodule even before it is
+  // checked out, or a file whose directory would replace it.
+  const entries = await Promise.all(
+    parents.map((parent) =>
+      git.raw(["rev-parse", "--verify", "--quiet", `:0:${parent}`]).catch(() => "")
+    )
+  );
+  const entry = parents.find((_, index) => entries[index]!.trim() !== "");
+  if (entry !== undefined) {
+    const stage = await git.raw(["ls-files", "--stage", "-z", "--", literalPath(entry)]);
+    throw stage.startsWith("160000 ")
+      ? nestedRepositoryError()
+      : new Error(l10n.t("A parent of this file is not a normal directory."));
+  }
   return path.join(root, relative);
+}
+
+function nestedRepositoryError() {
+  return new Error(
+    l10n.t("This file is inside a submodule or nested repository. Open that repository instead.")
+  );
 }
 
 export async function fileSnapshot(git: SimpleGit, file: string) {

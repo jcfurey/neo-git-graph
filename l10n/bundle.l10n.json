@@ -410,6 +410,7 @@
   "Git returned an unexpected history record.": "Git returned an unexpected history record.",
   "Choose a file path inside the repository.": "Choose a file path inside the repository.",
   "A parent of this file is not a normal directory.": "A parent of this file is not a normal directory.",
+  "This file is inside a submodule or nested repository. Open that repository instead.": "This file is inside a submodule or nested repository. Open that repository instead.",
   "Choose a file, not a directory.": "Choose a file, not a directory.",
   "This submodule pointer changed or is conflicted. Refresh the workspace.": "This submodule pointer changed or is conflicted. Refresh the workspace.",
   "Initialize the submodule before inspecting its commits.": "Initialize the submodule before inspecting its commits.",
