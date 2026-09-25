@@ -41,18 +41,17 @@ improvements rather than confirmed defects.
       Sources: [restore plan](src/backend/queries/history.ts),
       [snapshot](src/backend/utils/history.ts).
 
-- [ ] **Read commit-detail file lists with `-z`.** Commit details parse `diff-tree` output without
-      `-z`, so Git C-quotes non-ASCII names and names containing tabs, quotes, or backslashes, and
-      `toPath` then turns each backslash into `/`. Diffs, Open at Revision, File History, and
-      Restore all fail for these files, and their line counts are missing. Working-tree index
-      lookups have a related problem: they build `:<path>`, so a file named `0:foo` resolves to
-      stage 0 of `foo`. **Reproduced:** `中文.txt` is listed as `"/344/270/255/346/226/207.txt"`
-      and `café.md` as `"caf/303/251.md"`, and restore planning rejects both; the diff of a tracked
-      `0:foo` showed the blob of `foo`.
-      **Accept:** commit details use NUL-delimited parsing, including renames. Tests use CJK,
-      accented, tab, quote, newline, and (on non-Windows) backslash names, plus a rename into a
-      Unicode directory; they assert exact paths and counts and check that diff, open, history, and
-      restore work for these names. Index lookups use `:0:<path>`.
+- [x] **Read commit-detail file lists with `-z`.** Completed 2026-09-25. Commit details parse
+      NUL-delimited `diff-tree` records for names and line counts, including renames, stop at a
+      merge's second parent section as before, and report binary files without counts. The
+      backslash-to-slash conversion is gone, and revisions follow `--end-of-options`. Working-tree
+      index lookups use `:0:<path>`.
+      **Verified:** a backend test commits CJK, accented, and (except on Windows) tab, quote,
+      newline, backslash, and `0:foo` names plus a rename into a Unicode directory. It asserts exact
+      paths and line counts, and that `<commit>:<path>` documents, Open at Revision, File History,
+      and restore planning work for each name. A working-tree test shows a staged `0:foo` diffs
+      against its own index entry. Merges and empty commits keep their file lists, and the VS Code
+      URI round-trip test covers `%`, Unicode, quotes, newlines, and backslashes.
       Sources: [commit details](src/backend/queries/commitDetails.ts),
       [working-tree diffs](src/backend/actions/workingTree.ts).
 

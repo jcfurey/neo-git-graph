@@ -6,11 +6,14 @@ import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { commitDetails } from "@/backend/queries/commitDetails";
+import { loadHistory, loadRestorePlan, sourceFile } from "@/backend/queries/history";
 
 import { git, makeRepo } from "@tests/backend/helpers";
 
 let repo: string;
 let commitHash: string;
+const byName = (a: { newFilePath: string }, b: { newFilePath: string }) =>
+  a.newFilePath < b.newFilePath ? -1 : 1;
 
 beforeAll(() => {
   repo = makeRepo();
@@ -98,5 +101,116 @@ describe("commitDetails", () => {
   it("body contains the commit message", async () => {
     const result = await commitDetails(simpleGit(repo), { commitHash, dateType: "Author Date" });
     expect(result.commitDetails!.body).toContain("init");
+  });
+
+  it("keeps exact names, renames, and line counts for unusual file names", async () => {
+    const dir = makeRepo();
+    // Windows does not allow tabs, quotes, newlines, or backslashes in file names.
+    const names = [
+      "中文.txt",
+      "café.md",
+      ...(process.platform === "win32"
+        ? []
+        : ["tab\tname", 'quote"name', "new\nline", "back\\slash", "0:foo"])
+    ];
+    try {
+      fs.writeFileSync(path.join(dir, "old.txt"), "moved\n");
+      git(["add", "--", "old.txt"], dir);
+      git(["commit", "-m", "before"], dir);
+      for (const name of names) {
+        fs.writeFileSync(path.join(dir, name), "one\ntwo\n");
+      }
+      fs.writeFileSync(path.join(dir, "binary.dat"), Buffer.from([0, 1, 2]));
+      fs.mkdirSync(path.join(dir, "目录"));
+      git(["mv", "old.txt", "目录/新.txt"], dir);
+      git(["add", "-A"], dir);
+      git(["commit", "-m", "unusual names"], dir);
+      const hash = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: dir }).toString().trim();
+      const client = simpleGit({ baseDir: dir, trimmed: false });
+
+      const { fileChanges } = (
+        await commitDetails(client, {
+          commitHash: hash,
+          dateType: "Author Date"
+        })
+      ).commitDetails!;
+      expect(fileChanges.toSorted(byName)).toEqual(
+        [
+          ...names.map((name) => ({
+            oldFilePath: name,
+            newFilePath: name,
+            type: "A",
+            additions: 2,
+            deletions: 0
+          })),
+          {
+            oldFilePath: "binary.dat",
+            newFilePath: "binary.dat",
+            type: "A",
+            additions: null,
+            deletions: null
+          },
+          {
+            oldFilePath: "old.txt",
+            newFilePath: "目录/新.txt",
+            type: "R",
+            additions: 0,
+            deletions: 0
+          }
+        ].toSorted(byName)
+      );
+
+      await Promise.all(
+        [...names, "目录/新.txt"].map(async (name) => {
+          // The diff and Open at Revision documents read `<commit>:<path>`.
+          expect(await client.show(["--end-of-options", `${hash}:${name}`])).toBe(
+            name === "目录/新.txt" ? "moved\n" : "one\ntwo\n"
+          );
+          expect((await sourceFile(client, hash, name)).hash).toBe(hash);
+          const history = await loadHistory(
+            client,
+            {
+              text: "",
+              author: "",
+              since: "",
+              until: "",
+              path: name,
+              revision: "",
+              follow: false
+            },
+            0
+          );
+          expect(history.entries[0]?.hash).toBe(hash);
+          expect((await loadRestorePlan(client, hash, name, name)).destination).toBe(name);
+        })
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("lists the first parent's changes for a merge and none for an empty commit", async () => {
+    const dir = makeRepo();
+    try {
+      git(["checkout", "-b", "side"], dir);
+      fs.writeFileSync(path.join(dir, "side"), "side\n");
+      git(["add", "side"], dir);
+      git(["commit", "-m", "side"], dir);
+      git(["checkout", "main"], dir);
+      fs.writeFileSync(path.join(dir, "main"), "main\n");
+      git(["add", "main"], dir);
+      git(["commit", "-m", "main"], dir);
+      git(["merge", "--no-edit", "side"], dir);
+      const client = simpleGit(dir);
+      const merge = (await commitDetails(client, { commitHash: "HEAD", dateType: "Author Date" }))
+        .commitDetails!;
+      expect(merge.fileChanges.map((change) => change.newFilePath)).toEqual(["side"]);
+      git(["commit", "--allow-empty", "-m", "empty"], dir);
+      const empty = (await commitDetails(client, { commitHash: "HEAD", dateType: "Author Date" }))
+        .commitDetails!;
+      expect(empty.fileChanges).toEqual([]);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

@@ -15,10 +15,23 @@ import {
 
 suite("History documents", () => {
   test("round-trips reserved URI characters in repository and file paths", () => {
-    const repo = "/tmp/repo #? with spaces";
-    const file = "folder/odd #?\tname.txt";
-    const uri = vscode.Uri.parse(encodeDiffDocUri(repo, file, "a".repeat(40)).toString());
-    assert.deepStrictEqual(decodeDiffDocUri(uri), { repo, filePath: file, commit: "a".repeat(40) });
+    const repo = "/tmp/repo #?% with spaces 中文";
+    // Windows paths use backslashes as separators, so only other systems keep one in a name.
+    const files = [
+      "folder/odd #?\tname.txt",
+      "percent %41 and %.txt",
+      "目录/café.md",
+      'quote"and\nnewline',
+      ...(process.platform === "win32" ? [] : ["back\\slash"])
+    ];
+    for (const file of files) {
+      const uri = vscode.Uri.parse(encodeDiffDocUri(repo, file, "a".repeat(40)).toString());
+      assert.deepStrictEqual(decodeDiffDocUri(uri), {
+        repo,
+        filePath: file,
+        commit: "a".repeat(40)
+      });
+    }
   });
 
   test("loads simultaneous comparisons from their own repositories", async () => {

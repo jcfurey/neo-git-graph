@@ -101,6 +101,26 @@ it("keeps rename paths and special characters intact", async () => {
   });
 });
 
+// Windows does not allow a colon in a file name.
+it.skipIf(process.platform === "win32")(
+  "reads the index entry of a file named like a stage, not the staged file it names",
+  async () => {
+    write("foo", "foo");
+    write("0:foo", "committed");
+    run("add", "--", "foo", "0:foo");
+    run("commit", "-m", "stage-like name");
+    write("0:foo", "staged");
+    run("add", "--", "0:foo");
+    write("0:foo", "working");
+    expect(await view("0:foo", "staged")).toMatchObject({
+      left: run("rev-parse", "HEAD:0:foo"),
+      right: run("rev-parse", ":0:0:foo")
+    });
+    expect(await view("0:foo", "unstaged")).toMatchObject({ left: run("rev-parse", ":0:0:foo") });
+    expect(run("rev-parse", ":0:0:foo")).not.toBe(run("rev-parse", ":0:foo"));
+  }
+);
+
 it("opens additions and deletions against an empty side without changing the index", async () => {
   const original = run("rev-parse", "HEAD:f");
   fs.unlinkSync(path.join(repo, "f"));

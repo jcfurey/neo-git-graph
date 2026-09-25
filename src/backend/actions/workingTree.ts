@@ -8,9 +8,12 @@ import { loadWorkingTree } from "@/backend/queries/workingTree";
 import type { WorkingTreeGroup } from "@/backend/types";
 import { checkedWorktreePath, literalPath } from "@/backend/utils/history";
 
-/** Resolve index and HEAD contents to immutable blobs so reopened diffs cannot be stale. */
+/**
+ * Resolve index and HEAD contents to immutable blobs so reopened diffs cannot be stale. The
+ * index is named by stage: `:<path>` would read a file named `0:foo` as stage 0 of `foo`.
+ */
 async function objectAt(git: SimpleGit, revision: string, file: string) {
-  return (await git.raw(["rev-parse", "--verify", `${revision}:${file}`])).trim();
+  return (await git.raw(["rev-parse", "--verify", `${revision || ":0"}:${file}`])).trim();
 }
 
 export async function viewWorkingTreeFile(
