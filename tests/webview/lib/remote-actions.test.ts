@@ -227,4 +227,60 @@ describe("remote action dialogs", () => {
     expect(active).toContain("pushBranch…");
     expect(active).toContain("pullBranch…");
   });
+
+  describe("remote-tracking refs", () => {
+    function open(action: "branchDelete" | "checkout", ref: string, remotes: string[]) {
+      openRemoteAction(action, "", ref);
+      const request = mocks.postMessage.mock.lastCall![0] as { repo: string; requestId: string };
+      mocks.postMessage.mockClear();
+      respond(request, { remotes });
+      return dialog.value;
+    }
+
+    it.each([
+      ["a plain", "upstream/topic"],
+      ["a slash-containing", "team/mirror/topic"]
+    ])("explains deleting a ref of %s removed remote instead of using another", (_, ref) => {
+      expect(open("branchDelete", ref, ["origin"])).toMatchObject({
+        kind: "error",
+        message: "remoteNotConfigured"
+      });
+      expect(mocks.postMessage).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["origin/topic", ["origin"], "origin"],
+      ["team/mirror/topic", ["origin", "team", "team/mirror"], "team/mirror"]
+    ])("deletes %s from its own remote", (ref, remotes, remote) => {
+      const picker = open("branchDelete", ref, remotes);
+      if (picker?.kind !== "form") {
+        throw new Error("Expected a remote picker");
+      }
+      expect(picker.inputs[0]?.value).toBe(remote);
+      picker.onSubmit([remote]);
+      const confirmation = dialog.value;
+      if (confirmation?.kind !== "form") {
+        throw new Error("Expected a confirmation");
+      }
+      confirmation.onSubmit([]);
+      expect(mocks.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: { kind: "deleteRemoteRef", remote, name: "topic", refType: "branch" }
+        })
+      );
+    });
+
+    it.each([
+      ["upstream/topic", ["origin"], "topic", false],
+      ["team/mirror/topic", ["origin"], "mirror/topic", false],
+      ["team/mirror/topic", [], "mirror/topic", false],
+      ["team/mirror/topic", ["team/mirror"], "topic", true]
+    ])("suggests the local name of %s with remotes %j", (ref, remotes, suggestion, fetch) => {
+      const form = open("checkout", ref, remotes);
+      if (form?.kind !== "form") {
+        throw new Error("Expected a checkout form");
+      }
+      expect(form.inputs.map((input) => input.value)).toEqual([suggestion, fetch]);
+    });
+  });
 });

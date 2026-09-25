@@ -42,6 +42,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Fixed
 
+- Explain instead of deleting when a remote branch's remote is no longer configured; previously the name was cut by another remote's length. Checking out such a branch suggests its own path and creates an untracked local branch.
 - Ignore a held Enter or Space key in dialogs and menus, and open destructive confirmations with focus on Cancel, so holding Enter on a menu item can no longer delete a branch, tag, or stash.
 - Warn before restoring over local edits that `git status` hides, such as skip-worktree and assume-unchanged files, or a file whose on-disk name differs only in letter case or Unicode form.
 - Refuse to restore a file into a submodule or nested repository, where the superproject cannot see or warn about local edits.

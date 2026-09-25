@@ -34,21 +34,24 @@ export async function checkoutBranch(
     return;
   }
 
-  const { remote, branch } = await splitRemoteRef(git, input.remoteBranch);
-  if (input.fetch) {
+  // A ref left behind by a removed remote can still be checked out, but not fetched or tracked.
+  const source = input.fetch
+    ? await splitRemoteRef(git, input.remoteBranch)
+    : await splitRemoteRef(git, input.remoteBranch).catch(() => null);
+  if (input.fetch && source !== null) {
     await git.raw([
       "fetch",
       "--no-tags",
       "--",
-      remote,
-      `+refs/heads/${branch}:refs/remotes/${input.remoteBranch}`
+      source.remote,
+      `+refs/heads/${source.branch}:refs/remotes/${input.remoteBranch}`
     ]);
   }
   const branches = await git.branchLocal();
   if (!branches.all.includes(input.branchName)) {
     await git.raw([
       "checkout",
-      "--track",
+      source === null ? "--no-track" : "--track",
       "-b",
       input.branchName,
       `refs/remotes/${input.remoteBranch}`

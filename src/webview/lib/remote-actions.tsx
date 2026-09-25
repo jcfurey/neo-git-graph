@@ -1,4 +1,5 @@
 import type { ActionResponse, QueryResult } from "@/backend/types";
+import { remoteForRef } from "@/backend/utils/remoteVisibility";
 import { openSync } from "@/webview/components/history/WorkflowTools";
 import {
   closeDialog,
@@ -155,34 +156,47 @@ export function handleLoadRemotes(message: QueryResult<"loadRemotes">) {
     openErrorDialog(window.l10n.unableToLoadRemotes, message.status);
     return;
   }
-  if (message.remotes.length === 0) {
+  const { repo, branchName, requestId, action } = pending;
+  // Checking out a remote-tracking ref needs no remote, even one that was removed.
+  if (message.remotes.length === 0 && action !== "checkout") {
     openErrorDialog(window.l10n.noRemotesConfigured);
     return;
   }
 
-  const { repo, branchName, requestId, action } = pending;
   const upstream = message.upstream;
   const preferred =
     action === "push" || action === "tagPush" ? message.pushRemote : upstream?.remote;
   const refRemote = message.remotes
     .filter((remote) => pending.remoteRef?.startsWith(remote + "/"))
     .toSorted((a, b) => b.length - a.length)[0];
+  // Another remote's name would cut the wrong prefix from the ref.
+  if (action === "branchDelete" && refRemote === undefined) {
+    openErrorDialog(window.l10n.remoteNotConfigured.replace("{0}", pending.remoteRef ?? ""));
+    return;
+  }
   const remote =
     refRemote ??
     message.remotes.find((name) => name === preferred) ??
     message.remotes.find((name) => name === "origin") ??
-    message.remotes[0]!;
+    message.remotes[0] ??
+    "";
   const remoteBranch = upstream?.remote === remote ? upstream.branchName : branchName;
   const options = message.remotes.map((name) => ({ label: name, value: name }));
   const source = branchName === "" ? null : `ref:head:${branchName}`;
 
   if (action === "checkout") {
     const remoteRef = pending.remoteRef!;
+    // The part after the ref's own remote; for a removed remote, after its first segment.
+    const suggestion = remoteRef.slice(remoteForRef(remoteRef, message.remotes).length + 1);
     openFormDialog({
       message: format(window.l10n.dialogCheckoutRemoteTitle, <b>{remoteRef}</b>),
       inputs: [
-        { kind: "ref", value: remoteRef.slice(remote.length + 1) },
-        { kind: "checkbox", label: window.l10n.fetchBeforeCheckout, value: true }
+        { kind: "ref", value: suggestion },
+        {
+          kind: "checkbox",
+          label: window.l10n.fetchBeforeCheckout,
+          value: refRemote !== undefined
+        }
       ],
       action: window.l10n.checkoutBranch,
       source: `ref:remote:${remoteRef}`,

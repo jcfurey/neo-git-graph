@@ -112,15 +112,17 @@ improvements rather than confirmed defects.
       cover every destructive confirmation's focus, repeated keys in menus, and text areas.
       Sources: [dialog](src/webview/components/ui/Dialog.tsx), [menus](src/webview/lib/menus.tsx).
 
-- [ ] **Never delete a remote branch using another remote's name.** The Branches pane lists
-      remote-tracking refs whose remote is no longer configured. For these refs, the remote picker
-      falls back to another remote and slices the ref by that remote's name length.
-      **Reproduced:** with only `origin` configured, `team/mirror/topic` posted `deleteRemoteRef`
-      for `origin` and `rror/topic`. Checkout from that ref suggests the same mangled local name.
-      **Accept:** Delete Remote Branch is hidden, disabled, or explained for such refs, and never
-      posts a sliced name. Checkout suggests the ref's own path. Unit tests cover plain and
-      slash-containing remote names.
-      Sources: [remote actions](src/webview/lib/remote-actions.tsx).
+- [x] **Never delete a remote branch using another remote's name.** Completed 2026-09-25. Delete
+      Remote Branch on a ref whose remote is not configured explains that and posts nothing.
+      Checkout suggests the part of the ref after its own remote, or after its first segment when
+      the remote was removed, and leaves fetching off for such refs. The backend then creates the
+      local branch without tracking instead of failing.
+      **Verified:** webview tests cover plain and slash-containing removed remotes, a configured
+      slash-containing remote (`team/mirror`, which also shadows `team`), and a repository with no
+      remotes. A backend test checks out `team/mirror/topic` after its remote is gone and refuses to
+      fetch it. Six of the new tests fail against the previous code.
+      Sources: [remote actions](src/webview/lib/remote-actions.tsx),
+      [branch actions](src/backend/actions/branch.ts).
 
 - [ ] **Accept every `git.path` value VS Code accepts.** simple-git rejects binary paths containing
       spaces or parentheses, and it treats a two-element array as a binary plus one argument. The

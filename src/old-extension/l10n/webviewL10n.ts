@@ -108,6 +108,7 @@ export function getWebviewLocalizedStrings() {
     noRemotesConfigured: vscode.l10n.t(
       "No remotes configured. Add a remote to this repository first."
     ),
+    remoteNotConfigured: vscode.l10n.t("The remote for '{0}' is no longer configured."),
     dialogFetchTitle: vscode.l10n.t("Fetch updates from a remote:"),
     dialogPushBranchTitle: vscode.l10n.t("Push branch {0} to a remote:"),
     dialogPullBranchTitle: vscode.l10n.t("Pull into branch {0} (fast-forward only):"),

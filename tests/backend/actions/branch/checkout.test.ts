@@ -130,4 +130,24 @@ describe("checkoutBranch", () => {
     expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe("unfinished local work");
     expect(fs.existsSync(path.join(repo, ".git", "MERGE_HEAD"))).toBe(false);
   });
+
+  it("checks out a ref left by a removed remote without tracking or fetching it", async () => {
+    const tip = readGit(["rev-parse", "HEAD"]);
+    git(["update-ref", "refs/remotes/team/mirror/topic", tip], repo);
+    await expect(
+      checkoutBranch(simpleGit(repo), {
+        branchName: "mirror/topic",
+        remoteBranch: "team/mirror/topic",
+        fetch: true
+      })
+    ).rejects.toThrow(/no longer configured/);
+    await checkoutBranch(simpleGit(repo), {
+      branchName: "mirror/topic",
+      remoteBranch: "team/mirror/topic",
+      fetch: false
+    });
+    expect(readGit(["branch", "--show-current"])).toBe("mirror/topic");
+    expect(readGit(["rev-parse", "HEAD"])).toBe(tip);
+    expect(() => readGit(["config", "branch.mirror/topic.remote"])).toThrow();
+  });
 });
