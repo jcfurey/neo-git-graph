@@ -234,6 +234,7 @@ export function handleLoadRemotes(message: QueryResult<"loadRemotes">) {
             inputs: [],
             action: label,
             source: null,
+            destructive: true,
             onSubmit: () =>
               sendRepositoryAction(
                 {

@@ -225,6 +225,7 @@ export function commitMenu(
           ],
           action: window.l10n.dialogYesReset,
           source,
+          destructive: true,
           onSubmit: ([resetMode]) =>
             runAction({
               command: "resetToCommit",
@@ -282,6 +283,7 @@ function tagMenu(gitRef: GitRef): Array<ContextMenuEntry> {
           inputs: [],
           action: window.l10n.dialogYes,
           source,
+          destructive: true,
           onSubmit: () => runAction({ command: "deleteTag", tagName: gitRef.name })
         })
     },
@@ -369,6 +371,7 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean): Array<ContextMe
             ],
             action: window.l10n.deleteBranch,
             source,
+            destructive: true,
             onSubmit: ([forceDelete]) =>
               runAction({ command: "deleteBranch", branchName: gitRef.name, forceDelete })
           })

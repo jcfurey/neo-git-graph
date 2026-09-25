@@ -100,16 +100,16 @@ improvements rather than confirmed defects.
       Sources: [Git client](src/backend/gitClient.ts), [runGit](src/backend/utils/runGit.ts),
       [test helpers](tests/backend/helpers.ts).
 
-- [ ] **Stop a held Enter key from confirming destructive dialogs.** Dialogs focus their first
-      button, which is the destructive submit button when there is no text field, and they do not
-      ignore key repeat. **Reproduced** in headless Chrome: holding Enter from a remote branch's
-      menu item chained through the remote picker and the confirmation, then posted
-      `deleteRemoteRef`; holding Enter for 0.9 s on Drop Stash posted `stash:drop`; a single key
-      repeat on Delete Branch posted `deleteBranch`. Reset, tag deletion, remote and worktree
-      removal, abort and skip, bisect reset, and branch cleanup use the same dialogs.
-      **Accept:** repeated keydowns never activate dialog buttons, and destructive confirmations
-      open with focus on Cancel or on the dialog. A UI test holds Enter from each destructive menu
-      item and asserts that no action is posted, and a fresh Enter on the confirm button still works.
+- [x] **Stop a held Enter key from confirming destructive dialogs.** Completed 2026-09-25.
+      Dialogs ignore repeated Enter and Space keydowns (text areas excepted), and menus no longer
+      run an item on a repeated key. Destructive confirmations open with focus on Cancel: branch,
+      tag, and remote ref deletion, reset, stash drop, remote and worktree removal, abort and skip,
+      bisect reset, and branch cleanup.
+      **Verified:** a VS Code UI test sends auto-repeating Enter key events from Delete Tag, Delete
+      Branch, Reset, and Delete Remote Branch (through the remote picker). It asserts that no ref or
+      HEAD changes and that Cancel has focus, and that a fresh Enter on the confirm button still
+      deletes. Against the previous webview, the held Enter deleted the tag. Webview unit tests
+      cover every destructive confirmation's focus, repeated keys in menus, and text areas.
       Sources: [dialog](src/webview/components/ui/Dialog.tsx), [menus](src/webview/lib/menus.tsx).
 
 - [ ] **Never delete a remote branch using another remote's name.** The Branches pane lists

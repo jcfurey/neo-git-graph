@@ -172,6 +172,25 @@ export function sendRepositoryAction(action: RepositoryAction, repo = selectedRe
   );
 }
 
+/** Actions that discard work, refs, or configuration that the user cannot easily recreate. */
+function isDestructive(action: RepositoryAction) {
+  switch (action.kind) {
+    case "removeRemote":
+    case "removeWorktree":
+    case "deleteRemoteRef":
+    case "cleanup":
+      return true;
+    case "stash":
+      return action.operation === "drop";
+    case "recover":
+      return action.resolution !== "continue";
+    case "bisectMark":
+      return action.mark === "reset";
+    default:
+      return false;
+  }
+}
+
 export function confirmRepositoryAction(
   message: ComponentChildren,
   actionLabel: string,
@@ -183,6 +202,7 @@ export function confirmRepositoryAction(
     inputs: [],
     action: actionLabel,
     source: null,
+    destructive: isDestructive(action),
     onSubmit: () => sendRepositoryAction(action, repo)
   });
 }

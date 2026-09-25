@@ -52,6 +52,8 @@ export type DialogBody =
       onSubmit: (values: Array<string | boolean>) => void;
       /** Context menu key of the element the dialog belongs to, or `null`. */
       source: string | null;
+      /** The dialog opens with focus on Cancel, so a stray Enter cannot confirm it. */
+      destructive?: boolean;
     }
   | { kind: "running"; message: string; detail?: string; started?: number }
   | { kind: "error"; message: string; reason: string | null };

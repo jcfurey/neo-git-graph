@@ -810,6 +810,101 @@ suite("Git Graph workflow UI", function () {
     assert.equal(fs.existsSync(worktree), false);
   });
 
+  test("never confirms a destructive dialog while Enter is held", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "held-base", dir);
+    commit("top", "held-top", dir);
+    git(["tag", "held-tag"], dir);
+    git(["branch", "held-branch", "HEAD^"], dir);
+    git(["remote", "add", "origin", dir], dir);
+    git(["update-ref", "refs/remotes/origin/held-remote", "HEAD^"], dir);
+    const head = git(["rev-parse", "HEAD"], dir);
+    const refs = () => git(["for-each-ref", "--format=%(refname) %(objectname)"], dir);
+    const before = refs();
+    const dialogText = () => graph.evaluate('document.querySelector("[role=dialog]")?.innerText');
+    const focused = () => graph.evaluate("document.activeElement?.textContent.trim()");
+    const enter = (autoRepeat) =>
+      connections[0].call("Input.dispatchKeyEvent", {
+        type: "keyDown",
+        key: "Enter",
+        code: "Enter",
+        windowsVirtualKeyCode: 13,
+        text: "\r",
+        autoRepeat
+      });
+    /** Choose a menu item with the keyboard and keep Enter down, as the OS repeats it. */
+    async function holdEnter(item) {
+      const steps = await until(
+        () =>
+          graph.evaluate(
+            `(() => { const index = [...document.querySelectorAll('[role="menuitem"]')].findIndex(e => e.textContent.trim() === ${JSON.stringify(item)}); return index >= 0 && index + 1; })()`
+          ),
+        "menu item " + item
+      );
+      for (let step = 0; step < steps; step++) {
+        await keypress("ArrowDown");
+      }
+      await enter(false);
+      for (let repeat = 0; repeat < 15; repeat++) {
+        await delay(40);
+        await enter(true);
+      }
+      await connections[0].call("Input.dispatchKeyEvent", {
+        type: "keyUp",
+        key: "Enter",
+        code: "Enter",
+        windowsVirtualKeyCode: 13
+      });
+      await until(dialogText, "dialog after holding Enter on " + item);
+      // Give any activation that slipped through time to reach Git.
+      await delay(500);
+      assert.equal(refs(), before, item);
+      assert.equal(git(["rev-parse", "HEAD"], dir), head, item);
+    }
+
+    await openRepo(dir);
+    for (const [open, item] of [
+      [() => contextRef("held-tag"), "Delete Tag…"],
+      [() => contextRef("held-branch"), "Delete Branch…"],
+      [() => contextCommit("held-base"), "Reset current branch to this Commit…"]
+    ]) {
+      await open();
+      await holdEnter(item);
+      assert.equal(await focused(), "Cancel", item);
+      await keypress("Enter");
+      await until(async () => !(await dialogText()), "cancel " + item);
+    }
+
+    // The remote picker comes first; a held Enter must not pass through it either.
+    await contextRef("origin/held-remote");
+    await holdEnter("Delete Remote Branch…");
+    await until(
+      () => graph.evaluate('!!document.querySelector("[role=dialog] select")'),
+      "remote picker stays open"
+    );
+    await keypress("Enter");
+    await until(
+      async () => (await dialogText())?.includes("origin"),
+      "remote deletion confirmation"
+    );
+    await until(async () => (await focused()) === "Cancel", "remote deletion focuses Cancel");
+    assert.equal(refs(), before);
+    await keypress("Enter");
+    await until(async () => !(await dialogText()), "cancel remote deletion");
+
+    // A fresh Enter on the confirm button still confirms.
+    await contextRef("held-tag");
+    await menu("Delete Tag…");
+    await until(async () => (await focused()) === "Cancel", "tag deletion focuses Cancel");
+    await keypress("Tab", 8);
+    assert.equal(await focused(), "Yes");
+    await keypress("Enter");
+    await finished();
+    assert.equal(git(["tag", "--list"], dir), "");
+    await openRepo(repo);
+  });
+
   test("recovers from a merge conflict through the status controls", async () => {
     git(["checkout", "-b", "ui-conflict"]);
     commit("f", "other side");
