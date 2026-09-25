@@ -2,6 +2,7 @@ import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import type { RepositoryAction } from "@/backend/types";
+import { refNames } from "@/backend/utils/refs";
 import { requireBranchName, requireRemote } from "@/backend/utils/validation";
 
 type RemoteAction = Extract<
@@ -48,8 +49,8 @@ async function replaceConfig(git: SimpleGit, key: string, values: string[]) {
 }
 
 async function updatePushDefaults(git: SimpleGit, oldName: string, newName: string | null) {
-  const branches = await git.branchLocal();
-  const keys = ["remote.pushDefault", ...branches.all.map((name) => `branch.${name}.pushRemote`)];
+  const branches = await refNames(git, "refs/heads/");
+  const keys = ["remote.pushDefault", ...branches.map((name) => `branch.${name}.pushRemote`)];
   const settings = await Promise.all(keys.map((key) => git.getConfig(key)));
   for (const [index, key] of keys.entries()) {
     if (settings[index]?.value === oldName) {

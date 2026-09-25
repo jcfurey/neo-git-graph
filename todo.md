@@ -195,15 +195,15 @@ improvements rather than confirmed defects.
 
 ### Git backend and repository discovery
 
-- [ ] **List branches with `for-each-ref` instead of parsing `git branch`.** **Reproduced:** during
-      a conflicted rebase, the branch query returned the head `(no` and listed `(no` as a branch,
-      so filter and focus modes query `(no` while the user resolves conflicts. A detached checkout
-      adds a `refs/heads/main` pseudo-entry. With forced color, the existing-branch check in
-      checkout fails, and remote renames skip updating push defaults.
-      **Accept:** the query uses `for-each-ref refs/heads refs/remotes` and
-      `symbolic-ref --quiet HEAD`. Tests cover a rebase, a bisect, and HEAD detached at a branch, a
-      tag, and a hash, and assert that the head is null and only real refs are listed. The existing
-      test asserts more than a nonzero count.
+- [x] **List branches with `for-each-ref` instead of parsing `git branch`.** Completed
+      2026-09-25. The branch query, checkout's existing-branch check, and remote renames read
+      `for-each-ref refs/heads refs/remotes`, skipping symbolic refs such as `origin/HEAD`, and the
+      head comes from `symbolic-ref --quiet HEAD`.
+      **Verified:** tests cover a conflicted rebase, a bisect, and HEAD detached at a branch tip, a
+      tag, and a hash, with forced branch color and a remote HEAD. Each asserts a null head and the
+      exact branch list; six of them fail against the previous query. The existing tests assert
+      exact lists, the `LANG` pin is gone, and a checkout test fast-forwards an existing branch
+      despite colored `git branch` output.
       Sources: [branch query](src/backend/queries/loadBranches.ts),
       [branch actions](src/backend/actions/branch.ts),
       [remote actions](src/backend/actions/remotes.ts).

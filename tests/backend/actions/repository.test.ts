@@ -76,6 +76,10 @@ describe("remote and tracking configuration", () => {
     await run({ kind: "setTracking", branch: "main", upstream: "refs/remotes/team/origin/main" });
     await run({ kind: "pushDefault", remote: "team/origin" });
     read(["config", "branch.main.pushRemote", "team/origin"]);
+    // Colored `git branch` output must not hide branches whose push remote changes.
+    read(["config", "color.branch", "always"]);
+    read(["branch", "topic"]);
+    read(["config", "branch.topic.pushRemote", "team/origin"]);
     await run({
       kind: "editRemote",
       name: "team/origin",
@@ -90,6 +94,7 @@ describe("remote and tracking configuration", () => {
     await run({ kind: "renameRemote", name: "team/origin", newName: "team/upstream" });
     expect(read(["config", "remote.pushDefault"])).toBe("team/upstream");
     expect(read(["config", "branch.main.pushRemote"])).toBe("team/upstream");
+    expect(read(["config", "branch.topic.pushRemote"])).toBe("team/upstream");
     expect(read(["rev-parse", "--abbrev-ref", "@{upstream}"])).toBe("team/upstream/main");
     await run({ kind: "editRemote", name: "team/upstream", fetchUrls: [bare], pushUrls: [] });
     expect((await loadRepositoryState(simpleGit(repo))).remotes[0]?.pushUrls).toEqual([]);

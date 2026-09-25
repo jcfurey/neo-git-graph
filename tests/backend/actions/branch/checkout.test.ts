@@ -150,4 +150,13 @@ describe("checkoutBranch", () => {
     expect(readGit(["rev-parse", "HEAD"])).toBe(tip);
     expect(() => readGit(["config", "branch.mirror/topic.remote"])).toThrow();
   });
+
+  it("fast-forwards an existing branch from its remote despite colored branch output", async () => {
+    git(["config", "color.branch", "always"], repo);
+    const updated = advanceRemote();
+    git(["checkout", "other"], repo);
+    await checkoutBranch(simpleGit(repo), { branchName: "main", remoteBranch: "origin/main" });
+    expect(readGit(["branch", "--show-current"])).toBe("main");
+    expect(readGit(["rev-parse", "HEAD"])).toBe(updated);
+  });
 });

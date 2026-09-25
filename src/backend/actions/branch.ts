@@ -1,6 +1,7 @@
 import type { SimpleGit } from "simple-git";
 
 import type { ActionPayload } from "@/backend/types";
+import { refNames } from "@/backend/utils/refs";
 import { requireBranchName, splitRemoteRef } from "@/backend/utils/validation";
 
 export async function createBranch(
@@ -47,8 +48,7 @@ export async function checkoutBranch(
       `+refs/heads/${source.branch}:refs/remotes/${input.remoteBranch}`
     ]);
   }
-  const branches = await git.branchLocal();
-  if (!branches.all.includes(input.branchName)) {
+  if (!(await refNames(git, "refs/heads/")).includes(input.branchName)) {
     await git.raw([
       "checkout",
       source === null ? "--no-track" : "--track",
