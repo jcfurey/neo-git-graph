@@ -2,10 +2,10 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterEach, beforeEach, expect, it } from "vitest";
 
 import { runRepositoryAction } from "@/backend/actions/repository";
+import { createGit } from "@/backend/gitClient";
 import { loadCommits } from "@/backend/queries/loadCommits";
 import { repositoryQuery } from "@/backend/queries/repository";
 import type { WorkingTreeGroup } from "@/backend/types";
@@ -13,7 +13,7 @@ import type { WorkingTreeGroup } from "@/backend/types";
 import { makeRepo } from "@tests/backend/helpers";
 
 let repo: string;
-const git = () => simpleGit({ baseDir: repo, trimmed: false });
+const git = () => createGit(repo, "git");
 const run = (...args: string[]) =>
   execFileSync("git", args, { cwd: repo, stdio: "pipe" }).toString().trim();
 const write = (file: string, text: string | Buffer) =>

@@ -2,10 +2,10 @@ import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { cherrypickCommit } from "@/backend/actions/commit";
+import { createGit } from "@/backend/gitClient";
 
 import { git, makeRepo } from "@tests/backend/helpers";
 
@@ -28,7 +28,7 @@ afterAll(() => {
 
 describe("cherrypickCommit", () => {
   it("cherry-picks a commit onto the current branch", async () => {
-    await cherrypickCommit(simpleGit(repo), {
+    await cherrypickCommit(createGit(repo, "git"), {
       commitHash: cherrypickHash,
       parentIndex: 0
     });
@@ -37,7 +37,7 @@ describe("cherrypickCommit", () => {
 
   it("throws for a nonexistent commit hash", async () => {
     await expect(
-      cherrypickCommit(simpleGit(repo), {
+      cherrypickCommit(createGit(repo, "git"), {
         commitHash: "0000000000000000000000000000000000000000",
         parentIndex: 0
       })

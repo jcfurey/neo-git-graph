@@ -2,10 +2,10 @@ import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { revertCommit } from "@/backend/actions/commit";
+import { createGit } from "@/backend/gitClient";
 
 import { git, makeRepo } from "@tests/backend/helpers";
 
@@ -26,13 +26,13 @@ afterAll(() => {
 
 describe("revertCommit", () => {
   it("reverts a commit", async () => {
-    await revertCommit(simpleGit(repo), { commitHash, parentIndex: 0 });
+    await revertCommit(createGit(repo, "git"), { commitHash, parentIndex: 0 });
     expect(fs.existsSync(path.join(repo, "g"))).toBe(false);
   });
 
   it("throws for a nonexistent commit hash", async () => {
     await expect(
-      revertCommit(simpleGit(repo), {
+      revertCommit(createGit(repo, "git"), {
         commitHash: "0000000000000000000000000000000000000000",
         parentIndex: 0
       })

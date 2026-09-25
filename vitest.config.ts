@@ -17,7 +17,8 @@ export default defineConfig({
           // Real Git workflows need additional process-launch time on Windows runners.
           testTimeout: 30000,
           hookTimeout: 30000,
-          include: ["tests/backend/**/*.test.ts"]
+          include: ["tests/backend/**/*.test.ts"],
+          setupFiles: ["tests/git-config.ts"]
         }
       },
       {
@@ -32,7 +33,8 @@ export default defineConfig({
         },
         test: {
           name: "extension",
-          include: ["tests/extension/**/*.test.ts"]
+          include: ["tests/extension/**/*.test.ts"],
+          setupFiles: ["tests/git-config.ts"]
         }
       },
       {

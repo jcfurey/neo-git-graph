@@ -2,10 +2,10 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { runRepositoryAction } from "@/backend/actions/repository";
+import { createGit } from "@/backend/gitClient";
 import {
   loadBatchPlan,
   loadComparison,
@@ -24,9 +24,8 @@ let repo: string;
 let dirs: string[];
 const read = (args: string[], cwd = repo) =>
   execFileSync("git", args, { cwd, stdio: "pipe" }).toString().trim();
-const run = (action: RepositoryAction) =>
-  runRepositoryAction(simpleGit({ baseDir: repo, trimmed: false }), action);
-const git = () => simpleGit({ baseDir: repo, trimmed: false });
+const run = (action: RepositoryAction) => runRepositoryAction(createGit(repo, "git"), action);
+const git = () => createGit(repo, "git");
 const filter = (patch: Partial<HistoryFilter> = {}): HistoryFilter => ({
   text: "",
   author: "",

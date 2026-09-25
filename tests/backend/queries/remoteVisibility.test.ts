@@ -1,9 +1,9 @@
 import { execFileSync } from "node:child_process";
 import { rmSync } from "node:fs";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
+import { createGit } from "@/backend/gitClient";
 import { loadHistory } from "@/backend/queries/history";
 import { loadBranches } from "@/backend/queries/loadBranches";
 import { loadCommits } from "@/backend/queries/loadCommits";
@@ -24,7 +24,7 @@ const historyFilter = {
   follow: false
 };
 const commits = (hiddenRemotes: string[], showRemoteBranches = true, maxCommits = 100) =>
-  loadCommits(simpleGit(repo), {
+  loadCommits(createGit(repo, "git"), {
     branchName: "",
     maxCommits,
     showRemoteBranches,
@@ -73,7 +73,7 @@ it("hides one remote's tips and labels while retaining local, tagged and shared 
   expect(result.commits.flatMap((commit) => commit.refs)).toContainEqual(
     expect.objectContaining({ type: "tag", name: "kept-tag" })
   );
-  const branches = await loadBranches(simpleGit(repo), {
+  const branches = await loadBranches(createGit(repo, "git"), {
     repo,
     gitPath: "git",
     showRemoteBranches: true,
@@ -98,7 +98,9 @@ it("matches complete remote names, including overlapping names containing slashe
 });
 
 it("applies the same visibility to history search and the global remote switch", async () => {
-  const page = await loadHistory(simpleGit(repo), historyFilter, 0, { hiddenRemotes: ["origin"] });
+  const page = await loadHistory(createGit(repo, "git"), historyFilter, 0, {
+    hiddenRemotes: ["origin"]
+  });
   expect(page.entries.map((commit) => commit.hash)).not.toContain(tips["origin/topic"]);
   expect(page.entries.map((commit) => commit.hash)).toContain(tips["origin2/topic"]);
   expect(page.entries.map((commit) => commit.hash)).toContain(tips["origin/tagged"]);
@@ -109,7 +111,7 @@ it("applies the same visibility to history search and the global remote switch",
   expect(local.commits.flatMap((commit) => commit.refs).some((ref) => ref.type === "remote")).toBe(
     false
   );
-  const localSearch = await loadHistory(simpleGit(repo), historyFilter, 0, {
+  const localSearch = await loadHistory(createGit(repo, "git"), historyFilter, 0, {
     showRemoteBranches: false
   });
   expect(localSearch.entries.map((commit) => commit.hash)).toEqual([tips["origin/tagged"]]);

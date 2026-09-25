@@ -2,12 +2,12 @@ import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { deleteBranch, renameBranch } from "@/backend/actions/branch";
 import { mergeBranch } from "@/backend/actions/merge";
 import { addTag, deleteTag } from "@/backend/actions/tag";
+import { createGit } from "@/backend/gitClient";
 import { loadCommits } from "@/backend/queries/loadCommits";
 
 import { git, makeRepo } from "@tests/backend/helpers";
@@ -60,7 +60,7 @@ function refsAfter(before: string[], removed: string, added?: string) {
 describe("refs whose names look like options", () => {
   it("filters the graph to a branch named --output=x without writing a file", async () => {
     const { repo, tips, files } = fixture();
-    const result = await loadCommits(simpleGit(repo), {
+    const result = await loadCommits(createGit(repo, "git"), {
       branchName: "--output=x",
       maxCommits: 10,
       showRemoteBranches: true,
@@ -78,7 +78,7 @@ describe("refs whose names look like options", () => {
     git(["tag", "same"], repo);
     git(["reset", "--hard", "HEAD^"], repo);
     git(["branch", "same"], repo);
-    const result = await loadCommits(simpleGit(repo), {
+    const result = await loadCommits(createGit(repo, "git"), {
       branchName: "same",
       maxCommits: 10,
       showRemoteBranches: true,
@@ -93,7 +93,7 @@ describe("refs whose names look like options", () => {
   it("deletes only the tag named -d", async () => {
     const { repo, files } = fixture();
     const before = refs(repo);
-    await deleteTag(simpleGit(repo), { tagName: "-d" });
+    await deleteTag(createGit(repo, "git"), { tagName: "-d" });
     expect(refs(repo)).toEqual(refsAfter(before, "refs/tags/-d"));
     expect(fs.readdirSync(repo).toSorted()).toEqual(files);
   });
@@ -103,8 +103,8 @@ describe("refs whose names look like options", () => {
     async (forceDelete) => {
       const { repo, files } = fixture();
       const before = refs(repo);
-      await deleteBranch(simpleGit(repo), { branchName: "-D", forceDelete: true });
-      await deleteBranch(simpleGit(repo), { branchName: "--output=x", forceDelete: true });
+      await deleteBranch(createGit(repo, "git"), { branchName: "-D", forceDelete: true });
+      await deleteBranch(createGit(repo, "git"), { branchName: "--output=x", forceDelete: true });
       expect(refs(repo)).toEqual(
         refsAfter(refsAfter(before, "refs/heads/-D"), "refs/heads/--output=x")
       );
@@ -113,7 +113,7 @@ describe("refs whose names look like options", () => {
       git(["commit", "--allow-empty", "-m", "unmerged"], repo);
       git(["update-ref", "refs/heads/-D", "HEAD"], repo);
       git(["reset", "--hard", "HEAD^"], repo);
-      const deletion = deleteBranch(simpleGit(repo), { branchName: "-D", forceDelete });
+      const deletion = deleteBranch(createGit(repo, "git"), { branchName: "-D", forceDelete });
       if (forceDelete) {
         await deletion;
         expect(refs(repo).some((line) => line.startsWith("refs/heads/-D "))).toBe(false);
@@ -127,7 +127,7 @@ describe("refs whose names look like options", () => {
   it("renames only the branch named -D", async () => {
     const { repo, files } = fixture();
     const before = refs(repo);
-    await renameBranch(simpleGit(repo), { oldName: "-D", newName: "renamed" });
+    await renameBranch(createGit(repo, "git"), { oldName: "-D", newName: "renamed" });
     expect(refs(repo)).toEqual(refsAfter(before, "refs/heads/-D", "refs/heads/renamed"));
     expect(fs.readdirSync(repo).toSorted()).toEqual(files);
   });
@@ -136,10 +136,10 @@ describe("refs whose names look like options", () => {
     const { repo } = fixture();
     const before = refs(repo);
     await expect(
-      renameBranch(simpleGit(repo), { oldName: "main", newName: "-D" })
+      renameBranch(createGit(repo, "git"), { oldName: "main", newName: "-D" })
     ).rejects.toThrow();
     await expect(
-      addTag(simpleGit(repo), {
+      addTag(createGit(repo, "git"), {
         tagName: "-d",
         commitHash: rev(repo, "HEAD"),
         lightweight: true,
@@ -153,7 +153,7 @@ describe("refs whose names look like options", () => {
     const { repo, tips } = fixture();
     // A case-insensitive filesystem resolves the short name -D to the loose tag -d first.
     const shadowed = fs.existsSync(path.join(repo, ".git", "refs", "tags", "-D"));
-    await mergeBranch(simpleGit(repo), { branchName: "-D", createNewCommit: true });
+    await mergeBranch(createGit(repo, "git"), { branchName: "-D", createNewCommit: true });
     expect(rev(repo, "HEAD^2")).toBe(tips["refs/heads/-D"]);
     expect(
       cp.execFileSync("git", ["log", "-1", "--format=%s"], { cwd: repo }).toString().trim()
@@ -164,7 +164,7 @@ describe("refs whose names look like options", () => {
     const { repo, tips } = fixture();
     git(["tag", "same", tips["refs/tags/-d"]!], repo);
     git(["branch", "same", tips["refs/heads/--output=x"]!], repo);
-    await mergeBranch(simpleGit(repo), { branchName: "same", createNewCommit: true });
+    await mergeBranch(createGit(repo, "git"), { branchName: "same", createNewCommit: true });
     expect(rev(repo, "HEAD^2")).toBe(tips["refs/heads/--output=x"]);
   });
 });

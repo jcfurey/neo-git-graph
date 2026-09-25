@@ -2,10 +2,10 @@ import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { deleteBranch } from "@/backend/actions/branch";
+import { createGit } from "@/backend/gitClient";
 
 import { git, makeRepo } from "@tests/backend/helpers";
 
@@ -23,13 +23,13 @@ describe("deleteBranch", () => {
   it("deletes an existing branch", async () => {
     git(["branch", "to-delete"], repo);
 
-    await deleteBranch(simpleGit(repo), {
+    await deleteBranch(createGit(repo, "git"), {
       branchName: "to-delete",
       forceDelete: false
     });
 
     const listed = cp
-      .execFileSync("git", ["branch", "--list", "to-delete"], { cwd: repo })
+      .execFileSync("git", ["branch", "--no-color", "--list", "to-delete"], { cwd: repo })
       .toString()
       .trim();
     expect(listed).toBe("");
@@ -43,7 +43,7 @@ describe("deleteBranch", () => {
     git(["checkout", "main"], repo);
 
     await expect(
-      deleteBranch(simpleGit(repo), {
+      deleteBranch(createGit(repo, "git"), {
         branchName: "unmerged",
         forceDelete: false
       })
@@ -51,13 +51,13 @@ describe("deleteBranch", () => {
   });
 
   it("force-deletes a branch with unmerged changes", async () => {
-    await deleteBranch(simpleGit(repo), {
+    await deleteBranch(createGit(repo, "git"), {
       branchName: "unmerged",
       forceDelete: true
     });
 
     const listed = cp
-      .execFileSync("git", ["branch", "--list", "unmerged"], { cwd: repo })
+      .execFileSync("git", ["branch", "--no-color", "--list", "unmerged"], { cwd: repo })
       .toString()
       .trim();
     expect(listed).toBe("");
@@ -65,7 +65,7 @@ describe("deleteBranch", () => {
 
   it("throws when the branch does not exist", async () => {
     await expect(
-      deleteBranch(simpleGit(repo), {
+      deleteBranch(createGit(repo, "git"), {
         branchName: "nonexistent",
         forceDelete: false
       })

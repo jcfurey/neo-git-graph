@@ -1,10 +1,10 @@
 import * as cp from "node:child_process";
 import * as fs from "node:fs";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { renameBranch } from "@/backend/actions/branch";
+import { createGit } from "@/backend/gitClient";
 
 import { git, makeRepo } from "@tests/backend/helpers";
 
@@ -21,17 +21,17 @@ afterAll(() => {
 
 describe("renameBranch", () => {
   it("renames an existing branch", async () => {
-    await renameBranch(simpleGit(repo), {
+    await renameBranch(createGit(repo, "git"), {
       oldName: "old-name",
       newName: "new-name"
     });
 
     const listedOld = cp
-      .execFileSync("git", ["branch", "--list", "old-name"], { cwd: repo })
+      .execFileSync("git", ["branch", "--no-color", "--list", "old-name"], { cwd: repo })
       .toString()
       .trim();
     const listedNew = cp
-      .execFileSync("git", ["branch", "--list", "new-name"], { cwd: repo })
+      .execFileSync("git", ["branch", "--no-color", "--list", "new-name"], { cwd: repo })
       .toString()
       .trim();
     expect(listedOld).toBe("");
@@ -40,7 +40,7 @@ describe("renameBranch", () => {
 
   it("throws when the source branch does not exist", async () => {
     await expect(
-      renameBranch(simpleGit(repo), {
+      renameBranch(createGit(repo, "git"), {
         oldName: "nonexistent-branch",
         newName: "whatever"
       })
@@ -49,7 +49,7 @@ describe("renameBranch", () => {
 
   it("throws when the target branch already exists", async () => {
     await expect(
-      renameBranch(simpleGit(repo), { oldName: "new-name", newName: "main" })
+      renameBranch(createGit(repo, "git"), { oldName: "new-name", newName: "main" })
     ).rejects.toThrow();
   });
 });

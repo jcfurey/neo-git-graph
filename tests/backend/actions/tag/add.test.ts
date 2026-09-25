@@ -1,10 +1,10 @@
 import * as cp from "node:child_process";
 import * as fs from "node:fs";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { addTag } from "@/backend/actions/tag";
+import { createGit } from "@/backend/gitClient";
 
 import { makeRepo } from "@tests/backend/helpers";
 
@@ -22,7 +22,7 @@ afterAll(() => {
 
 describe("addTag", () => {
   it("creates a lightweight tag at the given commit", async () => {
-    await addTag(simpleGit(repo), {
+    await addTag(createGit(repo, "git"), {
       tagName: "v1.0-lw",
       commitHash,
       lightweight: true,
@@ -37,7 +37,7 @@ describe("addTag", () => {
   });
 
   it("creates an annotated tag at the given commit", async () => {
-    await addTag(simpleGit(repo), {
+    await addTag(createGit(repo, "git"), {
       tagName: "v1.0",
       commitHash,
       lightweight: false,
@@ -53,7 +53,7 @@ describe("addTag", () => {
 
   it("throws when the tag already exists", async () => {
     await expect(
-      addTag(simpleGit(repo), {
+      addTag(createGit(repo, "git"), {
         tagName: "v1.0-lw",
         commitHash,
         lightweight: true,
@@ -64,7 +64,7 @@ describe("addTag", () => {
 
   it("throws when the commit hash is invalid", async () => {
     await expect(
-      addTag(simpleGit(repo), {
+      addTag(createGit(repo, "git"), {
         tagName: "v2.0",
         commitHash: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
         lightweight: true,

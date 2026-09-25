@@ -96,6 +96,21 @@ improvements rather than confirmed defects.
       and bisect subjects. Unit and VS Code tests run with a fixture global configuration and
       `GIT_CONFIG_NOSYSTEM=1`, and a CI job runs the backend suite with a hostile configuration and a
       non-English locale. The `LANG` pin is removed from the branch test.
+      **Partly done 2026-09-25:** the simple-git client and `runGit` pass `log.showSignature=false`,
+      `status.showUntrackedFiles=all`, and `never` for `color.ui` and the per-command color
+      settings. Git hands these to its child processes, which also stops `worktree remove` from
+      deleting a worktree whose untracked files `status.showUntrackedFiles=no` hid. Backend tests
+      use the product client, unit and VS Code tests read `tests/fixtures/gitconfig` with
+      `GIT_CONFIG_NOSYSTEM=1`, and Linux CI reruns the backend and extension suites with
+      `tests/fixtures/hostile.gitconfig`. A signed-commit test covers the graph, details, history,
+      sync and batch plans, rebase messages, and bisect subjects; without the overrides the graph
+      loads no commits. The `LANG` pin is gone.
+      **Remaining:** a fixed locale. simple-git rejects a custom environment that contains
+      `EDITOR`, `PAGER`, `GIT_ASKPASS`, or `SSH_ASKPASS`, and forcing `LC_ALL=C` would also
+      show Git's own error messages in English. The known locale-dependent parsers are branch
+      listing (fixed with `for-each-ref`) and merge conflict detection (the next P2 item), so
+      decide whether a fixed locale is still wanted, and add a non-English locale to the hostile
+      CI step once the merge item lands.
       Sources: [Git client](src/backend/gitClient.ts), [runGit](src/backend/utils/runGit.ts),
       [test helpers](tests/backend/helpers.ts).
 

@@ -3,10 +3,10 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { pushTag } from "@/backend/actions/tag";
+import { createGit } from "@/backend/gitClient";
 
 import { makeRepo } from "@tests/backend/helpers";
 
@@ -31,7 +31,7 @@ afterAll(() => {
 
 describe("pushTag", () => {
   it("pushes an existing tag to origin", async () => {
-    await pushTag(simpleGit(repo), { tagName: "v1.0", remote: "origin" });
+    await pushTag(createGit(repo, "git"), { tagName: "v1.0", remote: "origin" });
 
     const tags = cp.execFileSync("git", ["tag", "-l"], { cwd: bare }).toString().trim();
     expect(tags).toBe("v1.0");
@@ -39,7 +39,7 @@ describe("pushTag", () => {
 
   it("throws when the tag does not exist locally", async () => {
     await expect(
-      pushTag(simpleGit(repo), { tagName: "v99.0-nonexistent", remote: "origin" })
+      pushTag(createGit(repo, "git"), { tagName: "v99.0-nonexistent", remote: "origin" })
     ).rejects.toThrow();
   });
 });

@@ -2,9 +2,9 @@ import { execFileSync } from "node:child_process";
 import { rmSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
+import { createGit } from "@/backend/gitClient";
 import { repositoryQuery } from "@/backend/queries/repository";
 
 import { git, makeRepo } from "@tests/backend/helpers";
@@ -39,7 +39,7 @@ afterAll(() => rmSync(repo, { recursive: true, force: true }));
 
 it("distinguishes direct, merged and unrelated history without requiring the tip or connecting rows", async () => {
   const before = hash();
-  const result = await repositoryQuery(simpleGit(repo), {
+  const result = await repositoryQuery(createGit(repo, "git"), {
     kind: "branchFocus",
     branch: "main",
     hashes: [base, merged, side, "*"]
@@ -49,14 +49,14 @@ it("distinguishes direct, merged and unrelated history without requiring the tip
 });
 
 it("handles remote refs and changes the direct line when focusing a merged branch", async () => {
-  const remote = await repositoryQuery(simpleGit(repo), {
+  const remote = await repositoryQuery(createGit(repo, "git"), {
     kind: "branchFocus",
     branch: "remotes/origin/main",
     hashes: [tip, main, base, merged, side]
   });
   expect(remote).toEqual({ kind: "branchFocus", tip, direct: [tip, main, base], merged: [merged] });
   expect(
-    await repositoryQuery(simpleGit(repo), {
+    await repositoryQuery(createGit(repo, "git"), {
       kind: "branchFocus",
       branch: "merged",
       hashes: [tip, main, base, merged, side]
@@ -68,7 +68,7 @@ it.each(["missing", "main~1", "--all"])(
   "rejects invalid branch %s instead of colouring everything unrelated",
   async (branch) => {
     await expect(
-      repositoryQuery(simpleGit(repo), {
+      repositoryQuery(createGit(repo, "git"), {
         kind: "branchFocus",
         branch,
         hashes: [base]
@@ -97,14 +97,14 @@ it("follows parent links despite skewed dates and sees a moved branch immediatel
   git(["update-ref", "refs/heads/skewed", merge], repo);
   const hashes = [base, a, b, merge, "*"];
   const query = { kind: "branchFocus" as const, branch: "skewed", hashes };
-  expect(await repositoryQuery(simpleGit(repo), query)).toEqual({
+  expect(await repositoryQuery(createGit(repo, "git"), query)).toEqual({
     kind: "branchFocus",
     tip: merge,
     direct: [merge, a, base],
     merged: [b]
   });
   git(["update-ref", "refs/heads/skewed", b], repo);
-  expect(await repositoryQuery(simpleGit(repo), query)).toEqual({
+  expect(await repositoryQuery(createGit(repo, "git"), query)).toEqual({
     kind: "branchFocus",
     tip: b,
     direct: [b, base],
@@ -125,14 +125,14 @@ it("reclassifies newly available ancestry after a shallow repository is deepened
       branch: "main",
       hashes: [tip, main, base, merged, side]
     };
-    expect(await repositoryQuery(simpleGit(shallow), query)).toEqual({
+    expect(await repositoryQuery(createGit(shallow, "git"), query)).toEqual({
       kind: "branchFocus",
       tip,
       direct: [tip],
       merged: []
     });
     git(["fetch", "--unshallow"], shallow);
-    expect(await repositoryQuery(simpleGit(shallow), query)).toEqual({
+    expect(await repositoryQuery(createGit(shallow, "git"), query)).toEqual({
       kind: "branchFocus",
       tip,
       direct: [tip, main, base],

@@ -42,6 +42,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Fixed
 
+- Ignore `log.showSignature`, forced color, and hidden untracked files in the user's Git configuration when reading Git output, so signed commits no longer end the graph or break details, history, and plans, and removing a worktree no longer discards untracked files that `status.showUntrackedFiles=no` hid.
 - List branches without parsing `git branch`, so a rebase, bisect, or detached HEAD no longer adds phantom branches such as `(no`, and colored or translated Git output no longer breaks checkout or remote renames.
 - Show exact names and line counts in commit details for files with non-ASCII characters, tabs, quotes, newlines, or backslashes, so their diffs, history, and restore work, and diff a file named like `0:foo` against its own staged version.
 - Explain instead of deleting when a remote branch's remote is no longer configured; previously the name was cut by another remote's length. Checking out such a branch suggests its own path and creates an untracked local branch.

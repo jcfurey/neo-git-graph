@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { simpleGit } from "simple-git";
 import * as vscode from "vscode";
 
+import { createGit } from "@/backend/gitClient";
 import { getSubmodulePaths } from "@/backend/utils/git";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { extConfig } from "@/extension/config";
@@ -34,7 +34,7 @@ async function scanDirectory(
   directory: string,
   depth: number
 ): Promise<GitRepo[]> {
-  const isRepo = await simpleGit({ baseDir: directory, binary: gitBinary })
+  const isRepo = await createGit(directory, gitBinary)
     .checkIsRepo()
     .catch((error: unknown) => {
       logger.warn(`Failed to check Git repository: ${directory}; Git binary: ${gitBinary}`, error);

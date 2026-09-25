@@ -1,10 +1,9 @@
-import { simpleGit } from "simple-git";
-
+import { createGit } from "@/backend/gitClient";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 
 export async function isGitRepository(repoPath: string, gitPath: string): Promise<boolean> {
   try {
-    return await simpleGit({ baseDir: repoPath, binary: gitPath }).checkIsRepo();
+    return await createGit(repoPath, gitPath).checkIsRepo();
   } catch {
     return false;
   }
@@ -12,7 +11,7 @@ export async function isGitRepository(repoPath: string, gitPath: string): Promis
 
 export async function getSubmodulePaths(repoPath: string, gitPath: string): Promise<string[]> {
   try {
-    const output = await simpleGit({ baseDir: repoPath, binary: gitPath }).raw([
+    const output = await createGit(repoPath, gitPath).raw([
       "submodule",
       "foreach",
       "--quiet",
@@ -31,11 +30,7 @@ export async function getSubmodulePaths(repoPath: string, gitPath: string): Prom
 
 export async function getRemoteUrl(repoPath: string, gitPath: string): Promise<string | null> {
   try {
-    const url = await simpleGit({ baseDir: repoPath, binary: gitPath }).raw([
-      "config",
-      "--get",
-      "remote.origin.url"
-    ]);
+    const url = await createGit(repoPath, gitPath).raw(["config", "--get", "remote.origin.url"]);
     return url.trim() || null;
   } catch {
     return null;

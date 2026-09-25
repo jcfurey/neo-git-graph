@@ -3,10 +3,10 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { fetchRemote, pullBranch, pushBranch } from "@/backend/actions/remote";
+import { createGit } from "@/backend/gitClient";
 import { loadRemotes } from "@/backend/queries/loadRemotes";
 
 import { git, makeRepo } from "@tests/backend/helpers";
@@ -74,7 +74,7 @@ describe("pushBranch", () => {
     git(["checkout", "main"], repo);
     git(["tag", "feature/navigation"], repo);
     fs.writeFileSync(path.join(repo, "uncommitted.txt"), "unfinished work");
-    await pushBranch(simpleGit(repo), {
+    await pushBranch(createGit(repo, "git"), {
       requestId,
       branchName: "feature/navigation",
       remote: "backup",
@@ -93,7 +93,7 @@ describe("pushBranch", () => {
 
   it("preserves an existing upstream when pushing to another remote without changing tracking", async () => {
     addBackup();
-    await pushBranch(simpleGit(repo), {
+    await pushBranch(createGit(repo, "git"), {
       requestId,
       branchName: "main",
       remote: "backup",
@@ -107,7 +107,7 @@ describe("pushBranch", () => {
     const remote = advanceRemote();
     git(["commit", "--allow-empty", "-m", "local work"], repo);
     await expect(
-      pushBranch(simpleGit(repo), {
+      pushBranch(createGit(repo, "git"), {
         requestId,
         branchName: "main",
         remote: "origin",
@@ -121,7 +121,7 @@ describe("pushBranch", () => {
   it("only accepts configured remotes and valid destination branch names", async () => {
     const original = read(origin, ["rev-parse", "main"]);
     await expect(
-      pushBranch(simpleGit(repo), {
+      pushBranch(createGit(repo, "git"), {
         requestId,
         branchName: "main",
         remote: origin,
@@ -130,7 +130,7 @@ describe("pushBranch", () => {
       })
     ).rejects.toThrow(/not configured/);
     await expect(
-      pushBranch(simpleGit(repo), {
+      pushBranch(createGit(repo, "git"), {
         requestId,
         branchName: "main",
         remote: "origin",
@@ -147,7 +147,7 @@ describe("fetchRemote", () => {
     const original = read(repo, ["rev-parse", "HEAD"]);
     const latest = advanceRemote();
     fs.writeFileSync(path.join(repo, "f"), "unfinished work");
-    await fetchRemote(simpleGit(repo), { requestId, remote: "origin", prune: false });
+    await fetchRemote(createGit(repo, "git"), { requestId, remote: "origin", prune: false });
     expect(read(repo, ["rev-parse", "origin/main"])).toBe(latest);
     expect(read(repo, ["rev-parse", "HEAD"])).toBe(original);
     expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe("unfinished work");
@@ -158,19 +158,21 @@ describe("fetchRemote", () => {
     git(["fetch", "origin"], repo);
     git(["branch", "-D", "gone"], origin);
     git(["config", "fetch.prune", "true"], repo);
-    await fetchRemote(simpleGit(repo), { requestId, remote: "origin", prune: false });
-    expect(read(repo, ["branch", "-r", "--list", "origin/gone"])).toBe("origin/gone");
-    await fetchRemote(simpleGit(repo), { requestId, remote: "origin", prune: true });
-    expect(read(repo, ["branch", "-r", "--list", "origin/gone"])).toBe("");
+    await fetchRemote(createGit(repo, "git"), { requestId, remote: "origin", prune: false });
+    expect(read(repo, ["branch", "--no-color", "-r", "--list", "origin/gone"])).toBe("origin/gone");
+    await fetchRemote(createGit(repo, "git"), { requestId, remote: "origin", prune: true });
+    expect(read(repo, ["branch", "--no-color", "-r", "--list", "origin/gone"])).toBe("");
   });
 
   it("fetches all configured remotes", async () => {
     const backup = addBackup();
     const latest = advanceRemote();
     git(["branch", "backup-only", "main"], backup);
-    await fetchRemote(simpleGit(repo), { requestId, remote: null, prune: false });
+    await fetchRemote(createGit(repo, "git"), { requestId, remote: null, prune: false });
     expect(read(repo, ["rev-parse", "origin/main"])).toBe(latest);
-    expect(read(repo, ["branch", "-r", "--list", "backup/backup-only"])).toBe("backup/backup-only");
+    expect(read(repo, ["branch", "--no-color", "-r", "--list", "backup/backup-only"])).toBe(
+      "backup/backup-only"
+    );
   });
 });
 
@@ -179,7 +181,7 @@ describe("pullBranch", () => {
     const latest = advanceRemote();
     git(["config", "pull.rebase", "true"], repo);
     git(["config", "merge.ff", "false"], repo);
-    await pullBranch(simpleGit(repo), {
+    await pullBranch(createGit(repo, "git"), {
       requestId,
       branchName: "main",
       remote: "origin",
@@ -194,7 +196,7 @@ describe("pullBranch", () => {
     git(["branch", "other"], repo);
     advanceRemote();
     await expect(
-      pullBranch(simpleGit(repo), {
+      pullBranch(createGit(repo, "git"), {
         requestId,
         branchName: "other",
         remote: "origin",
@@ -211,7 +213,7 @@ describe("pullBranch", () => {
     const local = read(repo, ["rev-parse", "HEAD"]);
     advanceRemote();
     await expect(
-      pullBranch(simpleGit(repo), {
+      pullBranch(createGit(repo, "git"), {
         requestId,
         branchName: "main",
         remote: "origin",
@@ -228,7 +230,7 @@ describe("pullBranch", () => {
     advanceRemote();
     fs.writeFileSync(path.join(repo, "f"), "unfinished work");
     await expect(
-      pullBranch(simpleGit(repo), {
+      pullBranch(createGit(repo, "git"), {
         requestId,
         branchName: "main",
         remote: "origin",
@@ -244,27 +246,27 @@ describe("loadRemotes", () => {
   it("reports the upstream and respects branch pushRemote over remote.pushDefault", async () => {
     addBackup();
     git(["config", "remote.pushDefault", "backup"], repo);
-    expect(await loadRemotes(simpleGit(repo), "main")).toEqual({
+    expect(await loadRemotes(createGit(repo, "git"), "main")).toEqual({
       remotes: ["backup", "origin"],
       upstream: { remote: "origin", branchName: "main" },
       pushRemote: "backup"
     });
     git(["config", "branch.main.pushRemote", "origin"], repo);
-    expect((await loadRemotes(simpleGit(repo), "main")).pushRemote).toBe("origin");
+    expect((await loadRemotes(createGit(repo, "git"), "main")).pushRemote).toBe("origin");
   });
 
   it("preserves upstream branch names with slashes and supports unpublished branches", async () => {
     git(["config", "branch.main.merge", "refs/heads/release/stable"], repo);
-    expect((await loadRemotes(simpleGit(repo), "main")).upstream?.branchName).toBe(
+    expect((await loadRemotes(createGit(repo, "git"), "main")).upstream?.branchName).toBe(
       "release/stable"
     );
     git(["branch", "new-branch"], repo);
-    expect((await loadRemotes(simpleGit(repo), "new-branch")).upstream).toBeNull();
+    expect((await loadRemotes(createGit(repo, "git"), "new-branch")).upstream).toBeNull();
   });
 
   it("reports no remotes without assuming origin exists", async () => {
     git(["remote", "remove", "origin"], repo);
-    expect(await loadRemotes(simpleGit(repo), null)).toEqual({
+    expect(await loadRemotes(createGit(repo, "git"), null)).toEqual({
       remotes: [],
       upstream: null,
       pushRemote: null

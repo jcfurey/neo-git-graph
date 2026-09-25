@@ -1,10 +1,10 @@
 import * as cp from "node:child_process";
 import * as fs from "node:fs";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { deleteTag } from "@/backend/actions/tag";
+import { createGit } from "@/backend/gitClient";
 
 import { makeRepo } from "@tests/backend/helpers";
 
@@ -24,13 +24,13 @@ describe("deleteTag", () => {
   it("deletes an existing tag", async () => {
     cp.execFileSync("git", ["tag", "v1.0", commitHash], { cwd: repo });
 
-    await deleteTag(simpleGit(repo), { tagName: "v1.0" });
+    await deleteTag(createGit(repo, "git"), { tagName: "v1.0" });
 
     const tags = cp.execFileSync("git", ["tag"], { cwd: repo }).toString().trim();
     expect(tags).not.toContain("v1.0");
   });
 
   it("throws when the tag does not exist", async () => {
-    await expect(deleteTag(simpleGit(repo), { tagName: "nonexistent" })).rejects.toThrow();
+    await expect(deleteTag(createGit(repo, "git"), { tagName: "nonexistent" })).rejects.toThrow();
   });
 });

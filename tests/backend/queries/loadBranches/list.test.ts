@@ -2,9 +2,9 @@ import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { createGit } from "@/backend/gitClient";
 import { loadBranches } from "@/backend/queries/loadBranches";
 
 import { git, makeRepo } from "@tests/backend/helpers";
@@ -38,7 +38,7 @@ afterAll(() => {
 
 describe("loadBranches", () => {
   it("head branch is first in the returned array", async () => {
-    const result = await loadBranches(simpleGit(simpleRepo), {
+    const result = await loadBranches(createGit(simpleRepo, "git"), {
       showRemoteBranches: false,
       hard: false,
       repo: simpleRepo,
@@ -55,7 +55,7 @@ describe("loadBranches", () => {
   });
 
   it("non-head branches are present", async () => {
-    const result = await loadBranches(simpleGit(simpleRepo), {
+    const result = await loadBranches(createGit(simpleRepo, "git"), {
       showRemoteBranches: false,
       hard: false,
       repo: simpleRepo,
@@ -65,7 +65,7 @@ describe("loadBranches", () => {
   });
 
   it("detached HEAD yields head: null with branches still listed", async () => {
-    const result = await loadBranches(simpleGit(detachedRepo), {
+    const result = await loadBranches(createGit(detachedRepo, "git"), {
       showRemoteBranches: false,
       hard: false,
       repo: detachedRepo,
@@ -82,7 +82,7 @@ describe("loadBranches", () => {
   });
 
   it("excludes remote-tracking branches when showRemoteBranches is false", async () => {
-    const result = await loadBranches(simpleGit(repoWithRemote), {
+    const result = await loadBranches(createGit(repoWithRemote, "git"), {
       showRemoteBranches: false,
       hard: false,
       repo: repoWithRemote,
@@ -99,7 +99,7 @@ describe("loadBranches", () => {
   });
 
   it("includes remote-tracking branches when showRemoteBranches is true", async () => {
-    const result = await loadBranches(simpleGit(repoWithRemote), {
+    const result = await loadBranches(createGit(repoWithRemote, "git"), {
       showRemoteBranches: true,
       hard: false,
       repo: repoWithRemote,
@@ -117,7 +117,7 @@ describe("loadBranches", () => {
 
   it("reports a non-git directory instead of returning an empty branch list", async () => {
     await expect(
-      loadBranches(simpleGit(os.tmpdir()), {
+      loadBranches(createGit(os.tmpdir(), "git"), {
         showRemoteBranches: false,
         hard: false,
         repo: os.tmpdir(),
@@ -127,7 +127,7 @@ describe("loadBranches", () => {
   });
 
   it("passes hard flag through to the result", async () => {
-    const result = await loadBranches(simpleGit(simpleRepo), {
+    const result = await loadBranches(createGit(simpleRepo, "git"), {
       showRemoteBranches: false,
       hard: true,
       repo: simpleRepo,
@@ -145,7 +145,12 @@ describe("loadBranches", () => {
   describe("while HEAD is not on a branch", () => {
     let repo: string;
     const branches = (showRemoteBranches = false) =>
-      loadBranches(simpleGit(repo), { showRemoteBranches, hard: false, repo, gitPath: "git" });
+      loadBranches(createGit(repo, "git"), {
+        showRemoteBranches,
+        hard: false,
+        repo,
+        gitPath: "git"
+      });
 
     beforeAll(() => {
       repo = makeRepo();

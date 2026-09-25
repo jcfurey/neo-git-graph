@@ -2,10 +2,10 @@ import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { mergeCommit } from "@/backend/actions/merge";
+import { createGit } from "@/backend/gitClient";
 
 import { git, makeRepo } from "@tests/backend/helpers";
 
@@ -31,7 +31,7 @@ afterAll(() => {
 
 describe("mergeCommit", () => {
   it("merges a commit hash", async () => {
-    await mergeCommit(simpleGit(repo), {
+    await mergeCommit(createGit(repo, "git"), {
       commitHash: featureCommitHash,
       createNewCommit: false
     });
@@ -51,7 +51,7 @@ describe("mergeCommit", () => {
       .trim();
     git(["checkout", "main"], repo);
 
-    await mergeCommit(simpleGit(repo), {
+    await mergeCommit(createGit(repo, "git"), {
       commitHash: commit2Hash,
       createNewCommit: true
     });
@@ -62,7 +62,7 @@ describe("mergeCommit", () => {
 
   it("throws when the commit hash is invalid", async () => {
     await expect(
-      mergeCommit(simpleGit(repo), {
+      mergeCommit(createGit(repo, "git"), {
         commitHash: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
         createNewCommit: false
       })

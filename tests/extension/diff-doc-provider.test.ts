@@ -1,9 +1,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeEach, expect, it, vi } from "vitest";
 
+import { createGit } from "@/backend/gitClient";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import {
   DiffDocProvider,
@@ -45,7 +45,7 @@ vi.mock("vscode", () => {
 
 const repo = makeRepo();
 const other = makeRepo();
-const head = simpleGit(repo).revparse(["HEAD"]);
+const head = createGit(repo, "git").revparse(["HEAD"]);
 const victim = path.join(repo, "victim.txt");
 const opened: string[] = [];
 
@@ -62,7 +62,7 @@ beforeEach(() => {
 function provider(saved: (repo: string) => boolean = () => false) {
   return new DiffDocProvider((dir) => {
     opened.push(dir);
-    return simpleGit(dir);
+    return createGit(dir, "git");
   }, saved);
 }
 
@@ -73,8 +73,8 @@ function uri(query: string, file = "f") {
 it("shows files at a commit, its parent, and blob IDs", async () => {
   fs.writeFileSync(path.join(repo, "f"), "second");
   git(["commit", "-am", "second"], repo);
-  const commit = (await simpleGit(repo).revparse(["HEAD"])).trim();
-  const blob = (await simpleGit(repo).revparse([`${commit}:f`])).trim();
+  const commit = (await createGit(repo, "git").revparse(["HEAD"])).trim();
+  const blob = (await createGit(repo, "git").revparse([`${commit}:f`])).trim();
   const docs = provider();
 
   expect(await docs.provideTextDocumentContent(encodeDiffDocUri(repo, "f", commit))).toBe("second");
@@ -124,7 +124,7 @@ it("rejects relative and unknown repositories without running Git", async () => 
 });
 
 it("reopens documents for repositories with saved state", async () => {
-  const commit = (await simpleGit(other).revparse(["HEAD"])).trim();
+  const commit = (await createGit(other, "git").revparse(["HEAD"])).trim();
   // Saved state is keyed by normalized paths, as the repository manager stores them.
   const content = await provider(
     (dir) => dir === normalizeRepoPath(other)

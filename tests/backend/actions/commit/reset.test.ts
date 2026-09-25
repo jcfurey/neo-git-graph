@@ -2,10 +2,10 @@ import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { resetToCommit } from "@/backend/actions/commit";
+import { createGit } from "@/backend/gitClient";
 
 import { git, makeRepo } from "@tests/backend/helpers";
 
@@ -26,7 +26,7 @@ afterAll(() => {
 
 describe("resetToCommit", () => {
   it("soft-resets to a previous commit", async () => {
-    await resetToCommit(simpleGit(repo), {
+    await resetToCommit(createGit(repo, "git"), {
       commitHash: firstHash,
       resetMode: "soft"
     });
@@ -38,7 +38,7 @@ describe("resetToCommit", () => {
   });
 
   it("mixed-resets to a previous commit", async () => {
-    await resetToCommit(simpleGit(repo), {
+    await resetToCommit(createGit(repo, "git"), {
       commitHash: firstHash,
       resetMode: "mixed"
     });
@@ -51,7 +51,7 @@ describe("resetToCommit", () => {
   });
 
   it("hard-resets to a previous commit", async () => {
-    await resetToCommit(simpleGit(repo), {
+    await resetToCommit(createGit(repo, "git"), {
       commitHash: firstHash,
       resetMode: "hard"
     });
@@ -62,7 +62,7 @@ describe("resetToCommit", () => {
 
   it("throws for an invalid commit hash", async () => {
     await expect(
-      resetToCommit(simpleGit(repo), {
+      resetToCommit(createGit(repo, "git"), {
         commitHash: "0000000000000000000000000000000000000000",
         resetMode: "hard"
       })

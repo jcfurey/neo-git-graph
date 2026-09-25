@@ -72,6 +72,13 @@ jobs:
       - name: Run tests
         run: pnpm run test
 
+      # Settings such as log.showSignature and color.ui=always must not change parsed output.
+      - name: Run backend and extension tests with a hostile Git configuration
+        if: runner.os == 'Linux'
+        env:
+          NGG_HOSTILE_GIT_CONFIG: "1"
+        run: pnpm exec vitest run --project backend --project extension
+
       - name: Run extension and UI tests (Linux)
         if: runner.os == 'Linux'
         run: xvfb-run -a pnpm run test:ext

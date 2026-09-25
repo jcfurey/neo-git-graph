@@ -4,36 +4,49 @@ import { simpleGit } from "simple-git";
 export type GitClient = ReturnType<typeof gitClientFactory>;
 export type GitInstance = GitClient["getInstance"];
 
-export function gitClientFactory(repoPath: string, gitPath: string, abort?: AbortSignal) {
-  let git: SimpleGit = simpleGit({
+/**
+ * User settings that would change output the backend parses, such as signature verification
+ * lines in logs and ANSI color codes, or hide untracked files from the clean-worktree checks of
+ * Git commands like `worktree remove`. Git passes them on to its own child processes. Every other
+ * setting still applies.
+ */
+export const PARSED_OUTPUT_CONFIG = [
+  "log.showSignature=false",
+  "status.showUntrackedFiles=all",
+  "color.ui=never",
+  "color.branch=never",
+  "color.diff=never",
+  "color.status=never",
+  "color.showBranch=never",
+  "color.grep=never"
+];
+
+/** The same settings as `-c` arguments, for Git processes started without simple-git. */
+export const PARSED_OUTPUT_ARGS = PARSED_OUTPUT_CONFIG.flatMap((setting) => ["-c", setting]);
+
+export function createGit(repoPath: string, gitPath: string, abort?: AbortSignal): SimpleGit {
+  return simpleGit({
     baseDir: repoPath,
     binary: gitPath,
     maxConcurrentProcesses: 6,
     trimmed: false,
+    config: PARSED_OUTPUT_CONFIG,
     ...(abort ? { abort } : {})
   });
+}
+
+export function gitClientFactory(repoPath: string, gitPath: string, abort?: AbortSignal) {
+  let git = createGit(repoPath, gitPath, abort);
 
   return {
     getInstance: (): SimpleGit => git,
     setRepo(newRepoPath: string) {
       repoPath = newRepoPath;
-      git = simpleGit({
-        baseDir: repoPath,
-        binary: gitPath,
-        maxConcurrentProcesses: 6,
-        trimmed: false,
-        ...(abort ? { abort } : {})
-      });
+      git = createGit(repoPath, gitPath, abort);
     },
     setGitPath(newGitPath: string) {
       gitPath = newGitPath;
-      git = simpleGit({
-        baseDir: repoPath,
-        binary: gitPath,
-        maxConcurrentProcesses: 6,
-        trimmed: false,
-        ...(abort ? { abort } : {})
-      });
+      git = createGit(repoPath, gitPath, abort);
     }
   };
 }

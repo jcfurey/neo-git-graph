@@ -1,10 +1,10 @@
 import * as cp from "node:child_process";
 import * as fs from "node:fs";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { checkoutCommit } from "@/backend/actions/commit";
+import { createGit } from "@/backend/gitClient";
 
 import { makeRepo } from "@tests/backend/helpers";
 
@@ -22,7 +22,7 @@ afterAll(() => {
 
 describe("checkoutCommit", () => {
   it("checks out a commit hash (detaches HEAD)", async () => {
-    await checkoutCommit(simpleGit(repo), { commitHash });
+    await checkoutCommit(createGit(repo, "git"), { commitHash });
 
     const head = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
     expect(head).toBe(commitHash);
@@ -30,7 +30,7 @@ describe("checkoutCommit", () => {
 
   it("throws for a nonexistent commit hash", async () => {
     await expect(
-      checkoutCommit(simpleGit(repo), {
+      checkoutCommit(createGit(repo, "git"), {
         commitHash: "0000000000000000000000000000000000000000"
       })
     ).rejects.toThrow();

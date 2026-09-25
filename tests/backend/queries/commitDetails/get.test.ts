@@ -2,9 +2,9 @@ import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { createGit } from "@/backend/gitClient";
 import { commitDetails } from "@/backend/queries/commitDetails";
 import { loadHistory, loadRestorePlan, sourceFile } from "@/backend/queries/history";
 
@@ -26,7 +26,7 @@ afterAll(() => {
 
 describe("commitDetails", () => {
   it("returns commit details with expected fields", async () => {
-    const result = await commitDetails(simpleGit(repo), {
+    const result = await commitDetails(createGit(repo, "git"), {
       commitHash,
       dateType: "Author Date"
     });
@@ -46,13 +46,16 @@ describe("commitDetails", () => {
   });
 
   it("returns file changes for the initial commit", async () => {
-    const result = await commitDetails(simpleGit(repo), { commitHash, dateType: "Author Date" });
+    const result = await commitDetails(createGit(repo, "git"), {
+      commitHash,
+      dateType: "Author Date"
+    });
     expect(result.commitDetails).not.toBeNull();
     expect(result.commitDetails!.fileChanges.length).toBeGreaterThan(0);
   });
 
   it("returns commitDetails: null for an invalid commit hash", async () => {
-    const result = await commitDetails(simpleGit(repo), {
+    const result = await commitDetails(createGit(repo, "git"), {
       commitHash: "deadbeef1234",
       dateType: "Author Date"
     });
@@ -67,7 +70,7 @@ describe("commitDetails", () => {
       git(["commit", "-m", "mod"], repo2);
       const hash = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo2 }).toString().trim();
 
-      const result = await commitDetails(simpleGit(repo2), {
+      const result = await commitDetails(createGit(repo2, "git"), {
         commitHash: hash,
         dateType: "Author Date"
       });
@@ -82,7 +85,10 @@ describe("commitDetails", () => {
   });
 
   it("uses commit date when dateType is Commit Date", async () => {
-    const result = await commitDetails(simpleGit(repo), { commitHash, dateType: "Commit Date" });
+    const result = await commitDetails(createGit(repo, "git"), {
+      commitHash,
+      dateType: "Commit Date"
+    });
     expect(result).toEqual({
       commitDetails: {
         hash: commitHash,
@@ -99,7 +105,10 @@ describe("commitDetails", () => {
   });
 
   it("body contains the commit message", async () => {
-    const result = await commitDetails(simpleGit(repo), { commitHash, dateType: "Author Date" });
+    const result = await commitDetails(createGit(repo, "git"), {
+      commitHash,
+      dateType: "Author Date"
+    });
     expect(result.commitDetails!.body).toContain("init");
   });
 
@@ -126,7 +135,7 @@ describe("commitDetails", () => {
       git(["add", "-A"], dir);
       git(["commit", "-m", "unusual names"], dir);
       const hash = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: dir }).toString().trim();
-      const client = simpleGit({ baseDir: dir, trimmed: false });
+      const client = createGit(dir, "git");
 
       const { fileChanges } = (
         await commitDetails(client, {
@@ -201,7 +210,7 @@ describe("commitDetails", () => {
       git(["add", "main"], dir);
       git(["commit", "-m", "main"], dir);
       git(["merge", "--no-edit", "side"], dir);
-      const client = simpleGit(dir);
+      const client = createGit(dir, "git");
       const merge = (await commitDetails(client, { commitHash: "HEAD", dateType: "Author Date" }))
         .commitDetails!;
       expect(merge.fileChanges.map((change) => change.newFilePath)).toEqual(["side"]);

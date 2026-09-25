@@ -2,10 +2,10 @@ import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { mergeBranch } from "@/backend/actions/merge";
+import { createGit } from "@/backend/gitClient";
 
 import { git, makeRepo } from "@tests/backend/helpers";
 
@@ -26,7 +26,7 @@ afterAll(() => {
 
 describe("mergeBranch", () => {
   it("merges a branch with fast-forward by default", async () => {
-    await mergeBranch(simpleGit(repo), {
+    await mergeBranch(createGit(repo, "git"), {
       branchName: "feature",
       createNewCommit: false
     });
@@ -42,7 +42,7 @@ describe("mergeBranch", () => {
     git(["commit", "-m", "feature2 commit"], repo);
     git(["checkout", "main"], repo);
 
-    await mergeBranch(simpleGit(repo), {
+    await mergeBranch(createGit(repo, "git"), {
       branchName: "feature2",
       createNewCommit: true
     });
@@ -53,7 +53,7 @@ describe("mergeBranch", () => {
 
   it("throws when the branch does not exist", async () => {
     await expect(
-      mergeBranch(simpleGit(repo), {
+      mergeBranch(createGit(repo, "git"), {
         branchName: "nonexistent-branch",
         createNewCommit: false
       })
