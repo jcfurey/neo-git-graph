@@ -53,7 +53,9 @@ function signedCommit(file: string, subject: string) {
 
 beforeEach(() => {
   repo = makeRepo();
-  remote = makeRepo();
+  // A clone shares the initial commit, so the remote adds no history of its own.
+  remote = fs.mkdtempSync(path.join(path.dirname(repo), "ngg-remote-"));
+  read(["clone", "-q", "--bare", repo, remote]);
   read(["remote", "add", "origin", remote]);
   read(["fetch", "-q", "origin"]);
   // The user's configuration asks for signature output and color everywhere.
