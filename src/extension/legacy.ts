@@ -22,8 +22,9 @@ export function createMessageProtocol(ctx: vscode.ExtensionContext) {
     }),
     vscode.workspace.registerTextDocumentContentProvider(
       DiffDocProvider.scheme,
-      new DiffDocProvider(gitClient.getInstance, (repo) =>
-        gitClientFactory(repo, extConfig.gitPath()).getInstance()
+      new DiffDocProvider(
+        (repo) => gitClientFactory(repo, extConfig.gitPath()).getInstance(),
+        (repo) => repoManager.getRepos()[repo] !== undefined
       )
     )
   );

@@ -71,13 +71,16 @@ improvements rather than confirmed defects.
       [tag actions](src/backend/actions/tag.ts), [branch actions](src/backend/actions/branch.ts),
       [merge](src/backend/actions/merge.ts).
 
-- [ ] **Validate `neo-git-graph:` diff URIs before running Git.** The text-document provider passes
-      the URI's `commit` value to `git show` and runs it in the URI's `repo` directory. A Markdown
-      link, another extension, or `vscode.open` can open such a URI with `commit=--output=<file>`.
-      **Reproduced:** a unit test overwrote an existing file with `git show` output.
-      **Accept:** only full object IDs (optionally with `^`) and known repositories are accepted,
-      and `--end-of-options` is passed before the revision. Malformed URIs return an empty document
-      without starting Git. Tests cover `--output=`, `-O…`, `--ext-diff`, and a relative repository.
+- [x] **Validate `neo-git-graph:` diff URIs before running Git.** Completed 2026-09-25. The
+      provider accepts only full SHA-1 or SHA-256 object IDs (a commit may end in `^`), and only
+      absolute repositories that this session opened a document for or that have saved graph
+      state, so restored editors still load. It passes `--end-of-options` before the revision. The
+      all-zero placeholder, malformed escapes, and every rejected URI return an empty document
+      without starting Git.
+      **Verified:** unit tests cover `--output=`, `-O…`, `--ext-diff`, symbolic and abbreviated
+      revisions, a blob with `^`, relative and unknown repositories, and a malformed escape, and
+      assert that no Git client is created and an existing file is unchanged. Eight of these tests
+      fail against the previous provider.
       Sources: [diff document provider](src/old-extension/diffDocProvider.ts),
       [registration](src/extension/legacy.ts).
 

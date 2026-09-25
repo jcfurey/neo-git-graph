@@ -26,10 +26,8 @@ suite("History documents", () => {
     const file = "file # with spaces.txt";
     const repos = [path.join(root, "first"), path.join(root, "second")];
     const provider = new DiffDocProvider(
-      () => {
-        throw new Error("A comparison must use its bound client");
-      },
-      (repo) => gitClientFactory(repo, "git").getInstance()
+      (repo) => gitClientFactory(repo, "git").getInstance(),
+      () => false
     );
     try {
       for (const [index, repo] of repos.entries()) {
@@ -44,9 +42,10 @@ suite("History documents", () => {
         git("commit", "-m", "initial");
       }
       const contents = await Promise.all(
-        repos.map((repo) =>
-          provider.provideTextDocumentContent(encodeDiffDocUri(repo, file, "HEAD"))
-        )
+        repos.map((repo) => {
+          const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
+          return provider.provideTextDocumentContent(encodeDiffDocUri(repo, file, head));
+        })
       );
       assert.deepStrictEqual(contents, ["repository 0", "repository 1"]);
     } finally {
