@@ -4,6 +4,7 @@ import * as path from "node:path";
 import { simpleGit } from "simple-git";
 import { afterAll, beforeEach, expect, it, vi } from "vitest";
 
+import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import {
   DiffDocProvider,
   encodeDiffBlobUri,
@@ -124,9 +125,10 @@ it("rejects relative and unknown repositories without running Git", async () => 
 
 it("reopens documents for repositories with saved state", async () => {
   const commit = (await simpleGit(other).revparse(["HEAD"])).trim();
-  const content = await provider((dir) => dir === other).provideTextDocumentContent(
-    uri(`commit=${commit}&repo=${encodeURIComponent(other)}`)
-  );
+  // Saved state is keyed by normalized paths, as the repository manager stores them.
+  const content = await provider(
+    (dir) => dir === normalizeRepoPath(other)
+  ).provideTextDocumentContent(uri(`commit=${commit}&repo=${encodeURIComponent(other)}`));
   expect(content).toBe("x");
 });
 
