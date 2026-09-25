@@ -1,6 +1,8 @@
+import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import type { ActionPayload } from "@/backend/types";
+import { runGit } from "@/backend/utils/runGit";
 
 /**
  * Git names the merge commit after the argument, so keep the short name only when Git resolves it
@@ -15,24 +17,60 @@ async function branchArgument(git: SimpleGit, branch: string) {
   return resolved.trim() === ref ? branch : ref;
 }
 
+/**
+ * Git reports merge conflicts on standard output, in the user's language, and exits with status
+ * 1. Judge the result by the exit status and the merge state instead of the text.
+ */
+async function merge(git: SimpleGit, args: string[], binary: string) {
+  try {
+    await runGit(git, ["merge", ...args], binary);
+  } catch (error) {
+    const merging = await git
+      .raw(["rev-parse", "--verify", "--quiet", "MERGE_HEAD"])
+      .then((head) => head.trim() !== "")
+      .catch(() => false);
+    if (merging) {
+      throw new Error(
+        l10n.t(
+          "The merge stopped on conflicts. Resolve and stage the conflicted files, then continue or abort the merge from the status strip."
+        ),
+        { cause: error }
+      );
+    }
+    throw error;
+  }
+}
+
 export async function mergeBranch(
   git: SimpleGit,
-  input: ActionPayload<"mergeBranch">
+  input: ActionPayload<"mergeBranch">,
+  binary: string
 ): Promise<void> {
-  await git.merge([
-    ...(input.createNewCommit ? ["--no-ff"] : []),
-    "--end-of-options",
-    await branchArgument(git, input.branchName)
-  ]);
+  await merge(
+    git,
+    [
+      ...(input.createNewCommit ? ["--no-ff"] : []),
+      "--no-edit",
+      "--end-of-options",
+      await branchArgument(git, input.branchName)
+    ],
+    binary
+  );
 }
 
 export async function mergeCommit(
   git: SimpleGit,
-  input: ActionPayload<"mergeCommit">
+  input: ActionPayload<"mergeCommit">,
+  binary: string
 ): Promise<void> {
-  await git.merge([
-    ...(input.createNewCommit ? ["--no-ff"] : []),
-    "--end-of-options",
-    input.commitHash
-  ]);
+  await merge(
+    git,
+    [
+      ...(input.createNewCommit ? ["--no-ff"] : []),
+      "--no-edit",
+      "--end-of-options",
+      input.commitHash
+    ],
+    binary
+  );
 }

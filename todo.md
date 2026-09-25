@@ -109,8 +109,8 @@ improvements rather than confirmed defects.
       `EDITOR`, `PAGER`, `GIT_ASKPASS`, or `SSH_ASKPASS`, and forcing `LC_ALL=C` would also
       show Git's own error messages in English. The known locale-dependent parsers are branch
       listing (fixed with `for-each-ref`) and merge conflict detection (the next P2 item), so
-      decide whether a fixed locale is still wanted, and add a non-English locale to the hostile
-      CI step once the merge item lands.
+      decide whether a fixed locale is still wanted. A non-English CI run would also need tests
+      that match Git's English error text, such as "would be overwritten", to stop doing so.
       Sources: [Git client](src/backend/gitClient.ts), [runGit](src/backend/utils/runGit.ts),
       [test helpers](tests/backend/helpers.ts).
 
@@ -223,12 +223,15 @@ improvements rather than confirmed defects.
       [branch actions](src/backend/actions/branch.ts),
       [remote actions](src/backend/actions/remotes.ts).
 
-- [ ] **Detect merge conflicts from Git's exit status.** simple-git detects conflicts by matching
-      English `CONFLICT` output, while Git itself exits 1 with empty stderr. The English conflict
-      error reaches the user as raw simple-git text. **Reproduced** with translated output: a
-      conflicted merge reported success while `MERGE_HEAD` existed.
-      **Accept:** merges use exit-code-aware execution, and conflicts map to a localized message.
-      A test passes with both real and translated output.
+- [x] **Detect merge conflicts from Git's exit status.** Completed 2026-09-25. Merges run through
+      `runGit`, which reports Git's exit status, with `--no-edit`. When a merge fails and
+      `MERGE_HEAD` exists, the user sees a localized message that points to the status strip's
+      Continue and Abort; other failures keep Git's own message.
+      **Verified:** tests merge a branch and a commit into a conflict with English output and,
+      except on Windows, with a Git wrapper that translates the conflict text. Both reject with
+      the localized message and leave `MERGE_HEAD` for resolution, and both fail against the
+      previous merge. Another test keeps Git's message for a merge that would overwrite local
+      changes, and the VS Code merge-recovery scenario passes.
       Sources: [merge](src/backend/actions/merge.ts).
 
 - [ ] **Make backend ref-name validation reject invalid names.** `git check-ref-format` reports

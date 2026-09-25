@@ -31,10 +31,14 @@ afterAll(() => {
 
 describe("mergeCommit", () => {
   it("merges a commit hash", async () => {
-    await mergeCommit(createGit(repo, "git"), {
-      commitHash: featureCommitHash,
-      createNewCommit: false
-    });
+    await mergeCommit(
+      createGit(repo, "git"),
+      {
+        commitHash: featureCommitHash,
+        createNewCommit: false
+      },
+      "git"
+    );
 
     const log = cp.execFileSync("git", ["log", "--oneline"], { cwd: repo }).toString();
     expect(log).toContain("feature commit");
@@ -51,10 +55,14 @@ describe("mergeCommit", () => {
       .trim();
     git(["checkout", "main"], repo);
 
-    await mergeCommit(createGit(repo, "git"), {
-      commitHash: commit2Hash,
-      createNewCommit: true
-    });
+    await mergeCommit(
+      createGit(repo, "git"),
+      {
+        commitHash: commit2Hash,
+        createNewCommit: true
+      },
+      "git"
+    );
 
     const log = cp.execFileSync("git", ["log", "--oneline"], { cwd: repo }).toString();
     expect(log).toContain("Merge commit");
@@ -62,10 +70,14 @@ describe("mergeCommit", () => {
 
   it("throws when the commit hash is invalid", async () => {
     await expect(
-      mergeCommit(createGit(repo, "git"), {
-        commitHash: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-        createNewCommit: false
-      })
+      mergeCommit(
+        createGit(repo, "git"),
+        {
+          commitHash: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+          createNewCommit: false
+        },
+        "git"
+      )
     ).rejects.toThrow();
   });
 });

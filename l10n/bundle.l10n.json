@@ -457,6 +457,7 @@
   "Keep at least one commit. The first retained commit cannot be squashed.": "Keep at least one commit. The first retained commit cannot be squashed.",
   "Each reworded commit needs a nonempty message.": "Each reworded commit needs a nonempty message.",
   "Commit or stash your changes before rebasing.": "Commit or stash your changes before rebasing.",
+  "The merge stopped on conflicts. Resolve and stage the conflicted files, then continue or abort the merge from the status strip.": "The merge stopped on conflicts. Resolve and stage the conflicted files, then continue or abort the merge from the status strip.",
   "The file changed. Preview the restore again.": "The file changed. Preview the restore again.",
   "The recorded submodule revision changed. Refresh the workspace overview.": "The recorded submodule revision changed. Refresh the workspace overview.",
   "The file or its staged version changed. Preview the restore again.": "The file or its staged version changed. Preview the restore again.",

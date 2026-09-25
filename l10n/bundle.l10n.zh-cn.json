@@ -423,6 +423,7 @@
   "Keep at least one commit. The first retained commit cannot be squashed.": "请至少保留一个提交。第一个保留的提交不能被压缩。",
   "Each reworded commit needs a nonempty message.": "每个改写的提交都需要非空的提交信息。",
   "Commit or stash your changes before rebasing.": "变基前请先提交或暂存更改。",
+  "The merge stopped on conflicts. Resolve and stage the conflicted files, then continue or abort the merge from the status strip.": "合并因冲突而停止。请解决并暂存冲突文件，然后在状态栏中继续或中止合并。",
   "The file changed. Preview the restore again.": "文件已更改。请重新预览恢复。",
   "The recorded submodule revision changed. Refresh the workspace overview.": "记录的子模块版本已更改。请刷新工作区概览。",
   "The file or its staged version changed. Preview the restore again.": "文件或其暂存版本已更改。请重新预览恢复。",

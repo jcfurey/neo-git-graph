@@ -253,8 +253,8 @@ export function registerMessageHandlers(
   registerAction("cherrypickCommit", (git, msg) => cherrypickCommit(git, msg));
   registerAction("revertCommit", (git, msg) => revertCommit(git, msg));
   registerAction("resetToCommit", (git, msg) => resetToCommit(git, msg));
-  registerAction("mergeBranch", (git, msg) => mergeBranch(git, msg));
-  registerAction("mergeCommit", (git, msg) => mergeCommit(git, msg));
+  registerAction("mergeBranch", (git, msg) => mergeBranch(git, msg, config.gitPath()));
+  registerAction("mergeCommit", (git, msg) => mergeCommit(git, msg, config.gitPath()));
 
   registerAction("pushBranch", (git, msg) => pushBranch(git, msg));
   registerAction("pullBranch", (git, msg) => pullBranch(git, msg));

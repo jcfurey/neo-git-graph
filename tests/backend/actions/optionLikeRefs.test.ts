@@ -153,7 +153,7 @@ describe("refs whose names look like options", () => {
     const { repo, tips } = fixture();
     // A case-insensitive filesystem resolves the short name -D to the loose tag -d first.
     const shadowed = fs.existsSync(path.join(repo, ".git", "refs", "tags", "-D"));
-    await mergeBranch(createGit(repo, "git"), { branchName: "-D", createNewCommit: true });
+    await mergeBranch(createGit(repo, "git"), { branchName: "-D", createNewCommit: true }, "git");
     expect(rev(repo, "HEAD^2")).toBe(tips["refs/heads/-D"]);
     expect(
       cp.execFileSync("git", ["log", "-1", "--format=%s"], { cwd: repo }).toString().trim()
@@ -164,7 +164,7 @@ describe("refs whose names look like options", () => {
     const { repo, tips } = fixture();
     git(["tag", "same", tips["refs/tags/-d"]!], repo);
     git(["branch", "same", tips["refs/heads/--output=x"]!], repo);
-    await mergeBranch(createGit(repo, "git"), { branchName: "same", createNewCommit: true });
+    await mergeBranch(createGit(repo, "git"), { branchName: "same", createNewCommit: true }, "git");
     expect(rev(repo, "HEAD^2")).toBe(tips["refs/heads/--output=x"]);
   });
 });

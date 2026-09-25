@@ -26,10 +26,14 @@ afterAll(() => {
 
 describe("mergeBranch", () => {
   it("merges a branch with fast-forward by default", async () => {
-    await mergeBranch(createGit(repo, "git"), {
-      branchName: "feature",
-      createNewCommit: false
-    });
+    await mergeBranch(
+      createGit(repo, "git"),
+      {
+        branchName: "feature",
+        createNewCommit: false
+      },
+      "git"
+    );
 
     const log = cp.execFileSync("git", ["log", "--oneline"], { cwd: repo }).toString();
     expect(log).toContain("feature commit");
@@ -42,10 +46,14 @@ describe("mergeBranch", () => {
     git(["commit", "-m", "feature2 commit"], repo);
     git(["checkout", "main"], repo);
 
-    await mergeBranch(createGit(repo, "git"), {
-      branchName: "feature2",
-      createNewCommit: true
-    });
+    await mergeBranch(
+      createGit(repo, "git"),
+      {
+        branchName: "feature2",
+        createNewCommit: true
+      },
+      "git"
+    );
 
     const log = cp.execFileSync("git", ["log", "--oneline"], { cwd: repo }).toString();
     expect(log).toContain("Merge branch");
@@ -53,10 +61,14 @@ describe("mergeBranch", () => {
 
   it("throws when the branch does not exist", async () => {
     await expect(
-      mergeBranch(createGit(repo, "git"), {
-        branchName: "nonexistent-branch",
-        createNewCommit: false
-      })
+      mergeBranch(
+        createGit(repo, "git"),
+        {
+          branchName: "nonexistent-branch",
+          createNewCommit: false
+        },
+        "git"
+      )
     ).rejects.toThrow();
   });
 });
