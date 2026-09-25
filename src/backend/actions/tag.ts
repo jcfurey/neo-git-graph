@@ -4,18 +4,16 @@ import type { ActionPayload } from "@/backend/types";
 import { requireRemote } from "@/backend/utils/validation";
 
 export async function addTag(git: SimpleGit, input: ActionPayload<"addTag">): Promise<void> {
-  const args: string[] = [];
-  if (input.lightweight) {
-    args.push(input.tagName);
-  } else {
-    args.push("-a", input.tagName, "-m", input.message);
-  }
-  args.push(input.commitHash);
-  await git.tag(args);
+  await git.tag([
+    ...(input.lightweight ? [] : ["-a", "-m", input.message]),
+    "--",
+    input.tagName,
+    input.commitHash
+  ]);
 }
 
 export async function deleteTag(git: SimpleGit, input: ActionPayload<"deleteTag">): Promise<void> {
-  await git.tag(["-d", input.tagName]);
+  await git.tag(["-d", "--", input.tagName]);
 }
 
 export async function pushTag(git: SimpleGit, input: ActionPayload<"pushTag">): Promise<void> {

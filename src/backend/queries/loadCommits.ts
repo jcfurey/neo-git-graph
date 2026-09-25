@@ -7,6 +7,7 @@ import type {
   GitRefData,
   QueryResult
 } from "@/backend/types";
+import { branchListRef } from "@/backend/utils/refs";
 import { remoteVisibility } from "@/backend/utils/remoteVisibility";
 
 const eolRegex = /\r\n|\r|\n/g;
@@ -71,7 +72,7 @@ async function getLog(
   const format = ["%H", "%P", "%an", "%ae", dateField, "%s"].join(gitLogSeparator);
   const args = ["log", `--max-count=${maxCommits}`, `--format=${format}`, "--date-order"];
   if (branch !== "") {
-    args.push(branch);
+    args.push(branchListRef(branch));
   } else {
     args.push("--branches", "--tags");
     args.push(...remoteArgs);
@@ -81,6 +82,7 @@ async function getLog(
       args.push(head);
     }
   }
+  args.push("--");
   const stdout = await git.raw(args);
   const lines = stdout.split(eolRegex);
   const commits: GitLogEntry[] = [];

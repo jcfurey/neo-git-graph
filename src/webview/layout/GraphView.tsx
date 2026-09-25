@@ -1,5 +1,6 @@
 import { useLayoutEffect } from "preact/hooks";
 
+import { branchListRef } from "@/backend/utils/refs";
 import { CommitTable } from "@/webview/components/commit/CommitTable";
 import { openBatch, openCompare } from "@/webview/components/history/HistoryTools";
 import { PageControls, QueryStatus } from "@/webview/components/history/QueryControls";
@@ -52,7 +53,7 @@ export function GraphView() {
           hiddenRemotes: hiddenRemotes.value,
           filter: {
             ...filter,
-            revision: filter.revision || displayedBranch()
+            revision: filter.revision || (displayedBranch() && branchListRef(displayedBranch()))
           },
           offset: historyOffset.value
         }

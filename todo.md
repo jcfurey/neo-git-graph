@@ -57,16 +57,16 @@ improvements rather than confirmed defects.
       Sources: [commit details](src/backend/queries/commitDetails.ts),
       [working-tree diffs](src/backend/actions/workingTree.ts).
 
-- [ ] **Stop repository ref names from being parsed as Git options.** Existing branch and tag names
-      reach `git log`, `tag -d`, `branch -d/-D/-m`, and `merge` without `--` or
-      `--end-of-options`. Clones and fetches can bring in such names; for example, the bare-clone
-      worktree workflow turns remote branches into local ones. **Reproduced:** filtering the graph
-      to a branch named `--output=pwned.txt` created that file, filled with log output; deleting a
-      tag named `-d` reported success and left the tag in place. When a branch and a tag share a
-      name, filtering to the branch also shows the tag's history.
-      **Accept:** log and merge use fully qualified refs or `--end-of-options`; tag and branch
-      delete and rename use `--`. Tests with `refs/tags/-d`, `refs/heads/--output=x`, and
-      `refs/heads/-D` show that each action affects exactly that ref and creates no files.
+- [x] **Stop repository ref names from being parsed as Git options.** Completed 2026-09-25. The
+      graph filter, branch focus, and history search use the full ref of the selected branch, and
+      the graph log ends its revisions with `--`. Tag and branch creation, deletion, and renaming
+      pass names after `--`. Merges pass `--end-of-options` and keep the short branch name, so Git
+      still records "Merge branch 'name'", unless another ref such as a same-named tag would take
+      precedence; then they use the full ref.
+      **Verified:** backend tests with `refs/tags/-d`, `refs/heads/--output=x`, and `refs/heads/-D`
+      assert the exact ref set after each deletion and rename, that no file is created, that an
+      unmerged `-D` still needs force, and that merges and graph filters pick the branch over a
+      same-named tag. Eight of the nine tests fail against the previous actions.
       Sources: [commit loader](src/backend/queries/loadCommits.ts),
       [tag actions](src/backend/actions/tag.ts), [branch actions](src/backend/actions/branch.ts),
       [merge](src/backend/actions/merge.ts).
