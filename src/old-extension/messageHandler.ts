@@ -30,7 +30,11 @@ import { isRepoWithinPath, normalizeRepoPath } from "@/backend/utils/repoPath";
 import { abbrevCommit } from "@/backend/utils/string";
 import type { Config } from "@/extension/config";
 import { logger } from "@/extension/util/logger";
-import { selectWatchedRepo } from "@/extension/watchers/git-repo.watcher";
+import {
+  muteGitRepoWatcher,
+  selectWatchedRepo,
+  unmuteGitRepoWatcher
+} from "@/extension/watchers/git-repo.watcher";
 import { invalidateWorkspaceScan, scanWorkspaceRepos } from "@/extension/workspace-scan";
 import { AvatarManager } from "@/old-extension/avatarManager";
 import { encodeDiffBlobUri, encodeDiffDocUri } from "@/old-extension/diffDocProvider";
@@ -72,6 +76,17 @@ function viewDiff(
       logger.error(`Unable to open the diff of ${newFilePath} at ${abbrevHash}`, error);
       return false;
     }
+  );
+}
+
+/** Actions that only open an editor, so file events during them come from the user. */
+function viewOnly(request: ActionRequest) {
+  return (
+    request.command === "repositoryAction" &&
+    (request.action.kind === "viewWorkingTreeFile" ||
+      request.action.kind === "viewRangeFile" ||
+      request.action.kind === "viewHistoricalFile" ||
+      request.action.kind === "previewFileRestore")
   );
 }
 
@@ -140,12 +155,18 @@ export function registerMessageHandlers(
         }
         busyRepos.set(msg.repo, recursive);
         acquired = true;
+        if (!viewOnly(request)) {
+          muteGitRepoWatcher(msg.repo);
+        }
         await handler(gitClientFactory(msg.repo, config.gitPath()).getInstance(), msg);
       } catch (e: unknown) {
         status = e instanceof Error ? e.message : String(e);
       } finally {
         if (acquired) {
           busyRepos.delete(msg.repo);
+          if (!viewOnly(msg)) {
+            unmuteGitRepoWatcher(msg.repo);
+          }
         }
       }
       bridge.post({

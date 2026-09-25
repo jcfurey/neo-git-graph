@@ -2,7 +2,12 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { selectWatchedRepo, watchGitRepo } from "@/extension/watchers/git-repo.watcher";
+import {
+  muteGitRepoWatcher,
+  selectWatchedRepo,
+  unmuteGitRepoWatcher,
+  watchGitRepo
+} from "@/extension/watchers/git-repo.watcher";
 import { webviewBridgeFactory } from "@/old-extension/webviewBridge";
 import type { RequestMessage } from "@/types";
 
@@ -43,11 +48,17 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function expectWatcherResumed() {
-  vi.advanceTimersByTime(1500);
+function expectRefresh() {
   changeFile();
   vi.advanceTimersByTime(250);
   expect(mocks.notify).toHaveBeenCalledExactlyOnceWith("repo.updated", { path: "/repo" });
+  mocks.notify.mockClear();
+}
+
+function expectNoRefresh() {
+  changeFile();
+  vi.advanceTimersByTime(250);
+  expect(mocks.notify).not.toHaveBeenCalled();
 }
 
 function createBridge() {
@@ -86,30 +97,56 @@ describe("webviewBridgeFactory", () => {
     });
 
     await expect(receive({ command: "selectRepo", repo: "/repo" })).rejects.toBe(failure);
-    expectWatcherResumed();
   });
 
-  it("keeps the watcher muted until all overlapping handlers have settled", async () => {
+  it("keeps watching while requests run and after they finish", async () => {
     const { bridge, receive } = createBridge();
-    const first = Promise.withResolvers<void>();
-    const second = Promise.withResolvers<void>();
-    bridge.onMessage("selectRepo", (message) =>
-      message.repo === "/first" ? first.promise : second.promise
-    );
-    const firstRequest = receive({ command: "selectRepo", repo: "/first" });
-    const secondRequest = receive({ command: "selectRepo", repo: "/second" });
-    first.resolve();
-    await firstRequest;
+    const query = Promise.withResolvers<void>();
+    bridge.onMessage("selectRepo", () => query.promise);
+    const request = receive({ command: "selectRepo", repo: "/repo" });
+    expectRefresh();
+    query.resolve();
+    await request;
+    // A commit made just after a read still refreshes the graph.
+    vi.advanceTimersByTime(1000);
+    expectRefresh();
+  });
+});
+
+describe("repository watcher mutes", () => {
+  it("ignores an action's own changes until its trailing events settle", () => {
+    muteGitRepoWatcher("/repo");
+    expectNoRefresh();
+    unmuteGitRepoWatcher("/repo");
+    vi.advanceTimersByTime(1000);
+    expectNoRefresh();
+    vi.advanceTimersByTime(500);
+    expectRefresh();
+  });
+
+  it("stays muted until overlapping actions in the repository finish", () => {
+    muteGitRepoWatcher("/repo");
+    muteGitRepoWatcher("/repo");
+    unmuteGitRepoWatcher("/repo");
     vi.advanceTimersByTime(2000);
-    changeFile();
-    vi.advanceTimersByTime(250);
-    expect(mocks.notify).not.toHaveBeenCalled();
-    const failure = new Error("second handler failed");
-    second.reject(failure);
-    await expect(secondRequest).rejects.toBe(failure);
-    changeFile();
-    vi.advanceTimersByTime(250);
-    expect(mocks.notify).not.toHaveBeenCalled();
-    expectWatcherResumed();
+    expectNoRefresh();
+    unmuteGitRepoWatcher("/repo");
+    vi.advanceTimersByTime(1500);
+    expectRefresh();
+  });
+
+  it("mutes for parent and submodule actions but not for other repositories", () => {
+    muteGitRepoWatcher("/other");
+    expectRefresh();
+    unmuteGitRepoWatcher("/other");
+    muteGitRepoWatcher("/repo/submodule");
+    expectNoRefresh();
+    unmuteGitRepoWatcher("/repo/submodule");
+    vi.advanceTimersByTime(1500);
+    muteGitRepoWatcher("/");
+    expectNoRefresh();
+    unmuteGitRepoWatcher("/");
+    vi.advanceTimersByTime(1500);
+    expectRefresh();
   });
 });

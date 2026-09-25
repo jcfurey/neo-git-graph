@@ -165,17 +165,18 @@ improvements rather than confirmed defects.
       Sources: [activation](src/extension/legacy.ts), [entry point](src/main.ts),
       [repository scan](src/extension/handlers/scan-repo.ts), [manifest](package.json).
 
-- [ ] **Stop background reads from locking the index or hiding repository changes.** The webview
-      bridge mutes the repository watcher around every message, reads included, and it discards
-      events that arrive during the mute or in the 1.5 s after it. Read queries also run
-      `git status` without `GIT_OPTIONAL_LOCKS=0`, so they rewrite `.git/index` and can hold
-      `index.lock` while the user commits. A long workspace fetch mutes the watcher for its entire
-      duration. **Reproduced:** after any webview request, a commit made 1 s later never produced a
-      refresh; `git status` rewrote the index, while `GIT_OPTIONAL_LOCKS=0` left it untouched.
-      **Accept:** reads run with `GIT_OPTIONAL_LOCKS=0`, and a test shows the index is unchanged
-      after the graph, state, and workspace queries. Events during a mute trigger exactly one
-      refresh after it ends, or only mutating actions mute the watcher; the test that asserts
-      dropped events becomes a catch-up test.
+- [x] **Stop background reads from locking the index or hiding repository changes.** Completed
+      2026-09-25. Every backend Git process runs with `--no-optional-locks`, which simple-git
+      accepts as a binary prefix; its safety checks reject `GIT_OPTIONAL_LOCKS` alongside common
+      variables such as `EDITOR`. The bridge no longer mutes the watcher for every message. Only
+      actions that change a repository mute it, only for that repository, its parents, and its
+      submodules, and actions that just open an editor do not mute it.
+      **Verified:** a backend test gives a tracked file a new modification time, runs the graph,
+      state, and workspace queries, and asserts the index is byte-for-byte unchanged, while a plain
+      `git status` rewrites it; the test fails without the option. Watcher tests show a commit
+      made just after a read refreshes the graph, and cover overlapping, other-repository, parent,
+      and submodule mutes. Action tests assert a push mutes its own repository until it settles
+      and a file view does not mute.
       Sources: [webview bridge](src/old-extension/webviewBridge.ts),
       [repository watcher](src/extension/watchers/git-repo.watcher.ts),
       [bridge tests](tests/extension/webviewBridge.test.ts).

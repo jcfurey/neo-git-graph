@@ -2,15 +2,34 @@ import path from "node:path";
 
 import * as vscode from "vscode";
 
+import { isRepoWithinPath } from "@/backend/utils/repoPath";
 import { rpcNotify } from "@/extension/rpc/rpc-notify";
 import { logger } from "@/extension/util/logger";
 
 const REFRESH_DELAY = 250;
 const GIT_DATA = /^(HEAD|config|index|packed-refs|refs(?:\/.*)?)$/;
 
+const RESUME_DELAY = 1500;
+
 let selectRepo: ((repo: string) => void) | undefined;
-let muteDepth = 0;
-let resumeAt = 0;
+/** Repositories that an action is changing, and when their trailing file events end. */
+const mutes = new Map<string, number>();
+const resumeAt = new Map<string, number>();
+
+/** An action in the watched repository, or in a parent or submodule of it, changes its files. */
+function isMuted(repo: string) {
+  const overlaps = (other: string) =>
+    isRepoWithinPath(repo, other) || isRepoWithinPath(other, repo);
+  const now = Date.now();
+  for (const [other, until] of resumeAt) {
+    if (until <= now) {
+      resumeAt.delete(other);
+    } else if (overlaps(other)) {
+      return true;
+    }
+  }
+  return [...mutes.keys()].some(overlaps);
+}
 
 export function watchGitRepo(): vscode.Disposable {
   let repoPath: string | undefined;
@@ -36,7 +55,7 @@ export function watchGitRepo(): vscode.Disposable {
     watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(repo, "**/*"));
 
     const refresh = (event: "created" | "changed" | "deleted", uri: vscode.Uri) => {
-      if (muteDepth > 0 || Date.now() < resumeAt) {
+      if (isMuted(repo)) {
         return;
       }
 
@@ -66,8 +85,8 @@ export function watchGitRepo(): vscode.Disposable {
 
   return new vscode.Disposable(() => {
     selectRepo = undefined;
-    muteDepth = 0;
-    resumeAt = 0;
+    mutes.clear();
+    resumeAt.clear();
     stop();
   });
 }
@@ -80,17 +99,20 @@ export function selectWatchedRepo(repo: string): void {
   selectRepo(repo);
 }
 
-export function muteGitRepoWatcher(): void {
-  muteDepth++;
+/** Ignore file events that an action in `repo` causes; the view refreshes after the action. */
+export function muteGitRepoWatcher(repo: string): void {
+  mutes.set(repo, (mutes.get(repo) ?? 0) + 1);
 }
 
-export function unmuteGitRepoWatcher(): void {
-  if (muteDepth === 0) {
+export function unmuteGitRepoWatcher(repo: string): void {
+  const depth = mutes.get(repo);
+  if (depth === undefined) {
     return;
   }
-
-  muteDepth--;
-  if (muteDepth === 0) {
-    resumeAt = Date.now() + 1500;
+  if (depth > 1) {
+    mutes.set(repo, depth - 1);
+    return;
   }
+  mutes.delete(repo);
+  resumeAt.set(repo, Date.now() + RESUME_DELAY);
 }

@@ -21,13 +21,21 @@ export const PARSED_OUTPUT_CONFIG = [
   "color.grep=never"
 ];
 
-/** The same settings as `-c` arguments, for Git processes started without simple-git. */
-export const PARSED_OUTPUT_ARGS = PARSED_OUTPUT_CONFIG.flatMap((setting) => ["-c", setting]);
+/**
+ * Arguments for Git processes started without simple-git: the same settings, and no optional
+ * locks, so reads such as `git status` never rewrite the index or hold `index.lock` while the
+ * user commits.
+ */
+export const PARSED_OUTPUT_ARGS = [
+  "--no-optional-locks",
+  ...PARSED_OUTPUT_CONFIG.flatMap((setting) => ["-c", setting])
+];
 
 export function createGit(repoPath: string, gitPath: string, abort?: AbortSignal): SimpleGit {
   return simpleGit({
     baseDir: repoPath,
-    binary: gitPath,
+    // The prefix argument follows the binary, before any command.
+    binary: [gitPath, "--no-optional-locks"],
     maxConcurrentProcesses: 6,
     trimmed: false,
     config: PARSED_OUTPUT_CONFIG,
