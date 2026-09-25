@@ -103,12 +103,16 @@ After installing, the **Get started with (neo) Git Graph** walkthrough appears o
 
 ## Roadmap
 
-The fork already includes the Preact webview, RPC-backed repository workflows, branch focus,
-individual remote visibility, and horizontal graph navigation described above. See the
-[changelog](CHANGELOG.md) for implemented changes.
+The fork already includes the Preact webview, request/response repository workflows, branch
+focus, individual remote visibility, horizontal graph navigation, and browsing of uncommitted
+changes, all described above. Per-repository view preferences, graph geometry and theme regression
+coverage, large-repository performance measurements, and UI failure diagnostics have also shipped.
+See the [changelog](CHANGELOG.md) for implemented changes.
 
-Remaining work includes graph geometry and theme coverage, consistent preference lifetimes,
-large-repository performance measurements, and better UI diagnostics. The tracked acceptance
+The current backlog, reviewed 2026-09-25, prioritizes data safety and security. Its first items are
+hardening file restore, Git argument handling, and destructive dialogs, followed by making Git
+output parsing independent of user configuration and locale. Row virtualization and ancestry
+caching remain deferred; see the [performance report](docs/performance.md). The tracked acceptance
 criteria are in [todo.md](todo.md).
 
 ## Configuration

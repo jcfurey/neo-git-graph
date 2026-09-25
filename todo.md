@@ -1,174 +1,536 @@
 # Outstanding work
 
-Reviewed **2026-09-18**, against `main` at `5614855`. This backlog is based on the code and tests
-in this checkout. Check an item off when its acceptance criteria and relevant checks pass.
+Reviewed **2026-09-25**, against `main` at `e96e630`. Five parallel reviews covered the
+uncommitted-changes and file-restore features added since the last review, the backend Git layer,
+the extension host, the webview, and project health (tests, CI, documentation, and packaging). The
+previous backlog, reviewed 2026-09-18 at `5614855`, is complete; its results are recorded in the
+[changelog](CHANGELOG.md) and in this file's history.
 
-Branch focus and dimming, individual remote visibility, graph clipping, and horizontal graph
-scrolling are already implemented. The items below address remaining gaps and refinements.
+Check an item off when its acceptance criteria and relevant checks pass and CI is green for the
+commit that completes it.
 
-**Evidence:** “Reproduced” means exercised during this review; “Code review” means the gap is
-visible in the implementation but has not been reproduced end to end; “Proposed” and
-“Investigate” identify improvements rather than confirmed defects.
+**Evidence:** “Reproduced” means exercised during this review against real Git repositories, the
+unit-test harness, or a headless-Chrome build of the webview; “Code review” means the gap is visible
+in the implementation but has not been reproduced end to end; “Proposed” and “Investigate” identify
+improvements rather than confirmed defects.
 
-## P1 — Correctness and regression protection
+## P1 — Data safety, security, and correctness
 
-- [x] **Include detached HEAD in the all-branches graph.** Completed 2026-09-18. The all-branches
-      query now includes the resolved HEAD hash, so detached-only history and its dirty row stay
-      visible. Branch filtering and hidden remote labels retain their existing behavior.
-      **Verified:** regression tests cover detached-only commits with remotes shown/hidden, dirty
-      detached checkouts, no branch refs, checked-out hidden remote history, and an unborn repo.
+- [ ] **Refuse to restore a file through a submodule or nested repository.** Restore File Contents
+      writes into a nested repository's work tree when a parent of the destination is a submodule
+      or an untracked or ignored nested clone. The superproject's `git status` cannot see the nested
+      file, so no local-changes warning appears. **Reproduced:** uncommitted edits to `vendor/x`,
+      inside both a submodule and an untracked clone, were replaced by the superproject's
+      historical content without a warning.
+      **Accept:** planning and restoring reject a destination below a gitlink or below a directory
+      containing `.git`. Backend tests cover a submodule, an untracked nested clone, and an ignored
+      nested clone, and assert that the nested file is unchanged.
+      Sources: [path checks](src/backend/utils/history.ts),
+      [restore plan](src/backend/queries/history.ts), [restore action](src/backend/actions/history.ts).
+
+- [ ] **Warn before a restore overwrites local contents that `git status` hides.** The restore's
+      local-changes flag comes from `git status`, which does not report `--skip-worktree` or
+      `--assume-unchanged` files, a common way to keep local configuration edits. On
+      case-insensitive or Unicode-normalizing filesystems, a case-only rename can also make a
+      different on-disk file look clean. **Reproduced** for skip-worktree and assume-unchanged
+      (edits lost without a warning); **Investigate** case and normalization variants on macOS and
+      Windows.
+      **Accept:** the flag is derived from the destination itself: it is set when the file's hash
+      differs from its stage-0 blob or the file has no index entry. A destination whose real
+      on-disk name differs from the requested name is rejected or flagged. Tests cover both index
+      flags, with case variants on macOS and Windows CI.
+      Sources: [restore plan](src/backend/queries/history.ts),
+      [snapshot](src/backend/utils/history.ts).
+
+- [ ] **Read commit-detail file lists with `-z`.** Commit details parse `diff-tree` output without
+      `-z`, so Git C-quotes non-ASCII names and names containing tabs, quotes, or backslashes, and
+      `toPath` then turns each backslash into `/`. Diffs, Open at Revision, File History, and
+      Restore all fail for these files, and their line counts are missing. Working-tree index
+      lookups have a related problem: they build `:<path>`, so a file named `0:foo` resolves to
+      stage 0 of `foo`. **Reproduced:** `中文.txt` is listed as `"/344/270/255/346/226/207.txt"`
+      and `café.md` as `"caf/303/251.md"`, and restore planning rejects both; the diff of a tracked
+      `0:foo` showed the blob of `foo`.
+      **Accept:** commit details use NUL-delimited parsing, including renames. Tests use CJK,
+      accented, tab, quote, newline, and (on non-Windows) backslash names, plus a rename into a
+      Unicode directory; they assert exact paths and counts and check that diff, open, history, and
+      restore work for these names. Index lookups use `:0:<path>`.
+      Sources: [commit details](src/backend/queries/commitDetails.ts),
+      [working-tree diffs](src/backend/actions/workingTree.ts).
+
+- [ ] **Stop repository ref names from being parsed as Git options.** Existing branch and tag names
+      reach `git log`, `tag -d`, `branch -d/-D/-m`, and `merge` without `--` or
+      `--end-of-options`. Clones and fetches can bring in such names; for example, the bare-clone
+      worktree workflow turns remote branches into local ones. **Reproduced:** filtering the graph
+      to a branch named `--output=pwned.txt` created that file, filled with log output; deleting a
+      tag named `-d` reported success and left the tag in place. When a branch and a tag share a
+      name, filtering to the branch also shows the tag's history.
+      **Accept:** log and merge use fully qualified refs or `--end-of-options`; tag and branch
+      delete and rename use `--`. Tests with `refs/tags/-d`, `refs/heads/--output=x`, and
+      `refs/heads/-D` show that each action affects exactly that ref and creates no files.
       Sources: [commit loader](src/backend/queries/loadCommits.ts),
-      [existing loader tests](tests/backend/queries/loadCommits/list.test.ts).
+      [tag actions](src/backend/actions/tag.ts), [branch actions](src/backend/actions/branch.ts),
+      [merge](src/backend/actions/merge.ts).
 
-- [x] **Reject superseded graph, branch, and commit-details replies.** Completed 2026-09-18.
-      Requests and replies now carry an ID and repository; handlers accept only the latest pending
-      reply. Closing details or changing repositories invalidates pending replies. The extension
-      cancels superseded reads and outstanding reads on repository switches or panel disposal.
-      **Verified:** reordered replies cannot undo Load more, overwrite refreshes, or close another
-      commit's details; tests include returning to the same repository/visibility and current errors.
-      Sources: [commit handler](src/webview/lib/handler/load-commits.ts),
-      [branch handler](src/webview/lib/handler/load-branches.ts),
-      [details handler](src/webview/lib/handler/commit-details.ts),
-      [existing cancellable query hook](src/webview/lib/use-repository-query.ts).
+- [ ] **Validate `neo-git-graph:` diff URIs before running Git.** The text-document provider passes
+      the URI's `commit` value to `git show` and runs it in the URI's `repo` directory. A Markdown
+      link, another extension, or `vscode.open` can open such a URI with `commit=--output=<file>`.
+      **Reproduced:** a unit test overwrote an existing file with `git show` output.
+      **Accept:** only full object IDs (optionally with `^`) and known repositories are accepted,
+      and `--end-of-options` is passed before the revision. Malformed URIs return an empty document
+      without starting Git. Tests cover `--output=`, `-O…`, `--ext-diff`, and a relative repository.
+      Sources: [diff document provider](src/old-extension/diffDocProvider.ts),
+      [registration](src/extension/legacy.ts).
 
-- [x] **Distinguish graph loading failures from empty history.** Completed 2026-09-18. Branch,
-      commit, ref, remote-visibility, and status failures now reach the view with request identity.
-      A localized error view offers Retry and preserves the normal empty state for unborn repos.
-      **Verified:** removed repositories, invalid revisions/executables, failed Git reads, stale
-      errors, and recovery through Retry are covered by backend, extension, and webview tests.
-      Sources: [commit loader](src/backend/queries/loadCommits.ts),
-      [message handlers](src/old-extension/messageHandler.ts).
+- [ ] **Neutralize user Git configuration and locale in parsed Git output.** Backend processes
+      inherit `log.showSignature`, `color.ui=always`, and the user's locale. **Reproduced:** with
+      `log.showSignature=true`, the graph stops at the first signed commit with no Load more,
+      details for signed commits do not open, history search and the push, pull, and batch previews
+      fail, and the rebase editor shows signature text as part of the message. `color.ui=always`
+      corrupts the branch list and adds ANSI codes to stash patches; with it in the global
+      configuration, 18 backend tests fail. Simulated German `git branch` output produces a phantom
+      `(HEAD` branch.
+      **Accept:** every parsed Git process runs with `log.showSignature=false`, `color.ui=never`,
+      and a fixed locale, through both the simple-git client configuration and `runGit`. A
+      signed-commit test covers the graph, details, history, sync and batch plans, rebase messages,
+      and bisect subjects. Unit and VS Code tests run with a fixture global configuration and
+      `GIT_CONFIG_NOSYSTEM=1`, and a CI job runs the backend suite with a hostile configuration and a
+      non-English locale. The `LANG` pin is removed from the branch test.
+      Sources: [Git client](src/backend/gitClient.ts), [runGit](src/backend/utils/runGit.ts),
+      [test helpers](tests/backend/helpers.ts).
 
-- [x] **Preserve remote visibility when renaming or removing a remote.** Completed 2026-09-18.
-      Successful remote actions migrate or remove saved preferences and update the view. Opening
-      the graph restores its saved repository preferences. Successful state refreshes prune missing
-      groups, retaining configured remotes and orphan groups with tracking refs. External renames
-      are treated as new visible groups; Git does not provide a reliable rename mapping.
-      **Verified:** exact names containing slashes, failed actions/refreshes, removal and re-addition,
-      external changes, panel restoration, and preserving unrelated column widths are covered.
+- [ ] **Stop a held Enter key from confirming destructive dialogs.** Dialogs focus their first
+      button, which is the destructive submit button when there is no text field, and they do not
+      ignore key repeat. **Reproduced** in headless Chrome: holding Enter from a remote branch's
+      menu item chained through the remote picker and the confirmation, then posted
+      `deleteRemoteRef`; holding Enter for 0.9 s on Drop Stash posted `stash:drop`; a single key
+      repeat on Delete Branch posted `deleteBranch`. Reset, tag deletion, remote and worktree
+      removal, abort and skip, bisect reset, and branch cleanup use the same dialogs.
+      **Accept:** repeated keydowns never activate dialog buttons, and destructive confirmations
+      open with focus on Cancel or on the dialog. A UI test holds Enter from each destructive menu
+      item and asserts that no action is posted, and a fresh Enter on the confirm button still works.
+      Sources: [dialog](src/webview/components/ui/Dialog.tsx), [menus](src/webview/lib/menus.tsx).
+
+- [ ] **Never delete a remote branch using another remote's name.** The Branches pane lists
+      remote-tracking refs whose remote is no longer configured. For these refs, the remote picker
+      falls back to another remote and slices the ref by that remote's name length.
+      **Reproduced:** with only `origin` configured, `team/mirror/topic` posted `deleteRemoteRef`
+      for `origin` and `rror/topic`. Checkout from that ref suggests the same mangled local name.
+      **Accept:** Delete Remote Branch is hidden, disabled, or explained for such refs, and never
+      posts a sliced name. Checkout suggests the ref's own path. Unit tests cover plain and
+      slash-containing remote names.
+      Sources: [remote actions](src/webview/lib/remote-actions.tsx).
+
+- [ ] **Accept every `git.path` value VS Code accepts.** simple-git rejects binary paths containing
+      spaces or parentheses, and it treats a two-element array as a binary plus one argument. The
+      extension's own portable-Git hint recommends `C:\Program Files\Git\bin\git.exe`.
+      **Reproduced:** a `git.path` containing a space makes activation throw, so no commands are
+      registered ("command 'neo-git-graph.view' not found"); an array value makes every Git call
+      fail.
+      **Accept:** one resolver prefers the built-in Git extension's resolved path, then the
+      setting, and an array resolves to its first existing entry. Tests cover activation,
+      repository scanning, and a graph query with a path containing a space and with an array.
+      Sources: [configuration](src/extension/config.ts), [Git client](src/backend/gitClient.ts),
+      [portable-Git hint](src/old-extension/l10n/webviewL10n.ts).
+
+- [ ] **Activate with missing repositories, missing folders, or no folder.** Activation eagerly
+      creates a Git client for the saved last-active repository, and repository scanning attaches
+      its error handler after a constructor that throws synchronously. **Reproduced:** a deleted
+      last-active repository makes activation throw and register no commands, and this persists
+      for that workspace. One missing folder in a multi-root workspace hides every repository. A
+      window with no folder registers none of the six contributed commands, which breaks the
+      walkthrough links. No `capabilities` are declared, so virtual workspaces activate and then
+      show an error.
+      **Accept:** activation touches neither Git nor saved repository paths, and stale saved
+      repositories are ignored or cleared. Failing and non-`file` folders are skipped and logged.
+      Commands always register and, without a folder, show the no-repository page.
+      `virtualWorkspaces` and `untrustedWorkspaces` support is declared. Unit tests cover each case.
+      Sources: [activation](src/extension/legacy.ts), [entry point](src/main.ts),
+      [repository scan](src/extension/handlers/scan-repo.ts), [manifest](package.json).
+
+- [ ] **Stop background reads from locking the index or hiding repository changes.** The webview
+      bridge mutes the repository watcher around every message, reads included, and it discards
+      events that arrive during the mute or in the 1.5 s after it. Read queries also run
+      `git status` without `GIT_OPTIONAL_LOCKS=0`, so they rewrite `.git/index` and can hold
+      `index.lock` while the user commits. A long workspace fetch mutes the watcher for its entire
+      duration. **Reproduced:** after any webview request, a commit made 1 s later never produced a
+      refresh; `git status` rewrote the index, while `GIT_OPTIONAL_LOCKS=0` left it untouched.
+      **Accept:** reads run with `GIT_OPTIONAL_LOCKS=0`, and a test shows the index is unchanged
+      after the graph, state, and workspace queries. Events during a mute trigger exactly one
+      refresh after it ends, or only mutating actions mute the watcher; the test that asserts
+      dropped events becomes a catch-up test.
+      Sources: [webview bridge](src/old-extension/webviewBridge.ts),
+      [repository watcher](src/extension/watchers/git-repo.watcher.ts),
+      [bridge tests](tests/extension/webviewBridge.test.ts).
+
+- [ ] **Make the destructive-action backend tests independent and specific.** Twenty-three backend
+      test files share one repository per file and depend on earlier tests' side effects.
+      **Reproduced:** `vitest run --project backend --sequence.shuffle --sequence.seed=2` fails 5
+      tests in reset, tag, and branch deletion. A mutant `resetToCommit` that runs mixed for hard and
+      soft for mixed passes all four reset tests.
+      **Accept:** each destructive-action test builds its own fixture, and shuffled runs pass for
+      seeds 1–5 (optionally, CI adds one shuffled run). Reset tests assert the index and working
+      tree for each mode and fail against the mutant. The duplicate-tag test creates its own tag.
+      Sources: [reset tests](tests/backend/actions/commit/reset.test.ts),
+      [tag tests](tests/backend/actions/tag/add.test.ts),
+      [branch tests](tests/backend/actions/branch/delete.test.ts).
+
+- [ ] **Test the classic destructive actions from menu to Git, including the repository lock.**
+      Among these actions, the VS Code suite drives only merge end to end. The tag, branch,
+      checkout, reset, rename, and delete dialogs (`menus.tsx` is at 52% line coverage) have no unit
+      tests, and neither do the extension's action dispatch table or its per-repository lock.
+      **Code review,** with coverage measurements.
+      **Accept:** webview tests submit non-default choices in each of these dialogs and assert the
+      exact request. A table-driven extension test maps each action command to its backend
+      function. Lock tests cover the same repository, descendant repositories, submodule ancestors,
+      and release after an error. `menus.tsx` function coverage reaches 80%. Diff URI encoding
+      round-trips paths containing spaces, `#`, `%`, `?`, Unicode, and `\`.
+      Sources: [menus](src/webview/lib/menus.tsx),
+      [message handler](src/old-extension/messageHandler.ts),
+      [diff document provider](src/old-extension/diffDocProvider.ts).
+
+## P2 — Robustness, coverage, and maintainability
+
+### Git backend and repository discovery
+
+- [ ] **List branches with `for-each-ref` instead of parsing `git branch`.** **Reproduced:** during
+      a conflicted rebase, the branch query returned the head `(no` and listed `(no` as a branch,
+      so filter and focus modes query `(no` while the user resolves conflicts. A detached checkout
+      adds a `refs/heads/main` pseudo-entry. With forced color, the existing-branch check in
+      checkout fails, and remote renames skip updating push defaults.
+      **Accept:** the query uses `for-each-ref refs/heads refs/remotes` and
+      `symbolic-ref --quiet HEAD`. Tests cover a rebase, a bisect, and HEAD detached at a branch, a
+      tag, and a hash, and assert that the head is null and only real refs are listed. The existing
+      test asserts more than a nonzero count.
+      Sources: [branch query](src/backend/queries/loadBranches.ts),
+      [branch actions](src/backend/actions/branch.ts),
+      [remote actions](src/backend/actions/remotes.ts).
+
+- [ ] **Detect merge conflicts from Git's exit status.** simple-git detects conflicts by matching
+      English `CONFLICT` output, while Git itself exits 1 with empty stderr. The English conflict
+      error reaches the user as raw simple-git text. **Reproduced** with translated output: a
+      conflicted merge reported success while `MERGE_HEAD` existed.
+      **Accept:** merges use exit-code-aware execution, and conflicts map to a localized message.
+      A test passes with both real and translated output.
+      Sources: [merge](src/backend/actions/merge.ts).
+
+- [ ] **Make backend ref-name validation reject invalid names.** `git check-ref-format` reports
+      failure only through its exit code, which `git.raw()` ignores. **Reproduced:**
+      `requireBranchName` accepts `a..b`, `*`, `x@{1}`, `has space`, `a:b`, and `.hidden`. The lease
+      query does not validate its branch at all, and an existing remote test passes only because
+      `git push` rejects the name later.
+      **Accept:** validation is exit-code-aware. Tests show each of these names is rejected before
+      any Git write, and the lease query validates its branch.
+      Sources: [validation](src/backend/utils/validation.ts),
+      [repository queries](src/backend/queries/repository.ts).
+
+- [ ] **Parse graph log records with NUL delimiters and report malformed records.** The commit
+      loader splits its output on any line ending and stops at the first unexpected line.
+      **Reproduced:** a carriage return inside a subject truncated a four-commit graph to two
+      commits, with no Load more.
+      **Accept:** the loader uses `-z` with NUL-separated fields, as the history query does, and
+      malformed records show the graph error view instead of truncating the graph. Tests cover
+      carriage returns in a subject and in an author name.
+      Sources: [commit loader](src/backend/queries/loadCommits.ts).
+
+- [ ] **Identify repositories by their real Git top level.** Discovery accepts any folder inside a
+      work tree. **Reproduced:** a workspace folder at `repo/packages/app`, or a symlink to a
+      repository, is listed under that path. The Workspace pane shows it as an uninitialized
+      submodule and offers Initialize; the SCM button and File History add a second entry for the
+      same repository, with separate preferences; and a watcher on the subfolder never sees `.git`
+      changes.
+      **Accept:** discovered folders map to the realpath of `--show-toplevel`, without duplicates,
+      and SCM and File History selections match existing picker entries. The picker and the
+      Workspace pane share one scanner. Tests cover a subfolder and a symlink.
+      Sources: [repository scan](src/extension/handlers/scan-repo.ts),
+      [repository search](src/backend/utils/repoSearch.ts),
+      [workspace query](src/backend/queries/workspace.ts).
+
+- [ ] **Watch the real Git directories of worktrees and submodules.** The watcher only looks for
+      `.git/` below the repository folder, but linked worktrees and submodules keep their HEAD,
+      index, and refs elsewhere. The watcher also ignores `MERGE_HEAD`, `CHERRY_PICK_HEAD`,
+      `REVERT_HEAD`, `BISECT_*`, `rebase-merge/`, and `sequencer/`. **Reproduced** at the Git level
+      (a commit in a worktree changed nothing below the worktree); **Code review** for the watcher.
+      **Accept:** on selection, the extension resolves `--absolute-git-dir` and `--git-common-dir`
+      and watches HEAD, the index, operation-state files, `packed-refs`, and `refs/**`. A commit in
+      a worktree and a commit in a submodule each produce exactly one refresh.
+      Sources: [repository watcher](src/extension/watchers/git-repo.watcher.ts).
+
+- [ ] **Follow workspace-folder changes and stop listing every repository ever viewed.** Nothing
+      listens to `onDidChangeWorkspaceFolders`, and the Workspace pane merges every persisted
+      repository state. **Reproduced:** a repository viewed only through File History stays listed
+      and is included in Fetch all, and a deleted repository stays listed. Live `.git` discovery
+      ignores `maxDepthOfRepoSearch`.
+      **Accept:** workspace-folder changes trigger a rescan. Workspace rows come from the current
+      scan plus this session's picker repositories, and state for missing paths is pruned. Live
+      discovery respects the search depth. Tests cover each case.
+      Sources: [message handler](src/old-extension/messageHandler.ts),
+      [repository manager](src/old-extension/repoManager.ts),
+      [Git watcher](src/extension/watchers/git.watcher.ts).
+
+- [ ] **Keep hidden-remote exclusions within Windows command-line limits.** Hiding a remote adds
+      one `--exclude` argument per branch to `git log`. At about 800 refs, the command line exceeds
+      Windows' 32,767-character limit, so the graph fails to load for forks that hide a large
+      upstream. **Code review.**
+      **Accept:** exclusions use per-remote globs that re-include visible nested remotes. A
+      2,000-ref test asserts that the argument length stays bounded and results are unchanged, and
+      Windows CI loads such a graph.
+      Sources: [remote visibility](src/backend/utils/remoteVisibility.ts),
+      [commit loader](src/backend/queries/loadCommits.ts),
+      [history query](src/backend/queries/history.ts).
+
+- [ ] **Let long network actions time out or be cancelled.** **Investigate.** Push, pull, fetch,
+      and fetch-before-checkout run with no timeout, no cancellation, and no
+      `GIT_TERMINAL_PROMPT=0`. A stalled SSH connection, or a credential prompt on an inherited
+      terminal, leaves the action pending and the repository locked.
+      **Accept:** `GIT_TERMINAL_PROMPT=0` is set, and Cancel kills the process and releases the
+      lock. Tested with a `core.sshCommand` that sleeps.
+      Sources: [message handler](src/old-extension/messageHandler.ts),
+      [Git client](src/backend/gitClient.ts).
+
+### Uncommitted changes and restore
+
+- [ ] **Let read-only file views run while other views are open.** File views and restore previews
+      hold the per-repository action lock until the diff editor opens. **Reproduced:** a second
+      quick click on a changed file returned "Another Git operation is running…", which appears as
+      an error dialog. Each view is also logged as a generic "Running Git operation".
+      **Accept:** views and previews bypass the lock while mutations keep it. Two overlapping views
+      both succeed, viewing during a mutation does not error, and views have their own activity
+      titles.
+      Sources: [message handler](src/old-extension/messageHandler.ts),
+      [activity titles](src/webview/lib/activity.ts).
+
+- [ ] **Make a file restore recoverable and account for unsaved editors.** **Proposed;** the
+      unsaved-editor behavior is **Code review.** Local content that a restore replaces is lost
+      permanently. The preview's left side shows the unsaved editor buffer instead of the file on
+      disk, and saving a dirty editor after a restore undoes the restore.
+      **Accept:** before overwriting a file with different contents, the backend stores it as a Git
+      object and offers Undo restore, tested byte for byte. The extension warns or blocks when the
+      destination has unsaved changes.
+      Sources: [restore action](src/backend/actions/history.ts),
+      [restore dialog](src/webview/components/history/HistoryTools.tsx).
+
+- [ ] **Open conflicted files when VS Code's Git extension does not track the repository.** The
+      merge-editor command returns without an error for repositories the built-in Git extension does
+      not know, such as repositories deeper than its scan depth or with auto-detection off. The
+      fallback therefore never runs, and clicking the file does nothing. `DD` conflicts open a
+      missing file, and only `UU` conflicts are tested. **Code review.**
+      **Accept:** the extension checks the Git extension API first and otherwise opens the file, or
+      explains `DD`. Tests cover `UD`, `AU`, and `DD`.
+      Sources: [message handler](src/old-extension/messageHandler.ts),
+      [working-tree actions](src/backend/actions/workingTree.ts).
+
+### Webview
+
+- [ ] **Show failures of hidden or superseded Git operations.** A result is dropped when its dialog
+      was hidden, replaced, or closed by a repository switch, even though the running dialog says
+      Git continues while hidden. **Reproduced:** a hidden fetch that failed appeared only in
+      Operation activity, whose indicator shows only running operations; double-clicking Fetch
+      closed its own loading dialog.
+      **Accept:** these failures get a persistent, non-modal cue that does not replace newer
+      dialogs. Tests cover hiding, a repository switch, and a newer dialog. Optionally, the opening
+      double-click's backdrop click is ignored.
+      Sources: [remote actions](src/webview/lib/remote-actions.tsx),
+      [activity view](src/webview/components/history/ActivityView.tsx),
+      [dialog](src/webview/components/ui/Dialog.tsx).
+
+- [ ] **Render commits with out-of-range dates.** Git accepts timestamps such as
+      `@99999999999999`, but the date formatters throw `RangeError` on them. There is no error
+      boundary, so one such commit leaves the graph with no rows. **Reproduced** in unit tests and
+      in Chrome.
+      **Accept:** the formatters return a placeholder for non-finite or out-of-range dates, and
+      rows and details render. Consider an error boundary around the graph and dialogs.
+      Sources: [date utilities](src/webview/utils/date.ts),
+      [commit row](src/webview/components/commit/CommitRow.tsx).
+
+- [ ] **Keep the Branches pane and branch dropdown responsive with thousands of refs.** Every
+      Branches pane row reads the active context-menu source, so opening any menu or dialog
+      re-renders every row. The filter and the Branch dropdown also render every match.
+      **Reproduced** in Chrome with 3,000 each of branches, remote branches, and tags: a filter
+      keystroke took 175 ms, clearing the filter 956 ms, opening a graph menu 190 ms, and opening
+      the Branch dropdown 384 ms. With 10 of each, the same actions took 3–15 ms.
+      **Accept:** the cost of opening a menu does not depend on the number of refs. Lists are
+      virtualized, or capped with Show more. The performance report adds measurements at 3k and 10k
+      refs.
+      Sources: [Branches pane](src/webview/components/repository/RefsPane.tsx),
+      [dropdown](src/webview/components/ui/Dropdown.tsx),
+      [performance report](docs/performance.md).
+
+- [ ] **Give dialog selects without a label an accessible name.** `Dialog` passes
+      `aria-labelledby` to `Select`, which silently drops it. **Reproduced:** the Reset mode choice
+      and the cherry-pick/revert parent choice have no accessible name.
+      **Accept:** `Select` forwards `aria-labelledby`, and a test asserts the accessible name.
+      Sources: [select](src/webview/components/ui/Select.tsx),
+      [dialog](src/webview/components/ui/Dialog.tsx).
+
+### Maintenance and project health
+
+- [ ] **Remove the unreachable avatar pipeline.** The webview never requests avatars, yet the
+      extension handles `fetchAvatar` messages regardless of the setting, creates an avatar folder
+      on every activation, contributes a Clear Avatar Cache command, and ships 472 untested lines
+      containing a hard-coded GitLab token. The README still advertises avatars. **Code review.**
+      **Accept:** the avatar code, messages, storage, and command are removed, optionally with a
+      one-time cache cleanup. The deprecated setting is described as having no effect, and the
+      README no longer lists the feature. Optionally, rename `src/old-extension`, which is the live
+      command protocol rather than legacy code, and test the RPC server's unknown-method and error
+      paths.
+      Sources: [avatar manager](src/old-extension/avatarManager.ts),
+      [activation](src/extension/legacy.ts), [README](README.md).
+
+- [ ] **Keep `main` green and require CI before checking off work.** `main` failed CI on five
+      consecutive pushes (2026-09-16 to 2026-09-23), including the push that recorded the full suite
+      passing on three platforms, and the branch is unprotected. The failures were fixed at their
+      root causes, not masked. Remaining risks: two fixed 400 ms sleeps after Refresh in the VS Code
+      suite, and CI tests only against stable VS Code, which changes between pushes.
+      **Accept:** a ruleset requires lint and all three test jobs on `main`, and checked-off items
+      cite a green run. The sleeps poll for state instead. A nightly scheduled CI run exists.
+      Sources: [CI workflow](.github/workflows/ci.yaml),
+      [VS Code UI tests](tests-ext/ui/history.test.cjs).
+
+- [ ] **Harden the release workflow and make it dry-runnable.** Publishing has never run. The
+      repository has no secrets, and the deploy job has no protected environment. The Marketplace
+      publish runs before Open VSX, and no token is checked first. Third-party actions are pinned to
+      tags, and the artifact actions warn that Node 20 is deprecated.
+      **Accept:** the deploy job uses `environment: release` with a required reviewer and secrets
+      scoped to it. Third-party actions are pinned to SHAs, and the artifact actions are current.
+      `vsce verify-pat` and `ovsx verify-pat` run before any publish. A `workflow_dispatch` dry run
+      exists, `retention-days` is set, and actionlint passes.
+      Sources: [publish workflow](.github/workflows/publish.yml).
+
+- [ ] **Align the fork's GitHub settings with its documentation.** Issues are disabled, although
+      the manifest, README, and issue templates link to them. Dependabot alerts and security updates
+      are disabled, so `dependabot.yml` has no effect, and CODEOWNERS names the upstream owner.
+      `pnpm audit` reports 3 high and 5 lower advisories, all in development dependencies (vite via
+      vitest, serialize-javascript via the VS Code test CLI, and js-yaml via vsce and ovsx).
+      **Accept:** Issues are enabled or the links point to a working channel. Dependabot is enabled
+      or its configuration is removed. CODEOWNERS is updated or removed. No high advisories remain.
+      Sources: [manifest](package.json), [Dependabot configuration](.github/dependabot.yml),
+      [CODEOWNERS](.github/CODEOWNERS).
+
+- [ ] **Version the changelog and keep release bookkeeping consistent.** The changelog is headed
+      Unreleased, although the manifest and docs say 0.9.6, so the installed extension's changelog
+      shows Unreleased. e96e630's restore-preview fix is missing from it. The local 0.9.6 VSIX
+      predates e96e630, so two different builds carry the same version, and the version is copied
+      by hand into the README, the packaging guide, and the changelog.
+      **Accept:** a dated version heading exists, with Unreleased above it. e96e630 is listed, and
+      post-0.9.6 changes get a version bump. Optionally, `check:release` fails when the changelog
+      has no heading for the manifest version.
+      Sources: [changelog](CHANGELOG.md), [packaging guide](docs/packaging.md),
+      [release check](scripts/check-release.cjs).
+
+- [ ] **Ship every document the in-product guide links to.** The guide that Learn more opens links
+      to `performance.md` from a contributor-only validation section, but the VSIX excludes that
+      file. The walkthroughs do not mention branch focus, per-remote visibility, or uncommitted
+      changes, and the Branches pane walkthrough still describes a single eye button.
+      **Accept:** the package test fails on any relative link in shipped Markdown that does not
+      resolve. The user guide has no developer-only section. The walkthroughs cover focus and remote
+      visibility.
+      Sources: [package exclusions](.vscodeignore), [user guide](docs/git-actions.md),
+      [walkthroughs](walkthroughs), [package smoke test](scripts/package-smoke.cjs).
+
+- [ ] **Document a setup for the pinned pnpm without Nix, and fix stale editor tasks.** pnpm is
+      provided only by the Nix development shell. `corepack pnpm` works, but it aborts in
+      non-interactive shells when `node_modules` records a store directory that no longer exists.
+      `.vscode/tasks.json` references scripts that do not exist.
+      **Accept:** the docs give `corepack enable pnpm` as the setup step. After a frozen reinstall,
+      `pnpm run format`, `pnpm test`, and `pnpm run typecheck` work without a terminal. Tasks
+      reference only existing scripts. Optionally, a `clean:all` script removes `.vscode-test/` and
+      old VSIX files.
+      Sources: [testing guide](docs/testing.md), [packaging guide](docs/packaging.md),
+      [editor tasks](.vscode/tasks.json).
+
+## P3 — Optional usability and performance improvements
+
+- [ ] **Keep the uncommitted-changes list, focus, and scroll position across refreshes.** Every
+      watcher refresh, including one caused by auto-save, hides the list while it reloads.
+      **Reproduced:** with focus on the 30th of 50 files, a refresh emptied the list and left focus
+      on the page body; 20,000 untracked files took 1.4 s to render in jsdom.
+      **Accept:** the previous list stays visible during a refresh, and focus is kept by group and
+      path, with a test. Large groups are capped with Show more, and the timing is added to the
+      performance report.
+      Sources: [working-tree details](src/webview/components/commit/WorkingTreeDetails.tsx),
+      [query hook](src/webview/lib/use-repository-query.ts).
+
+- [ ] **Let the restore dialog recover from a stale preview.** If the file changes after planning,
+      including through edits in the preview itself, both buttons fail with "Preview the restore
+      again", but Preview resends the same stale plan. **Reproduced** in the backend; the UI part is
+      **Code review.**
+      **Accept:** a snapshot mismatch re-plans with the same source and destination and shows the
+      updated local-changes state. A webview test covers this.
+      Sources: [restore dialog](src/webview/components/history/HistoryTools.tsx).
+
+- [ ] **Explain untracked nested repositories in the uncommitted-changes list.** An untracked nested
+      repository is listed as `nested/`, and clicking it fails with "Choose a file path inside the
+      repository." **Reproduced.**
+      **Accept:** the entry is shown as a nested repository and opens an explanation or the folder.
+      A backend test covers it.
+      Sources: [working-tree query](src/backend/queries/workingTree.ts).
+
+- [ ] **Batch per-item Git processes.** **Reproduced:** renaming a remote with 1,000 local branches
+      took 11.4 s under the repository lock, because each branch's push default is updated
+      separately (`git remote rename` alone took 3 ms). The rebase plan for 500 commits took
+      1.23 s, against 7 ms for a single `log -z`, and batch plans run two processes per commit.
+      **Accept:** these operations use `config --get-regexp` and single `log -z` calls, and
+      renaming a remote with 1,000 branches takes under 1 s.
       Sources: [remote actions](src/backend/actions/remotes.ts),
-      [visibility preferences](src/webview/lib/actions.ts),
-      [repository action handler](src/old-extension/messageHandler.ts).
+      [repository queries](src/backend/queries/repository.ts),
+      [history query](src/backend/queries/history.ts).
 
-- [x] **Run the existing webview-bridge tests.** Completed 2026-09-18. Moved the tests into the
-      extension test project and added real watcher behavior checks using controlled timers.
-      **Verified:** listener disposal, error propagation, and watcher recovery after failed and
-      overlapping handlers are covered by the normal test runner.
-      Sources: [test configuration](vitest.config.ts),
-      [bridge tests](tests/extension/webviewBridge.test.ts),
-      [bridge](src/old-extension/webviewBridge.ts).
+- [ ] **Open keyboard-activated menus next to their button.** Menus opened with Enter from the
+      Branches pane, the settings cog, and the Workspace pane use zero mouse coordinates, so they
+      appear in the window's corner. **Reproduced.** Commit rows and file trees already anchor
+      their menus to the button.
+      **Accept:** keyboard activation anchors the menu to the button's rectangle, with a test.
+      Sources: [context menu actions](src/webview/lib/actions.ts).
 
-## P2 — Packaging, coverage, and maintainability
+- [ ] **Keep dropdowns and the sidebar inside narrow windows.** **Reproduced:** at 400 px wide, the
+      Branch dropdown list extends 157 px past the left edge. When the header wraps (at 800–1000
+      px), the sticky sidebar ignores the measured header height, and its top 36 px sit under the
+      header.
+      **Accept:** dropdowns flip or clamp to the viewport, and the sidebar uses the measured header
+      height. UI checks run at 400 and 800 px.
+      Sources: [dropdown](src/webview/components/ui/Dropdown.tsx), [app layout](src/webview/App.tsx).
 
-- [x] **Make fork packaging repeatable.** Completed 2026-09-18. The manifest now identifies
-      `jcfurey.neo-git-graph@0.9.5` and links to the fork. `pnpm run package:vsix` builds it without
-      manifest overrides; extension tests derive their identity from the manifest.
-      **Verified:** a fresh source copy with a locked dependency install builds the VSIX. An
-      isolated VS Code test upgrades an older fork without a duplicate, checks packaged assets,
-      activates the installed extension, and opens its graph, guide, and walkthrough.
-      Sources: [manifest](package.json), [packaging guide](docs/packaging.md),
-      [package test](scripts/test-package.cjs).
+- [ ] **Keep keyboard focus in list editors and give each row's controls a distinct name.**
+      **Reproduced:** moving an entry in the interactive rebase or batch editors sends focus to the
+      page body and announces nothing, and a background refresh drops focus from the sync preview.
+      The Branches pane's ⋯ and Checkout buttons do not say which row they belong to, and the ⋯
+      buttons of a local and a remote branch with the same name are identical.
+      **Accept:** focus follows the moved entry, and a live region announces its new position.
+      Controls are named with their commit or full ref. Consider roving focus for Branches pane
+      rows.
+      Sources: [rebase editor](src/webview/components/repository/RebaseEditor.tsx),
+      [Branches pane](src/webview/components/repository/RefsPane.tsx),
+      [workflow tools](src/webview/components/history/WorkflowTools.tsx).
 
-- [x] **Gate publishing on validation of the release commit.** Completed 2026-09-18. Tag pushes
-      validate the fork identity/version and invoke the full CI workflow from the release commit.
-      Publishing depends on all checks, downloads the package-tested artifact, verifies its embedded
-      identity/version, and publishes that file without rebuilding.
-      **Verified:** release guard tests reject wrong identities and mismatched tags; actionlint
-      validates both workflows. Live registry publishing has not been run.
-      Sources: [publish workflow](.github/workflows/publish.yml),
-      [existing three-platform CI](.github/workflows/ci.yaml).
+- [ ] **Localize the remaining hard-coded webview text.** Still hard-coded: "Loading ...", the
+      repository-load failure and its Retry button, reflog dates (which use the browser locale),
+      activity durations with a raw "s", RPC timeout messages, and `<html lang="en">`.
+      **Code review.**
+      **Accept:** these strings come from l10n and `Intl`, and a lint or test flags JSX text
+      literals in the webview.
+      Sources: [loading indicator](src/webview/components/ui/Loading.tsx),
+      [webview entry point](src/webview/main.tsx), [HTML shell](src/extension/html.ts).
 
-- [x] **Refresh the README and release notes for the fork.** Completed 2026-09-18. Documented
-      the 0.9.5 fork build, local installation, focus modes and dimming, individual remote visibility,
-      hidden revision lookups, and horizontal graph navigation. The roadmap distinguishes shipped
-      behavior from this backlog and the packaging guide explains verification and release gates.
-      Sources: [README](README.md), [changelog](CHANGELOG.md).
-
-- [x] **Expand graph geometry and rendering regression coverage.** Completed 2026-09-18.
-      Added topology checks for lane/color reuse, octopus and criss-cross merges, unloaded parents,
-      shallow roots, and uncommitted edges. Stroke checks follow rendered connections across
-      expanded details in both styles, including combined vertical segments and lane-change corners.
-      **Verified:** 23 new layout/stroke cases plus VS Code checks for both styles after scrolling,
-      resizing, zoom, and details expansion; graph clipping/alignment and fixed text positions hold.
-      Sources: [graph implementation](src/webview/graph),
-      [workflow UI tests](tests-ext/ui/history.test.cjs).
-
-- [x] **Cover theme contrast and keyboard access for the new controls.** Completed 2026-09-18.
-      Added real keyboard and computed-contrast checks in Light Modern, Dark Modern, High Contrast,
-      and High Contrast Light. Both dimming levels, remote visibility, pause/resume, column resizing,
-      lane scrolling, and lane reveal are covered, including narrow windows and non-color state cues.
-      **Fixed:** hidden remote rows now use muted text instead of whole-row opacity; resize handles
-      have localized accessible names and focus outlines; native select outlines sit outside the
-      dropdown background. Tested text meets 4.5:1 and focus outlines 3:1 in these built-in themes;
-      this is targeted regression coverage rather than a full accessibility audit.
-      Sources: [commit table](src/webview/components/commit/CommitTable.tsx),
-      [refs pane tests](tests/webview/components/repository/RefsPane.test.ts),
-      [workflow UI tests](tests-ext/ui/history.test.cjs).
-
-- [x] **Define and test preference lifetime across reopening and repository switches.** Completed
-      2026-09-18. Focus mode/target, pause, dimming, and the all-remotes toggle now join hidden remotes
-      and column widths in persisted workspace state per repository. Preference patches preserve
-      other fields; old webview focus state migrates when loaded. Horizontal panning stays temporary,
-      preserving refresh/resize position but resetting on repository switches, panel reopening, and
-      reload. Search filters and vertical position remain scoped to the open panel.
-      **Verified:** unit tests recreate webview modules and extension state; a VS Code workflow
-      switches repositories, closes/reopens the panel, and reloads its webview. Missing/renamed focus
-      targets fall back to the current branch (Show All when detached), and explicit Clear focus
-      stays cleared. [Preference lifetimes](docs/preferences.md) documents the behavior and defaults.
-      Sources: [navigation persistence](src/webview/lib/navigation.ts),
-      [stores](src/webview/lib/stores.ts),
-      [graph scroll state](src/webview/components/commit/useGraphScroll.ts).
-
-- [x] **Measure focus and rendering costs on large repositories.** Completed 2026-09-18.
-      Shared 53,157-commit merge/remote fixtures now cover backend focus/visibility queries and real
-      VS Code focus changes, hidden remotes, loading more, hover, and both scroll directions at
-      300/1,000/3,000 rows. Linux CI uploads timing reports and hover CPU profiles.
-      **Fixed:** compute the keyboard tab stop once per table render; hover updates only the graph
-      and reuses unchanged line paths. At 3,000 rows, measured median hover fell from 170 to 41 ms,
-      focus changes from 877 to 682 ms, and loading more from 1,259 to 972 ms. Hover long tasks were
-      eliminated in these samples. A slower single-walk ancestry experiment was discarded; ancestry
-      caching and virtualization remain deferred, with their tradeoffs and remaining large-page
-      costs documented in [the measurements and raw comparison](docs/performance.md).
-      **Verified:** keyboard entry points, hover/selection emphasis, moved focus refs, skewed dates,
-      and shallow-history deepening have regression coverage; timings are diagnostic, not CI limits.
-      Sources: [focus query](src/backend/queries/branchFocus.ts),
-      [commit table](src/webview/components/commit/CommitTable.tsx),
-      [benchmark](scripts/benchmark.mjs).
-
-- [x] **Improve UI failure diagnostics and compatibility checks.** Completed 2026-09-18.
-      Failures now save a workbench screenshot, webview text/DOM, recent browser console/errors,
-      the original error, and runtime metadata. Isolated profiles write VS Code and extension logs
-      directly to retained artifacts. Poll timeouts capture before scenario cleanup; unavailable
-      renderers leave a report with capture errors. Individual scenarios remain selectable by title.
-      **Verified:** an injected failure produces validated artifacts, then the same smoke scenario
-      passes alone on VS Code 1.138.0 and the declared minimum 1.125.0. Linux CI repeats this check
-      against stable and the manifest minimum, asserting the actual running versions and skipping
-      a duplicate minimum run when versions match. The full stable suite runs on all three platforms.
-      Local checks passed 49 extension/UI tests, 405 regression tests, and the disconnected-renderer
-      diagnostic test. [Testing instructions](docs/testing.md) cover reruns, overrides, and artifacts.
-      Sources: [UI harness](tests-ext/ui/history.test.cjs),
-      [VS Code test configuration](.vscode-test.mjs),
-      [existing CI artifact collection](.github/workflows/ci.yaml).
-
-## P3 — Optional usability improvements
-
-- [x] **Reveal a selected commit's lane when it is off-screen.** Completed 2026-09-18. Clicking
-      or keyboard-navigating to a commit minimally reveals its lane. The **Reveal selected lane**
-      button returns to it after manual panning. Refreshes and resizing preserve manual position
-      within the available scroll range. Regression and VS Code UI tests cover reveal, keyboard
-      access, refresh preservation, and unchanged text position, branch, checkout, and focus mode.
-      Sources: [graph scrolling](src/webview/components/commit/useGraphScroll.ts),
-      [commit table](src/webview/components/commit/CommitTable.tsx).
-
-- [x] **Keep horizontal graph navigation discoverable deep in history.** Completed 2026-09-18.
-      Sticky column headings keep the scrollbar and reveal button beneath the main controls,
-      following their measured height when they wrap. UI coverage exercises a deep, wide graph,
-      narrow windows, row alignment, keyboard scrolling, and normal vertical wheel handling.
-      Sources: [commit table](src/webview/components/commit/CommitTable.tsx),
-      [graph scrolling](src/webview/components/commit/useGraphScroll.ts).
+- [ ] **Apply setting changes to an open graph and constrain numeric settings.** Display settings
+      are read once when the webview starts, so changes made from the settings cog have no effect
+      until the graph is reopened. Numeric settings accept fractions and negative numbers:
+      `initialLoadCommits: 300.5` makes every load fail, and `-1` loads the entire history.
+      **Code review,** plus a check with Git.
+      **Accept:** configuration changes reach the webview and refresh the graph. The manifest
+      declares integer types with minimums, and the configuration reader clamps values. Tests cover
+      both.
+      Sources: [configuration watcher](src/extension/watchers/config.watcher.ts),
+      [configuration](src/extension/config.ts), [manifest](package.json).
 
 ## Suggested next batch
 
-All items in this reviewed backlog are complete. Future work can be added here as usage reveals
-new issues or measurements justify further performance changes; the deferred caching and
-virtualization tradeoffs are documented in [the performance report](docs/performance.md).
+Start with the items that can lose work or run unintended Git commands; they are small and
+independent. First, validate diff URIs and stop ref names from being parsed as options. Next,
+refuse restores through nested repositories and detect local contents that `git status` hides.
+Then stop a held Enter from confirming destructive dialogs and fix the remote-branch deletion
+target.
+
+The configuration and locale item, the `-z` parsing item, and branch listing with `for-each-ref`
+share one theme, making parsed Git output independent of user settings, and could land together.
+The two P1 test items should come before, or alongside, any changes to the destructive actions they
+protect.
