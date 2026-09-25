@@ -167,6 +167,48 @@ describe("file restoration", () => {
     expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe("new local edits");
   });
 
+  it.each(["--skip-worktree", "--assume-unchanged"])(
+    "warns about local edits that %s hides from status",
+    async (flag) => {
+      commit("config", "committed", "configuration");
+      expect((await loadRestorePlan(git(), "HEAD", "config", "config")).dirty).toBe(false);
+      read(["update-index", flag, "--", "config"]);
+      fs.writeFileSync(path.join(repo, "config"), "local only");
+      expect(read(["status", "--porcelain"])).toBe("");
+      expect((await loadRestorePlan(git(), "HEAD", "config", "config")).dirty).toBe(true);
+    }
+  );
+
+  it("compares contents after line-ending conversion and symlink targets", async () => {
+    commit(".gitattributes", "*.txt text eol=crlf\n", "attributes");
+    commit("crlf.txt", "a\r\nb\r\n", "converted");
+    expect((await loadRestorePlan(git(), "HEAD", "crlf.txt", "crlf.txt")).dirty).toBe(false);
+    if (process.platform !== "win32") {
+      fs.symlinkSync("crlf.txt", path.join(repo, "link"));
+      read(["add", "link"]);
+      read(["commit", "-m", "link"]);
+      read(["update-index", "--assume-unchanged", "link"]);
+      expect((await loadRestorePlan(git(), "HEAD", "link", "link")).dirty).toBe(false);
+      fs.unlinkSync(path.join(repo, "link"));
+      fs.symlinkSync("elsewhere", path.join(repo, "link"));
+      expect((await loadRestorePlan(git(), "HEAD", "link", "link")).dirty).toBe(true);
+    }
+  });
+
+  it.each([
+    ["letter case", "Docs/ReadMe.md", "docs/readme.md"],
+    ["Unicode form", "café.md", "café.md"]
+  ])("warns when the filesystem matches a name with a different %s", async (_, stored, asked) => {
+    fs.mkdirSync(path.join(repo, path.dirname(stored)), { recursive: true });
+    const historical = commit(stored, "committed", "stored name");
+    // Only case-insensitive or normalizing filesystems, such as those on macOS and Windows,
+    // resolve the requested name to the stored file.
+    const aliased = fs.existsSync(path.join(repo, asked));
+    read(["update-index", "--skip-worktree", "--", stored]);
+    const plan = await loadRestorePlan(git(), historical, stored, asked);
+    expect(plan.dirty).toBe(aliased);
+  });
+
   it.each(["a submodule", "an uninitialized submodule", "an untracked clone", "an ignored clone"])(
     "refuses to restore through %s and leaves its file unchanged",
     async (kind) => {

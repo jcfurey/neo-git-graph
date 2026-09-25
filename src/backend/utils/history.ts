@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { lstat, readFile, readlink } from "node:fs/promises";
+import { lstat, readdir, readFile, readlink } from "node:fs/promises";
 import path from "node:path";
 
 import * as l10n from "@vscode/l10n";
@@ -147,4 +147,41 @@ export async function fileSnapshot(git: SimpleGit, file: string) {
   }
   digest.update(await git.raw(["ls-files", "--stage", "-z", "--", literalPath(file)]));
   return digest.digest("hex");
+}
+
+/**
+ * Whether restoring would replace contents that the file's stage-0 index entry does not hold.
+ * `git status` does not report skip-worktree or assume-unchanged files, and a case-insensitive
+ * or Unicode-normalizing filesystem can resolve the requested name to a different file.
+ */
+export async function differsFromIndex(git: SimpleGit, file: string) {
+  const absolute = await checkedWorktreePath(git, file);
+  const stat = await lstat(absolute).catch(() => null);
+  if (stat === null) {
+    return false;
+  }
+  // Compare each on-disk name within the repository with the requested one.
+  let current = absolute;
+  for (const _ of repoFile(file).split("/")) {
+    // eslint-disable-next-line no-await-in-loop
+    if (!(await readdir(path.dirname(current))).includes(path.basename(current))) {
+      return true;
+    }
+    current = path.dirname(current);
+  }
+  const entry = /^(\d{6}) ([0-9a-f]{40,64}) 0\t/.exec(
+    await git.raw(["ls-files", "--stage", "-z", "--", literalPath(file)])
+  );
+  if (!entry) {
+    return true;
+  }
+  const [, mode, blob] = entry;
+  if (stat.isSymbolicLink()) {
+    return (
+      mode !== "120000" ||
+      (await readlink(absolute)) !== (await git.raw(["cat-file", "blob", blob!]))
+    );
+  }
+  // Hashing applies the same clean filters and line-ending conversion as `git add`.
+  return (await git.raw(["hash-object", "--", absolute])).trim() !== blob;
 }

@@ -28,17 +28,16 @@ improvements rather than confirmed defects.
       Sources: [path checks](src/backend/utils/history.ts),
       [restore plan](src/backend/queries/history.ts), [restore action](src/backend/actions/history.ts).
 
-- [ ] **Warn before a restore overwrites local contents that `git status` hides.** The restore's
-      local-changes flag comes from `git status`, which does not report `--skip-worktree` or
-      `--assume-unchanged` files, a common way to keep local configuration edits. On
-      case-insensitive or Unicode-normalizing filesystems, a case-only rename can also make a
-      different on-disk file look clean. **Reproduced** for skip-worktree and assume-unchanged
-      (edits lost without a warning); **Investigate** case and normalization variants on macOS and
-      Windows.
-      **Accept:** the flag is derived from the destination itself: it is set when the file's hash
-      differs from its stage-0 blob or the file has no index entry. A destination whose real
-      on-disk name differs from the requested name is rejected or flagged. Tests cover both index
-      flags, with case variants on macOS and Windows CI.
+- [x] **Warn before a restore overwrites local contents that `git status` hides.** Completed
+      2026-09-25. The restore plan still honors `git status`, and it now also sets the
+      local-changes flag when an existing destination has no stage-0 entry or differs from it:
+      files are hashed with `hash-object`, which applies the same filters and line-ending
+      conversion as `git add`, and symlinks are compared by target. A destination whose real
+      on-disk name differs in letter case or Unicode form from the requested name is flagged.
+      **Verified:** backend tests cover skip-worktree and assume-unchanged edits (both fail against
+      the previous plan), unchanged files after CRLF conversion, and symlink targets. Case and
+      Unicode-form variants assert the flag wherever the filesystem resolves the variant name, which
+      the macOS and Windows CI runners exercise.
       Sources: [restore plan](src/backend/queries/history.ts),
       [snapshot](src/backend/utils/history.ts).
 

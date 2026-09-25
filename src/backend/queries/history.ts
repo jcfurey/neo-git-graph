@@ -13,6 +13,7 @@ import type {
   StagedPlan
 } from "@/backend/types";
 import {
+  differsFromIndex,
   fileSnapshot,
   HISTORY_FORMAT,
   HISTORY_PAGE_SIZE,
@@ -187,23 +188,25 @@ export async function loadRestorePlan(
 ): Promise<FileRestorePlan> {
   const file = await sourceFile(git, source, sourcePath);
   const target = repoFile(destination);
+  const [snapshot, status, differs] = await Promise.all([
+    fileSnapshot(git, target),
+    git.raw([
+      "status",
+      "--porcelain=v1",
+      "--untracked-files=all",
+      "--ignored",
+      "-z",
+      "--",
+      literalPath(target)
+    ]),
+    differsFromIndex(git, target)
+  ]);
   return {
     source: file.hash,
     sourcePath: repoFile(sourcePath),
     destination: target,
-    snapshot: await fileSnapshot(git, target),
-    dirty:
-      (
-        await git.raw([
-          "status",
-          "--porcelain=v1",
-          "--untracked-files=all",
-          "--ignored",
-          "-z",
-          "--",
-          literalPath(target)
-        ])
-      ).length > 0
+    snapshot,
+    dirty: status.length > 0 || differs
   };
 }
 
