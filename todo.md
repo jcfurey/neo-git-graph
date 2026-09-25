@@ -138,15 +138,16 @@ improvements rather than confirmed defects.
       Sources: [remote actions](src/webview/lib/remote-actions.tsx),
       [branch actions](src/backend/actions/branch.ts).
 
-- [ ] **Accept every `git.path` value VS Code accepts.** simple-git rejects binary paths containing
-      spaces or parentheses, and it treats a two-element array as a binary plus one argument. The
-      extension's own portable-Git hint recommends `C:\Program Files\Git\bin\git.exe`.
-      **Reproduced:** a `git.path` containing a space makes activation throw, so no commands are
-      registered ("command 'neo-git-graph.view' not found"); an array value makes every Git call
-      fail.
-      **Accept:** one resolver prefers the built-in Git extension's resolved path, then the
-      setting, and an array resolves to its first existing entry. Tests cover activation,
-      repository scanning, and a graph query with a path containing a space and with an array.
+- [x] **Accept every `git.path` value VS Code accepts.** Completed 2026-09-25. One resolver
+      prefers the path that VS Code's Git extension found, looked up without blocking activation,
+      then the `git.path` setting, whose array form resolves to its first existing entry.
+      simple-git's binary check is lifted for this trusted path, and the warning it would log for
+      every client is silenced, so a path with spaces or parentheses no longer throws.
+      **Verified:** a backend test loads the graph and scans for repositories through a Git
+      executable whose path contains spaces (and, except on Windows, parentheses); without the
+      fix the client throws the reported error. Resolver tests cover strings, empty values,
+      arrays with and without an existing entry, and the default. Activation is covered through
+      the client construction that used to throw; no VS Code test sets `git.path`.
       Sources: [configuration](src/extension/config.ts), [Git client](src/backend/gitClient.ts),
       [portable-Git hint](src/old-extension/l10n/webviewL10n.ts).
 

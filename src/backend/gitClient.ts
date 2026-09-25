@@ -32,15 +32,28 @@ export const PARSED_OUTPUT_ARGS = [
 ];
 
 export function createGit(repoPath: string, gitPath: string, abort?: AbortSignal): SimpleGit {
-  return simpleGit({
-    baseDir: repoPath,
-    // The prefix argument follows the binary, before any command.
-    binary: [gitPath, "--no-optional-locks"],
-    maxConcurrentProcesses: 6,
-    trimmed: false,
-    config: PARSED_OUTPUT_CONFIG,
-    ...(abort ? { abort } : {})
-  });
+  // The executable comes from VS Code's Git extension or the user's `git.path`, and can contain
+  // spaces or parentheses, as in `C:\Program Files\Git\cmd\git.exe`. simple-git rejects such
+  // paths unless allowed, and then warns on every client it creates.
+  // eslint-disable-next-line no-console
+  const warn = console.warn;
+  // eslint-disable-next-line no-console
+  console.warn = () => {};
+  try {
+    return simpleGit({
+      baseDir: repoPath,
+      // The prefix argument follows the binary, before any command.
+      binary: [gitPath, "--no-optional-locks"],
+      unsafe: { allowUnsafeCustomBinary: true },
+      maxConcurrentProcesses: 6,
+      trimmed: false,
+      config: PARSED_OUTPUT_CONFIG,
+      ...(abort ? { abort } : {})
+    });
+  } finally {
+    // eslint-disable-next-line no-console
+    console.warn = warn;
+  }
 }
 
 export function gitClientFactory(repoPath: string, gitPath: string, abort?: AbortSignal) {
