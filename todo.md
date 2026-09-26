@@ -561,38 +561,31 @@ improvements rather than confirmed defects.
       finds distinct names for every row control, including local `main` and remote `origin/main`.
       All fail against the previous code.
 
-- [ ] **Localize the remaining hard-coded webview text.** Still hard-coded: "Loading ...", the
-      repository-load failure and its Retry button, reflog dates (which use the browser locale),
-      activity durations with a raw "s", RPC timeout messages, and `<html lang="en">`.
-      **Code review.**
-      **Accept:** these strings come from l10n and `Intl`, and a lint or test flags JSX text
-      literals in the webview.
-      Sources: [loading indicator](src/webview/components/ui/Loading.tsx),
-      [webview entry point](src/webview/main.tsx), [HTML shell](src/extension/html.ts).
-
-- [x] **Apply setting changes to an open graph and constrain numeric settings.** Completed
-      2026-09-26. The configuration watcher sends every change to `neo-git-graph` settings to the
-      webview, which keeps its configuration in a signal: dates, graph style, and colours redraw
-      at once, the graph reloads, and a larger first page takes effect immediately. The manifest
-      declares the three numeric settings as integers with minimums, and the reader rounds down
-      and clamps whatever a settings file holds, falling back to the default for non-numbers.
-      **Checked with Git:** the graph asks for one commit more than the page, and Git reads
-      `--max-count=301.5` as 301, so `300.5` loaded commits but never offered Load more; `-1`
-      became `--max-count=0` and loaded nothing.
-      **Verified:** extension tests clamp `300.5`, `-1`, `NaN`, and strings, check the manifest
-      types, and send the changed settings, clamped, only for this extension's settings; a
-      webview test redraws a row's date after a Date Format change and reloads with the larger
-      first page. All fail against the previous code.
+- [x] **Localize the remaining hard-coded webview text.** Completed 2026-09-26. The HTML shell
+      sets `<html lang>` to VS Code's display language and carries the strings the page needs
+      before it receives `window.l10n`: the loading text, the startup failure, and the RPC
+      timeout, escaped for attributes. The repository-load failure and its Retry button use the
+      webview strings, reflog dates use the configured locale through `getFullDate`, and activity
+      and running-dialog durations use `Intl.NumberFormat` seconds ("5s", "5 Sek.", "5秒"). A local
+      oxlint rule, `webview/no-hard-coded-text`, reports JSX text, string children, and
+      `title`, `aria-*`, `alt`, and `placeholder` strings with letters in `src/webview`; the Git
+      rename code "R" now comes from the file's status. Chinese translations cover the new strings.
+      **Verified:** tests check the shell's `lang` and escaped strings, the loading text and the
+      RPC timeout read from the shell, and seconds in English, German, and Chinese; the rule's
+      tests run oxlint on samples, and CI runs them with lint. The rule reported seven strings in
+      the previous webview source, and each new test fails against it.
 
 ## Suggested next batch
 
-Start with the items that can lose work or run unintended Git commands; they are small and
-independent. First, validate diff URIs and stop ref names from being parsed as options. Next,
-refuse restores through nested repositories and detect local contents that `git status` hides.
-Then stop a held Enter from confirming destructive dialogs and fix the remote-branch deletion
-target.
+Every item above is complete in code. What remains is GitHub configuration, recorded under
+**Remaining (settings)** in the P2 items:
 
-The configuration and locale item, the `-z` parsing item, and branch listing with `for-each-ref`
-share one theme, making parsed Git output independent of user settings, and could land together.
-The two P1 test items should come before, or alongside, any changes to the destructive actions they
-protect.
+- Add a ruleset on `main` that requires `lint (24)`, `test (ubuntu-latest)`,
+  `test (macos-latest)`, and `test (windows-latest)`.
+- Enable Issues, which the manifest, README, and issue templates link to.
+- Enable Dependabot alerts and security updates so `dependabot.yml` takes effect.
+- Create the `release` environment with a required reviewer, and move `VS_MARKETPLACE_TOKEN` and
+  `OPEN_VSX_TOKEN` into it as environment secrets.
+
+After that, run the release workflow once as a dry run to confirm both registry tokens before the
+next tag. The next review should start a new backlog.

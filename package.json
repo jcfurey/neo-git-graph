@@ -62,6 +62,7 @@
     "format": "oxfmt --check",
     "format:fix": "oxfmt .",
     "lint": "oxlint",
+    "test:lint-rules": "node --test oxlint/webview-text.test.cjs",
     "lint:fix": "oxlint --fix",
     "l10n:export": "vscode-l10n-dev export --outDir ./l10n ./src && oxfmt ./l10n/bundle.l10n.json",
     "l10n:check": "pnpm run l10n:export && git diff --exit-code ./l10n/bundle.l10n.json && node scripts/check-l10n.js"

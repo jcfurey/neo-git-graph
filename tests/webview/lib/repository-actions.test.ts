@@ -2,7 +2,7 @@
 
 import { h, render } from "preact";
 import { act } from "preact/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { RepositoryQueryData, RepositoryState } from "@/backend/types";
 import { RebaseEditor } from "@/webview/components/repository/RebaseEditor";
@@ -20,6 +20,8 @@ import {
   resetRepositoryState
 } from "@/webview/lib/repository-actions";
 import { dialog, selectedRepo } from "@/webview/lib/stores";
+
+import { setupWebviewTest } from "@tests/webview/test-utils";
 
 const mocks = vi.hoisted(() => ({ postMessage: vi.fn() }));
 vi.mock("@/webview/lib/vscode", () => ({
@@ -65,15 +67,13 @@ function click(label: string) {
   act(() => button.click());
 }
 
+// Running dialogs format their elapsed time in the configured locale.
+beforeAll(() => setupWebviewTest());
 beforeEach(() => {
   mocks.postMessage.mockClear();
   selectedRepo.value = "/repo";
   dialog.value = null;
   resetRepositoryState();
-  Object.defineProperty(window, "l10n", {
-    configurable: true,
-    value: new Proxy({}, { get: (_target, key) => String(key) })
-  });
   container = document.createElement("div");
   document.body.append(container);
 });

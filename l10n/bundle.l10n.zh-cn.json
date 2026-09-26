@@ -372,7 +372,7 @@
   "Running": "正在运行",
   "Completed": "已完成",
   "Failed": "失败",
-  "{0}s elapsed": "已用时 {0} 秒",
+  "{0} elapsed": "已用时 {0}",
   "Copy Error Details": "复制错误详情",
   "Clear Completed Activity": "清除已完成的活动",
   "Failed Git operations: {0}": "失败的 Git 操作：{0}",
@@ -486,5 +486,9 @@
   "Conflicts": "冲突",
   "No uncommitted changes.": "没有未提交的更改。",
   "Working Tree Changes": "工作区更改",
-  "The file's changes moved or disappeared. Refresh the graph and try again.": "文件的更改已移动或消失。请刷新图形后重试。"
+  "The file's changes moved or disappeared. Refresh the graph and try again.": "文件的更改已移动或消失。请刷新图形后重试。",
+  "Loading…": "正在加载…",
+  "Unable to open the graph: {0}": "无法打开分支图：{0}",
+  "The extension did not answer in time: {0}": "扩展未及时响应：{0}",
+  "Unable to load repositories: {0}": "无法加载仓库：{0}"
 }

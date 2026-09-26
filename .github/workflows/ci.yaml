@@ -41,7 +41,7 @@ jobs:
         run: pnpm run format
 
       - name: Run lint
-        run: pnpm run lint
+        run: pnpm run lint && pnpm run test:lint-rules
 
       - name: Run typecheck
         run: pnpm run typecheck

@@ -9,6 +9,7 @@ The manifest carries the fork identity, `jcfurey.neo-git-graph`, continuing the 
 
 ### Added
 
+- A lint rule that reports hard-coded text in the webview.
 - Tests that submit each classic action dialog and check the request, the action dispatch table, and the repository lock, with CI keeping `menus.tsx` function coverage at 80% or more.
 
 ### Changed
@@ -20,6 +21,7 @@ The manifest carries the fork identity, `jcfurey.neo-git-graph`, continuing the 
 
 ### Fixed
 
+- Show the remaining webview text in VS Code's display language: the loading and startup messages, repository-load failures, timeouts, reflog dates, and elapsed times, and mark the page with that language.
 - Keep keyboard focus on an entry moved in the interactive rebase and batch editors and announce its new position, keep the sync preview and its focus through background refreshes, and name Branches pane buttons with their full ref.
 - Keep dropdown lists inside narrow windows, opening upwards when there is more room above, and keep the Branches and Workspace sidebar below the header when the header wraps.
 - Keep the uncommitted-changes list, its focus, and its scroll position on screen while it refreshes, follow a staged file to its new group, and show large groups 200 files at a time.

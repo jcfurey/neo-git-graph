@@ -32,6 +32,7 @@ import {
 import { dialog, selectedRepo } from "@/webview/lib/stores";
 import { moveButton, useListMove } from "@/webview/lib/use-list-move";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
+import { getFullDate } from "@/webview/utils/date";
 import { format } from "@/webview/utils/format";
 
 import { PageControls, QueryStatus, TextField } from "./QueryControls";
@@ -216,9 +217,7 @@ function ReflogView() {
               <li key={entry.selector + index} class="space-y-2 py-3">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                   <code>{entry.hash.slice(0, 12)}</code>
-                  <time class="text-xs text-muted">
-                    {new Date(entry.date * 1000).toLocaleString()}
-                  </time>
+                  <time class="text-xs text-muted">{getFullDate(entry.date)}</time>
                 </div>
                 <p class="break-words">{entry.message}</p>
                 <p class="break-all text-xs text-muted">{entry.selector}</p>

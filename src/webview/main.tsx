@@ -9,6 +9,7 @@ import { selectRepo } from "./lib/actions";
 import { initDispatcher } from "./lib/dispatcher";
 import { loadRepoList, repoListError } from "./lib/load-repos";
 import { rpcClient } from "./lib/rpc/rpc-client";
+import { shellText } from "./lib/shell-text";
 import { initializeStores, selectedRepo } from "./lib/stores";
 import { repoListStore } from "./lib/stores/repo-list.store";
 import { vscode } from "./lib/vscode";
@@ -25,7 +26,10 @@ render(<LoadingPage />, root);
 void main().catch((error: unknown) => {
   render(
     <div role="alert">
-      Unable to initialize the webview: {error instanceof Error ? error.message : String(error)}
+      {shellText("initFailed").replace(
+        "{0}",
+        error instanceof Error ? error.message : String(error)
+      )}
     </div>,
     root
   );
@@ -66,8 +70,8 @@ function Root() {
   if (error !== undefined) {
     return (
       <div role="alert">
-        <p>Unable to load repositories: {error}</p>
-        <Button onClick={() => void loadRepoList()}>Retry</Button>
+        <p>{window.l10n.unableToLoadRepositories.replace("{0}", error)}</p>
+        <Button onClick={() => void loadRepoList()}>{window.l10n.retry}</Button>
       </div>
     );
   }

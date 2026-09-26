@@ -10,6 +10,7 @@ import { closeDialog } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/copy";
 import { dialog } from "@/webview/lib/stores";
 import type { DialogInput, DialogState } from "@/webview/types";
+import { formatSeconds } from "@/webview/utils/date";
 import { hasInvalidRefChars } from "@/webview/utils/ref";
 
 const FOCUSABLE = "input:not([disabled]), textarea, select, button:not([disabled])";
@@ -325,10 +326,7 @@ function MessageBody({
       )}
       {state.kind === "running" && state.started !== undefined && (
         <p class="mt-3 text-muted">
-          {window.l10n.elapsedSeconds.replace(
-            "{0}",
-            String(Math.max(0, Math.floor((now - state.started) / 1000)))
-          )}
+          {window.l10n.elapsedSeconds.replace("{0}", formatSeconds(state.started, now))}
           <br />
           {window.l10n.operationKeepsRunning}
         </p>

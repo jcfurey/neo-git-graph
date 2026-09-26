@@ -4,6 +4,7 @@ import { Button } from "@/webview/components/ui/Button";
 import { openContentDialog } from "@/webview/lib/actions";
 import { activity, markFailuresSeen } from "@/webview/lib/activity";
 import { copyToClipboard } from "@/webview/lib/copy";
+import { formatSeconds } from "@/webview/utils/date";
 
 function ActivityView() {
   const [now, setNow] = useState(Date.now());
@@ -36,7 +37,7 @@ function ActivityView() {
                   : entry.error
                     ? window.l10n.activityFailed
                     : window.l10n.activitySucceeded}{" "}
-                · {Math.max(0, Math.floor(((entry.finished ?? now) - entry.started) / 1000))}s
+                · {formatSeconds(entry.started, entry.finished ?? now)}
               </span>
             </div>
             <p class="break-all text-xs text-muted">{entry.repo}</p>

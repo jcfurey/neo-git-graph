@@ -11,7 +11,7 @@ import { resetGraphRequests } from "@/webview/lib/graph-requests";
 import { handleLoadCommits } from "@/webview/lib/handler/load-commits";
 import * as stores from "@/webview/lib/stores";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
-import { getCommitDate, getFullDate } from "@/webview/utils/date";
+import { formatSeconds, getCommitDate, getFullDate } from "@/webview/utils/date";
 
 import { latestGraphRequest, setupWebviewTest } from "@tests/webview/test-utils";
 
@@ -33,6 +33,24 @@ describe("date formatting", () => {
       expect(getFullDate(8_640_000_000_000)).not.toBe("unknownDate");
     }
   );
+});
+
+describe("elapsed time", () => {
+  it("counts whole seconds in the display language's units", () => {
+    const config = getWebviewConfig();
+    const { locale } = config;
+    try {
+      expect(formatSeconds(1000, 6999)).toBe("5s");
+      // A clock that moved backwards shows no time rather than a negative one.
+      expect(formatSeconds(5000, 1000)).toBe("0s");
+      Object.assign(config, { locale: "de" });
+      expect(formatSeconds(0, 5000)).toBe("5 Sek.");
+      Object.assign(config, { locale: "zh-CN" });
+      expect(formatSeconds(0, 5000)).toBe("5秒");
+    } finally {
+      Object.assign(config, { locale });
+    }
+  });
 });
 
 describe("graph rendering", () => {

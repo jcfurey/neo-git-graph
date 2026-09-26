@@ -33,6 +33,21 @@ const getRelativeFormatter = memoizeByLocale(
   (locale) => new Intl.RelativeTimeFormat(locale, { numeric: "always" })
 );
 
+const getSecondsFormatter = memoizeByLocale(
+  (locale) =>
+    new Intl.NumberFormat(locale, { style: "unit", unit: "second", unitDisplay: "narrow" })
+);
+
+/**
+ * The whole seconds between two times in milliseconds, in the display language's own units,
+ * such as "5s" or "5秒". A later start than end counts as no time.
+ */
+export function formatSeconds(started: number, finished: number): string {
+  return getSecondsFormatter(getWebviewConfig().locale).format(
+    Math.max(0, Math.floor((finished - started) / 1000))
+  );
+}
+
 /** Largest unit that fits, paired with the number of seconds in it. */
 const RELATIVE_UNITS: [threshold: number, unit: Intl.RelativeTimeFormatUnit, seconds: number][] = [
   [60, "second", 1],
