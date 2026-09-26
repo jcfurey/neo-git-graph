@@ -420,15 +420,17 @@ improvements rather than confirmed defects.
       **Remaining (settings):** a ruleset on `main` requiring `lint (24)`,
       `test (ubuntu-latest)`, `test (macos-latest)`, and `test (windows-latest)`.
 
-- [ ] **Harden the release workflow and make it dry-runnable.** Publishing has never run. The
-      repository has no secrets, and the deploy job has no protected environment. The Marketplace
-      publish runs before Open VSX, and no token is checked first. Third-party actions are pinned to
-      tags, and the artifact actions warn that Node 20 is deprecated.
-      **Accept:** the deploy job uses `environment: release` with a required reviewer and secrets
-      scoped to it. Third-party actions are pinned to SHAs, and the artifact actions are current.
-      `vsce verify-pat` and `ovsx verify-pat` run before any publish. A `workflow_dispatch` dry run
-      exists, `retention-days` is set, and actionlint passes.
-      Sources: [publish workflow](.github/workflows/publish.yml).
+- [x] **Harden the release workflow and make it dry-runnable.** Completed 2026-09-26 in code; the
+      environment and its secrets are repository settings (see the hand-off notes). The deploy job
+      runs in `environment: release` and verifies both tokens with `vsce verify-pat` and
+      `ovsx verify-pat` before either publish. A `workflow_dispatch` run is a dry run: it validates
+      the manifest version as `v<version>`, runs CI, downloads and checks the VSIX, and verifies
+      the tokens, but the publish steps run only for pushed tags. `pnpm/setup` is pinned to the
+      v2.1.0 commit SHA in both workflows, the artifact actions are `upload-artifact@v7` and
+      `download-artifact@v8` with retention of 14 or 30 days, and actionlint 1.7.12 reports
+      nothing. The packaging guide describes the environment and the dry run.
+      **Remaining (settings):** create the `release` environment with a required reviewer, and
+      move `VS_MARKETPLACE_TOKEN` and `OPEN_VSX_TOKEN` into it as environment secrets.
 
 - [ ] **Align the fork's GitHub settings with its documentation.** Issues are disabled, although
       the manifest, README, and issue templates link to them. Dependabot alerts and security updates

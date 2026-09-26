@@ -59,10 +59,19 @@ three-platform VS Code UI tests, Linux failure-diagnostic/minimum-version smoke 
 Linux package upgrade/activation test. See [VS Code UI tests](testing.md) for local commands and
 artifacts.
 
-The publish job runs only after validation succeeds. It downloads the tested VSIX artifact, checks
-its embedded identity/version against the tag, and passes that file to both registries without
-rebuilding. Publishing requires `VS_MARKETPLACE_TOKEN` and `OPEN_VSX_TOKEN` with access to the
-`jcfurey` publisher. Setting up publisher accounts and credentials is separate from local packaging.
+The publish job runs only after validation succeeds, in the `release` environment, whose required
+reviewer approves each run and which holds the `VS_MARKETPLACE_TOKEN` and `OPEN_VSX_TOKEN`
+secrets for the `jcfurey` publisher. It downloads the tested VSIX artifact, checks its embedded
+identity/version against the tag, and checks both tokens with `vsce verify-pat` and
+`ovsx verify-pat` before publishing anything, so an expired token cannot leave a release on one
+registry only. It then passes that file to both registries without rebuilding. Setting up
+publisher accounts and credentials is separate from local packaging.
+
+Run the workflow manually (**Actions → publish → Run workflow**) for a dry run: it validates and
+tests the manifest's version as if it were tagged, packages it, and verifies both tokens, but
+never publishes; only a pushed tag does. Third-party actions are pinned to commit SHAs, CI keeps
+UI diagnostics for 14 days and benchmarks and the VSIX for 30, and `actionlint` passes on both
+workflows.
 
 This uses GitHub's [reusable workflows](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows)
 and [workflow artifacts](https://docs.github.com/en/actions/tutorials/store-and-share-data).

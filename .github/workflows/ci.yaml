@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: pnpm/setup@v2
+      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
           runtime: node@${{ matrix.node }}
           cache: true
@@ -63,7 +63,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: pnpm/setup@v2
+      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
           runtime: node@24
           cache: true
@@ -124,11 +124,12 @@ jobs:
 
       - name: Collect UI diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ui-${{ matrix.os }}
           path: test-results/
           if-no-files-found: ignore
+          retention-days: 14
 
       - name: Benchmark large histories and workspaces
         if: runner.os == 'Linux'
@@ -140,13 +141,14 @@ jobs:
 
       - name: Collect benchmark results
         if: runner.os == 'Linux' && always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: benchmark
           path: |
             test-results/benchmark*.json
             test-results/benchmark*.cpuprofile
           if-no-files-found: ignore
+          retention-days: 30
 
       - name: Build installable extension
         if: runner.os == 'Linux'
@@ -158,8 +160,9 @@ jobs:
 
       - name: Upload extension
         if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: neo-git-graph-vsix
           path: neo-git-graph.vsix
           if-no-files-found: error
+          retention-days: 30

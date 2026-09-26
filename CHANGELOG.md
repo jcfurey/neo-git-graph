@@ -30,6 +30,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Changed
 
+- Publish from a protected `release` environment after checking both registry tokens, pin third-party actions to commit SHAs, update the artifact actions, and allow a manual dry run of the release workflow.
 - Remove the unused avatar code, its storage, and the Clear Avatar Cache command; activation deletes the old avatar cache once, and the deprecated `fetchAvatars` setting has no effect.
 - Save focus mode, target, dimming, pause state, and Show Remote Branches per repository across graph reopening and VS Code restarts; document temporary search and scrolling state.
 - Make fork VSIX packaging repeatable with `pnpm run package:vsix`, and verify upgrades and activation in an isolated VS Code profile.
