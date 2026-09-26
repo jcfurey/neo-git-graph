@@ -5,4 +5,6 @@ export type WorkingTreeFile = {
   oldPath: string;
   status: string;
   group: WorkingTreeGroup;
+  /** An untracked folder that is a repository of its own, whose files Git does not list here. */
+  repository?: true;
 };

@@ -38,6 +38,7 @@ export type RepositoryEffect =
     }
   | { kind: "restoreDiff"; hash: string; sourcePath: string; destination: string; exists: boolean }
   | { kind: "restored"; backup: RestoreBackup | null }
+  | { kind: "nestedRepository"; path: string }
   | void;
 
 async function findStash(git: SimpleGit, stash: StashDetails) {

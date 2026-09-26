@@ -198,6 +198,7 @@ export function getWebviewLocalizedStrings() {
     unstagedChanges: vscode.l10n.t("Unstaged Changes"),
     stagedChanges: vscode.l10n.t("Staged Changes"),
     untrackedFiles: vscode.l10n.t("Untracked Files"),
+    nestedRepository: vscode.l10n.t("nested repository"),
     conflicts: vscode.l10n.t("Conflicts"),
     noWorkingTreeChanges: vscode.l10n.t("No uncommitted changes."),
 

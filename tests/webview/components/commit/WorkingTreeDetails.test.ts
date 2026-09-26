@@ -181,3 +181,22 @@ it("ignores a late commit error after switching to working changes and cancels o
   });
   expect(document.activeElement).toBe(row());
 });
+
+it("labels an untracked nested repository and asks the extension to explain it", () => {
+  act(() => row().click());
+  reply([
+    { path: "nested/", oldPath: "nested/", status: "?", group: "untracked", repository: true },
+    { path: "plain.txt", oldPath: "plain.txt", status: "?", group: "untracked" }
+  ]);
+  const [nested, plain] = [
+    ...container.querySelectorAll<HTMLButtonElement>('section[aria-label="untrackedFiles"] button')
+  ];
+  expect(nested?.textContent).toContain("(nestedRepository)");
+  expect(plain?.textContent).not.toContain("nestedRepository");
+  act(() => nested!.click());
+  expect(vscodeApi.postMessage).toHaveBeenCalledWith(
+    expect.objectContaining({
+      action: { kind: "viewWorkingTreeFile", path: "nested/", group: "untracked" }
+    })
+  );
+});

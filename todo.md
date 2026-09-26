@@ -497,12 +497,15 @@ improvements rather than confirmed defects.
       updated local-changes state. A webview test covers this.
       Sources: [restore dialog](src/webview/components/history/HistoryTools.tsx).
 
-- [ ] **Explain untracked nested repositories in the uncommitted-changes list.** An untracked nested
-      repository is listed as `nested/`, and clicking it fails with "Choose a file path inside the
-      repository." **Reproduced.**
-      **Accept:** the entry is shown as a nested repository and opens an explanation or the folder.
-      A backend test covers it.
-      Sources: [working-tree query](src/backend/queries/workingTree.ts).
+- [x] **Explain untracked nested repositories in the uncommitted-changes list.** Completed
+      2026-09-26. With every untracked file listed, only a nested repository stays a folder, so
+      the working-tree query marks such an entry as a repository, and the list labels it "nested
+      repository". Clicking it no longer fails: the extension explains that it is a separate
+      repository and offers Open Its Graph, which selects it.
+      **Verified:** a backend test lists `nested/` as a repository beside an ordinary untracked
+      file and returns the nested repository's path for it, and fails against the previous
+      query; a webview test shows the label and the request; an extension test shows the
+      explanation and opens the nested graph on request.
 
 - [x] **Batch per-item Git processes.** Completed 2026-09-26. Renaming or removing a remote reads
       every push default with one `config --local -z --get-regexp` and writes only the keys that

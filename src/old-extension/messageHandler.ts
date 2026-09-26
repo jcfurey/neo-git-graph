@@ -289,6 +289,24 @@ export function registerMessageHandlers(
       await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(effect.path), true);
     } else if (effect?.kind === "conflict") {
       await openConflict(effect.path, effect.status);
+    } else if (effect?.kind === "nestedRepository") {
+      const { path: nested } = effect;
+      const open = vscode.l10n.t("Open Its Graph");
+      void vscode.window
+        .showInformationMessage(
+          vscode.l10n.t(
+            "{0} is a separate Git repository inside this one, so its files are not changes of this repository.",
+            nested
+          ),
+          open
+        )
+        .then((choice) => {
+          if (choice === open) {
+            void vscode.commands.executeCommand("neo-git-graph.view", {
+              rootUri: vscode.Uri.file(nested)
+            });
+          }
+        });
     } else if (effect?.kind === "document") {
       const document = await vscode.workspace.openTextDocument({
         language: "diff",

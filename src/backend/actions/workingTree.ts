@@ -1,4 +1,5 @@
 import { lstat, readlink } from "node:fs/promises";
+import { join } from "node:path";
 
 import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
@@ -28,6 +29,10 @@ export async function viewWorkingTreeFile(
     throw new Error(
       l10n.t("The file's changes moved or disappeared. Refresh the graph and try again.")
     );
+  }
+  if (file.repository) {
+    const root = (await git.raw(["rev-parse", "--show-toplevel"])).replace(/\n$/, "");
+    return { kind: "nestedRepository", path: join(root, file.path.replace(/\/$/, "")) };
   }
   const destination = await checkedWorktreePath(git, file.path);
   if (group === "conflicts") {

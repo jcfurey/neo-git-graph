@@ -219,3 +219,19 @@ it("rejects files that disappeared from their group and reports a clean reposito
   await expect(view("f", "unstaged")).rejects.toThrow("Refresh the graph");
   await expect(view("../outside", "untracked")).rejects.toThrow();
 });
+
+it("marks an untracked nested repository and explains it instead of failing", async () => {
+  const nested = path.join(repo, "nested");
+  fs.mkdirSync(nested);
+  execFileSync("git", ["init", "-q"], { cwd: nested });
+  fs.writeFileSync(path.join(nested, "inner.txt"), "inner");
+  write("plain.txt", "plain");
+  expect(await query()).toEqual({
+    kind: "workingTree",
+    files: [
+      { path: "nested/", oldPath: "nested/", status: "?", group: "untracked", repository: true },
+      { path: "plain.txt", oldPath: "plain.txt", status: "?", group: "untracked" }
+    ]
+  });
+  expect(await view("nested/", "untracked")).toEqual({ kind: "nestedRepository", path: nested });
+});

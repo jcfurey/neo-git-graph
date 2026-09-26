@@ -60,6 +60,11 @@ export function WorkingTreeDetails() {
                           >
                             <span class="w-6 shrink-0 font-mono text-muted">{file.status}</span>
                             <span class="truncate">{file.path}</span>
+                            {file.repository && (
+                              <span class="shrink-0 text-muted">
+                                ({window.l10n.nestedRepository})
+                              </span>
+                            )}
                             {file.oldPath !== file.path && (
                               <span class="truncate text-muted">← {file.oldPath}</span>
                             )}
