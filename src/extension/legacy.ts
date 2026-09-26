@@ -13,7 +13,6 @@ import type { WebviewBridge } from "@/old-extension/webviewBridge";
 export function createMessageProtocol(ctx: vscode.ExtensionContext) {
   const extensionState = new ExtensionState(ctx);
   const avatarManager = new AvatarManager(extConfig.gitPath, extensionState);
-  const gitClient = gitClientFactory(extensionState.getLastActiveRepo() ?? "", extConfig.gitPath());
   const repoManager = createRepoManager(extensionState);
 
   ctx.subscriptions.push(
@@ -38,9 +37,7 @@ export function createMessageProtocol(ctx: vscode.ExtensionContext) {
 
       const { onPanelShown, dispose: disposeQueries } = registerMessageHandlers(bridge, {
         config: extConfig,
-        gitClient,
         repoManager,
-        extensionState,
         avatarManager
       });
       const viewStateListener = panel.onDidChangeViewState(() => {

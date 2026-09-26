@@ -9,7 +9,7 @@ import { scanRepos } from "@/extension/handlers/scan-repo";
 import { git, makeRepo } from "@tests/backend/helpers";
 
 const workspace = vi.hoisted(() => ({
-  workspaceFolders: [] as { uri: { fsPath: string } }[],
+  workspaceFolders: [] as { uri: { scheme: string; fsPath: string } }[],
   getConfiguration: () => ({ get: (_key: string, defaultValue: unknown) => defaultValue })
 }));
 
@@ -30,7 +30,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  workspace.workspaceFolders = [{ uri: { fsPath: parent } }];
+  workspace.workspaceFolders = [{ uri: { scheme: "file", fsPath: parent } }];
 });
 
 afterAll(() => {
@@ -52,7 +52,19 @@ describe("repository picker scan", () => {
   });
 
   it("offers each repository once when workspace folders overlap", async () => {
-    workspace.workspaceFolders.push({ uri: { fsPath: child } });
+    workspace.workspaceFolders.push({ uri: { scheme: "file", fsPath: child } });
+    const { repos } = await scanRepos();
+    expect(repos.map((repo) => repo.path).toSorted()).toEqual(
+      [parent, child].map(normalizeRepoPath).toSorted()
+    );
+  });
+
+  it("skips missing and virtual folders without hiding other repositories", async () => {
+    workspace.workspaceFolders = [
+      { uri: { scheme: "file", fsPath: path.join(parent, "..", "deleted folder") } },
+      { uri: { scheme: "vscode-vfs", fsPath: "/github/owner/repo" } },
+      { uri: { scheme: "file", fsPath: parent } }
+    ];
     const { repos } = await scanRepos();
     expect(repos.map((repo) => repo.path).toSorted()).toEqual(
       [parent, child].map(normalizeRepoPath).toSorted()

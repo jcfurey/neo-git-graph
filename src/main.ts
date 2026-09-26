@@ -8,10 +8,12 @@ import { logger } from "./extension/util/logger";
 import { createViewCommand } from "./extension/view-command";
 import { registerFileHistoryCommand } from "./old-extension/fileHistoryCommand";
 
+/**
+ * Register every contributed command, even without a workspace folder: the walkthrough links to
+ * them, and the graph then shows its no-repository page. Activation runs no Git and reads no
+ * saved repository paths, so a deleted repository cannot stop it.
+ */
 export function activate(ctx: vscode.ExtensionContext) {
-  if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length <= 0) {
-    return;
-  }
   logger.init(ctx);
   void resolveBuiltInGitPath();
   // Backend messages are marked with the standalone l10n package, which cannot

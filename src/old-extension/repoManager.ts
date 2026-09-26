@@ -1,3 +1,5 @@
+import { access } from "node:fs/promises";
+
 import { ExtensionState } from "@/old-extension/extensionState";
 import type { GitRepoSet, GitRepoState } from "@/types";
 
@@ -57,6 +59,26 @@ export function createRepoManager(extensionState: ExtensionState) {
     return changes;
   }
 
+  /** Forget saved state for repositories whose folders no longer exist. */
+  async function pruneMissing() {
+    const missing = await Promise.all(
+      Object.keys(repos).map((repo) =>
+        access(repo).then(
+          () => null,
+          () => repo
+        )
+      )
+    );
+    const stale = missing.filter((repo): repo is string => repo !== null);
+    if (stale.length > 0) {
+      for (const repo of stale) {
+        delete repos[repo];
+      }
+      extensionState.saveRepos(repos);
+    }
+    return stale;
+  }
+
   function setRepoState(repo: string, state: GitRepoState) {
     repos[repo] = state;
     extensionState.saveRepos(repos);
@@ -79,6 +101,7 @@ export function createRepoManager(extensionState: ExtensionState) {
     addRepo,
     removeRepo,
     removeReposWithinFolder,
+    pruneMissing,
     setRepoState,
     updateHiddenRemotes
   };

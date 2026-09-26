@@ -142,18 +142,19 @@ improvements rather than confirmed defects.
       Sources: [configuration](src/extension/config.ts), [Git client](src/backend/gitClient.ts),
       [portable-Git hint](src/old-extension/l10n/webviewL10n.ts).
 
-- [ ] **Activate with missing repositories, missing folders, or no folder.** Activation eagerly
-      creates a Git client for the saved last-active repository, and repository scanning attaches
-      its error handler after a constructor that throws synchronously. **Reproduced:** a deleted
-      last-active repository makes activation throw and register no commands, and this persists
-      for that workspace. One missing folder in a multi-root workspace hides every repository. A
-      window with no folder registers none of the six contributed commands, which breaks the
-      walkthrough links. No `capabilities` are declared, so virtual workspaces activate and then
-      show an error.
-      **Accept:** activation touches neither Git nor saved repository paths, and stale saved
-      repositories are ignored or cleared. Failing and non-`file` folders are skipped and logged.
-      Commands always register and, without a folder, show the no-repository page.
-      `virtualWorkspaces` and `untrustedWorkspaces` support is declared. Unit tests cover each case.
+- [x] **Activate with missing repositories, missing folders, or no folder.** Completed 2026-09-26.
+      Activation no longer creates a Git client for the saved last-active repository, which was
+      only ever used to set its path, and it reads no saved repository paths. Commands register
+      even without a workspace folder, and the graph then shows its no-repository page. Repository
+      scanning skips, and logs, folders without a local path and folders that are not readable
+      directories, so one missing folder no longer hides the others. Saved state for repositories
+      whose folders are gone is pruned when the Workspace pane loads. The manifest declares
+      virtual and untrusted workspaces unsupported, as VS Code's own Git extension does, because
+      Git needs local files and can run programs named in repository configuration.
+      **Verified:** activation tests register all six commands without a folder and with a
+      deleted last-active repository, create no Git client, and check the manifest; all three fail
+      against the previous activation. A scan test finds the real repository beside a deleted and
+      a virtual folder, and a repository-manager test prunes only missing paths.
       Sources: [activation](src/extension/legacy.ts), [entry point](src/main.ts),
       [repository scan](src/extension/handlers/scan-repo.ts), [manifest](package.json).
 

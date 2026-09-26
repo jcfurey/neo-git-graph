@@ -12,7 +12,7 @@ import { mergeBranch, mergeCommit } from "@/backend/actions/merge";
 import { fetchRemote, pullBranch, pushBranch } from "@/backend/actions/remote";
 import { runRepositoryAction } from "@/backend/actions/repository";
 import { addTag, deleteTag, pushTag } from "@/backend/actions/tag";
-import { gitClientFactory, type GitClient } from "@/backend/gitClient";
+import { gitClientFactory } from "@/backend/gitClient";
 import { commitDetails } from "@/backend/queries/commitDetails";
 import { loadBranches } from "@/backend/queries/loadBranches";
 import { loadCommits } from "@/backend/queries/loadCommits";
@@ -38,7 +38,6 @@ import {
 import { invalidateWorkspaceScan, scanWorkspaceRepos } from "@/extension/workspace-scan";
 import { AvatarManager } from "@/old-extension/avatarManager";
 import { encodeDiffBlobUri, encodeDiffDocUri } from "@/old-extension/diffDocProvider";
-import { ExtensionState } from "@/old-extension/extensionState";
 import type { RequestMessage, ResponseMessage } from "@/types";
 
 import type { RepoManager } from "./repoManager";
@@ -94,13 +93,11 @@ export function registerMessageHandlers(
   bridge: WebviewBridge,
   deps: {
     config: Config;
-    gitClient: GitClient;
     repoManager: RepoManager;
-    extensionState: ExtensionState;
     avatarManager: AvatarManager;
   }
 ) {
-  const { config, gitClient, repoManager, extensionState, avatarManager } = deps;
+  const { config, repoManager, avatarManager } = deps;
 
   let currentRepo: string | null = null;
   const busyRepos = new Map<string, boolean>();
@@ -119,10 +116,8 @@ export function registerMessageHandlers(
       return;
     }
     cancelGraphQueries();
-    gitClient.setRepo(repo);
     currentRepo = repo;
     viewedRepos.add(repo);
-    extensionState.setLastActiveRepo(repo);
     selectWatchedRepo(repo);
   }
 
@@ -307,7 +302,9 @@ export function registerMessageHandlers(
                   ...new Set([
                     msg.repo,
                     ...viewedRepos,
-                    ...Object.keys(repoManager.getRepos()),
+                    ...(await repoManager
+                      .pruneMissing()
+                      .then(() => Object.keys(repoManager.getRepos()))),
                     ...(await scanWorkspaceRepos(config.gitPath(), config.maxDepthOfRepoSearch()))
                   ])
                 ]

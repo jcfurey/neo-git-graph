@@ -40,5 +40,7 @@
   "walkthrough.branchesPane.title": "Use the Branches pane",
   "walkthrough.branchesPane.description": "Browse branches, remotes, tags and stashes beside the graph, with checkout, fetch and apply one click away.\n[Show the Branches pane](command:neo-git-graph.showBranches)",
   "walkthrough.recover.title": "Recover from a mistake",
-  "walkthrough.recover.description": "The status strip offers Continue and Abort during merges and rebases, Git Activity keeps every error, and Recover lost commits finds old branch positions.\n[Open the documentation](command:neo-git-graph.openDocumentation)"
+  "walkthrough.recover.description": "The status strip offers Continue and Abort during merges and rebases, Git Activity keeps every error, and Recover lost commits finds old branch positions.\n[Open the documentation](command:neo-git-graph.openDocumentation)",
+  "capabilities.virtualWorkspaces": "Git Graph runs Git on local files, which a virtual workspace does not have.",
+  "capabilities.untrustedWorkspaces": "Git Graph runs Git, which can start programs that the repository's configuration names."
 }

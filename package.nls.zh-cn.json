@@ -40,5 +40,7 @@
   "walkthrough.branchesPane.title": "使用分支面板",
   "walkthrough.branchesPane.description": "在分支图旁浏览分支、远程仓库、标签和暂存记录，检出、获取和应用只需一次点击。\n[显示分支面板](command:neo-git-graph.showBranches)",
   "walkthrough.recover.title": "从错误中恢复",
-  "walkthrough.recover.description": "合并和变基期间，状态栏提供“继续”和“中止”；Git 活动会保留每个错误；“找回丢失的提交”可找到分支的旧位置。\n[打开文档](command:neo-git-graph.openDocumentation)"
+  "walkthrough.recover.description": "合并和变基期间，状态栏提供“继续”和“中止”；Git 活动会保留每个错误；“找回丢失的提交”可找到分支的旧位置。\n[打开文档](command:neo-git-graph.openDocumentation)",
+  "capabilities.virtualWorkspaces": "Git Graph 在本地文件上运行 Git，而虚拟工作区没有本地文件。",
+  "capabilities.untrustedWorkspaces": "Git Graph 会运行 Git，而 Git 可能启动仓库配置中指定的程序。"
 }

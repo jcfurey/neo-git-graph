@@ -24,7 +24,6 @@ beforeEach(() => {
 function setup() {
   const handlers = new Map<string, (message: unknown) => void | Promise<void>>();
   const post = vi.fn();
-  const setRepo = vi.fn();
   const lifetime = registerMessageHandlers(
     {
       post,
@@ -37,14 +36,12 @@ function setup() {
         dateType: () => "Author Date",
         showUncommittedChanges: () => true
       },
-      gitClient: { setRepo },
       repoManager: { getRepos: () => ({}) },
       extensionState: { setLastActiveRepo: vi.fn() }
     } as unknown as Parameters<typeof registerMessageHandlers>[1]
   );
   return {
     post,
-    setRepo,
     lifetime,
     receive: (message: { command: string; [key: string]: unknown }) =>
       handlers.get(message.command)!(message)
@@ -182,8 +179,9 @@ it.each(["loadBranches", "loadCommits", "commitDetails"] as const)(
 );
 
 it("reports repository setup failures and recovers on retry", async () => {
-  const { post, setRepo, lifetime, receive } = setup();
-  setRepo.mockImplementationOnce(() => {
+  const { post, lifetime, receive } = setup();
+  // simple-git rejects a directory that no longer exists when the client is created.
+  mocks.factory.mockImplementationOnce(() => {
     throw new Error("Repository was removed");
   });
   await receive(commitsRequest);

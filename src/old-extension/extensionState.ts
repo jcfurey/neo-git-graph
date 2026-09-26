@@ -7,7 +7,6 @@ import type { Avatar, AvatarCache, GitRepoSet } from "@/types";
 
 const AVATAR_STORAGE_FOLDER = "/avatars";
 const AVATAR_CACHE = "avatarCache";
-const LAST_ACTIVE_REPO = "lastActiveRepo";
 const REPO_STATES = "repoStates";
 
 export class ExtensionState {
@@ -42,14 +41,6 @@ export class ExtensionState {
   }
   public saveRepos(gitRepoSet: GitRepoSet) {
     this.workspaceState.update(REPO_STATES, gitRepoSet);
-  }
-
-  /* Last Active Repo */
-  public getLastActiveRepo() {
-    return this.workspaceState.get<string | null>(LAST_ACTIVE_REPO, null);
-  }
-  public setLastActiveRepo(repo: string | null) {
-    this.workspaceState.update(LAST_ACTIVE_REPO, repo);
   }
 
   /* Avatars */

@@ -4,7 +4,7 @@ import { invalidateWorkspaceScan, scanWorkspaceRepos } from "@/extension/workspa
 
 const mocks = vi.hoisted(() => ({
   findGitRepos: vi.fn(),
-  folders: [{ uri: { fsPath: "/ws" } }]
+  folders: [{ uri: { scheme: "file", fsPath: "/ws" } }]
 }));
 vi.mock("vscode", () => ({
   workspace: {
@@ -18,7 +18,7 @@ vi.mock("@/backend/queries/repoSearch", () => ({ findGitRepos: mocks.findGitRepo
 beforeEach(() => {
   invalidateWorkspaceScan();
   mocks.findGitRepos.mockReset();
-  mocks.folders = [{ uri: { fsPath: "/ws" } }];
+  mocks.folders = [{ uri: { scheme: "file", fsPath: "/ws" } }];
 });
 
 it("walks the workspace once until the folders, Git path or depth change", async () => {
@@ -30,7 +30,7 @@ it("walks the workspace once until the folders, Git path or depth change", async
 
   await scanWorkspaceRepos("git", 2);
   await scanWorkspaceRepos("/usr/bin/git", 2);
-  mocks.folders = [{ uri: { fsPath: "/other" } }];
+  mocks.folders = [{ uri: { scheme: "file", fsPath: "/other" } }];
   await scanWorkspaceRepos("/usr/bin/git", 2);
   expect(mocks.findGitRepos).toHaveBeenCalledTimes(4);
   expect(mocks.findGitRepos).toHaveBeenLastCalledWith(["/other"], "/usr/bin/git", 2);

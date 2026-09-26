@@ -1,6 +1,5 @@
-import * as vscode from "vscode";
-
 import { findGitRepos } from "@/backend/queries/repoSearch";
+import { workspaceFolderPaths } from "@/extension/workspace-folders";
 
 let cache: { key: string; repos: Promise<string[]> } | undefined;
 
@@ -10,7 +9,7 @@ let cache: { key: string; repos: Promise<string[]> } | undefined;
  * or `invalidateWorkspaceScan` reports a repository that appeared or vanished.
  */
 export function scanWorkspaceRepos(gitPath: string, maxDepth: number): Promise<string[]> {
-  const folders = (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath);
+  const folders = workspaceFolderPaths();
   const key = JSON.stringify([folders, gitPath, maxDepth]);
   if (cache?.key !== key) {
     const entry = { key, repos: findGitRepos(folders, gitPath, maxDepth) };
