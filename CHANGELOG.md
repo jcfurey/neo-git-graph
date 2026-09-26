@@ -43,6 +43,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Fixed
 
+- Name the Reset mode and merge parent choices for screen readers.
 - Offer **Stop Git** while a push, pull, fetch, or other network action runs, so an unresponsive server no longer leaves the repository locked, and never let Git wait for a password typed in a terminal.
 - Load the graph on Windows when a hidden remote has hundreds of branches, which exceeded the command-line limit.
 - Refresh the graph after commits and other changes in linked worktrees and submodules, whose Git data lives outside their folder, and when a merge, cherry-pick, revert, rebase, or bisect starts or stops.

@@ -382,12 +382,12 @@ improvements rather than confirmed defects.
       [dropdown](src/webview/components/ui/Dropdown.tsx),
       [performance report](docs/performance.md).
 
-- [ ] **Give dialog selects without a label an accessible name.** `Dialog` passes
-      `aria-labelledby` to `Select`, which silently drops it. **Reproduced:** the Reset mode choice
-      and the cherry-pick/revert parent choice have no accessible name.
-      **Accept:** `Select` forwards `aria-labelledby`, and a test asserts the accessible name.
-      Sources: [select](src/webview/components/ui/Select.tsx),
-      [dialog](src/webview/components/ui/Dialog.tsx).
+- [x] **Give dialog selects without a label an accessible name.** Completed 2026-09-26. `Select`
+      now accepts and forwards `aria-labelledby`, so an unlabelled choice is named by the dialog's
+      question.
+      **Verified:** Dialog tests open Reset and the cherry-pick and revert parent choice of a merge
+      and resolve the select's `aria-labelledby` to the question's text; all three fail without
+      the fix.
 
 ### Maintenance and project health
 
