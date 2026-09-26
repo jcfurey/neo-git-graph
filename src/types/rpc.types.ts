@@ -50,6 +50,7 @@ export type RpcNotificationMap = {
   "view.showPane": { pane: SidebarPane };
   "repo.select": GitRepo;
   "repo.rescan": null;
+  "config.changed": WebviewConfig;
   "repo.updated": RepoUpdate;
 };
 

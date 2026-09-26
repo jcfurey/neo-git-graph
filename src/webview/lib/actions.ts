@@ -3,7 +3,7 @@ import type { ComponentChildren } from "preact";
 
 import type { GitFileChange } from "@/backend/types";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
-import type { ResponseMessage } from "@/types";
+import type { ResponseMessage, WebviewConfig } from "@/types";
 import { SHOW_ALL_BRANCHES, UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { captureFocus, restoreFocus } from "@/webview/lib/focus";
 import {
@@ -50,7 +50,7 @@ import {
   uncommittedChanges
 } from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
-import { getWebviewConfig } from "@/webview/lib/webview-config";
+import { getWebviewConfig, updateWebviewConfig } from "@/webview/lib/webview-config";
 import type {
   ActionCommand,
   BranchDisplay,
@@ -374,6 +374,14 @@ export function loadMoreCommits() {
   if (repo !== undefined && branch !== undefined) {
     requestCommits(repo, branch);
   }
+}
+
+/** Apply settings changed while the graph is open, then load it again with them. */
+export function applyWebviewConfig(config: WebviewConfig) {
+  updateWebviewConfig(config);
+  // A larger first page takes effect now; a smaller one keeps the commits already shown.
+  maxCommits.value = Math.max(maxCommits.peek(), config.initialLoadCommits);
+  refresh();
 }
 
 export function refresh() {

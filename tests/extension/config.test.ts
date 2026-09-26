@@ -2,9 +2,10 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
+import * as vscode from "vscode";
 
-import { configuredGitPath, extConfig } from "@/extension/config";
+import { configuredGitPath, extConfig, wholeNumber } from "@/extension/config";
 
 type Manifest = {
   contributes: { configuration: { properties: Record<string, { default: unknown }> } };
@@ -53,4 +54,52 @@ it("resolves git.path values the way VS Code does", () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+it("reads numeric settings as whole numbers within their range", () => {
+  expect(wholeNumber(300.5, 1, 300)).toBe(300);
+  expect(wholeNumber(-1, 1, 300)).toBe(1);
+  expect(wholeNumber(0, 1, 300)).toBe(1);
+  expect(wholeNumber(-2, 0, 0)).toBe(0);
+  expect(wholeNumber(Number.NaN, 1, 300)).toBe(300);
+  expect(wholeNumber(Number.POSITIVE_INFINITY, 1, 300)).toBe(300);
+  expect(wholeNumber("500", 1, 300)).toBe(300);
+  expect(wholeNumber(null, 1, 300)).toBe(300);
+  expect(wholeNumber(42, 1, 300)).toBe(42);
+
+  const settings: Record<string, unknown> = {
+    initialLoadCommits: 300.5,
+    loadMoreCommits: -1,
+    maxDepthOfRepoSearch: "2"
+  };
+  const read = vi
+    .spyOn(vscode.workspace, "getConfiguration")
+    .mockReturnValue({ get: (key: string) => settings[key] } as never);
+  try {
+    expect(extConfig.initialLoadCommits()).toBe(300);
+    expect(extConfig.loadMoreCommits()).toBe(1);
+    expect(extConfig.maxDepthOfRepoSearch()).toBe(0);
+  } finally {
+    read.mockRestore();
+  }
+});
+
+it("declares the numeric settings as integers with minimums", () => {
+  const manifest = JSON.parse(
+    readFileSync(new URL("../../package.json", import.meta.url), "utf8")
+  ) as {
+    contributes: {
+      configuration: { properties: Record<string, { type: string; minimum?: number }> };
+    };
+  };
+  const declared = manifest.contributes.configuration.properties;
+  expect(declared["neo-git-graph.initialLoadCommits"]).toMatchObject({
+    type: "integer",
+    minimum: 1
+  });
+  expect(declared["neo-git-graph.loadMoreCommits"]).toMatchObject({ type: "integer", minimum: 1 });
+  expect(declared["neo-git-graph.maxDepthOfRepoSearch"]).toMatchObject({
+    type: "integer",
+    minimum: 0
+  });
 });

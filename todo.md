@@ -557,16 +557,19 @@ improvements rather than confirmed defects.
       Sources: [loading indicator](src/webview/components/ui/Loading.tsx),
       [webview entry point](src/webview/main.tsx), [HTML shell](src/extension/html.ts).
 
-- [ ] **Apply setting changes to an open graph and constrain numeric settings.** Display settings
-      are read once when the webview starts, so changes made from the settings cog have no effect
-      until the graph is reopened. Numeric settings accept fractions and negative numbers:
-      `initialLoadCommits: 300.5` makes every load fail, and `-1` loads the entire history.
-      **Code review,** plus a check with Git.
-      **Accept:** configuration changes reach the webview and refresh the graph. The manifest
-      declares integer types with minimums, and the configuration reader clamps values. Tests cover
-      both.
-      Sources: [configuration watcher](src/extension/watchers/config.watcher.ts),
-      [configuration](src/extension/config.ts), [manifest](package.json).
+- [x] **Apply setting changes to an open graph and constrain numeric settings.** Completed
+      2026-09-26. The configuration watcher sends every change to `neo-git-graph` settings to the
+      webview, which keeps its configuration in a signal: dates, graph style, and colours redraw
+      at once, the graph reloads, and a larger first page takes effect immediately. The manifest
+      declares the three numeric settings as integers with minimums, and the reader rounds down
+      and clamps whatever a settings file holds, falling back to the default for non-numbers.
+      **Checked with Git:** the graph asks for one commit more than the page, and Git reads
+      `--max-count=301.5` as 301, so `300.5` loaded commits but never offered Load more; `-1`
+      became `--max-count=0` and loaded nothing.
+      **Verified:** extension tests clamp `300.5`, `-1`, `NaN`, and strings, check the manifest
+      types, and send the changed settings, clamped, only for this extension's settings; a
+      webview test redraws a row's date after a Date Format change and reloads with the larger
+      first page. All fail against the previous code.
 
 ## Suggested next batch
 

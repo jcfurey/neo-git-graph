@@ -57,6 +57,16 @@ function getConfig<T>(key: string, defaultValue: T): T {
   return vscode.workspace.getConfiguration("neo-git-graph").get(key, defaultValue);
 }
 
+/**
+ * A whole number of at least `minimum`. Settings files accept any number: `300.5` would make every
+ * `--max-count` fail, and `-1` would load the entire history.
+ */
+export function wholeNumber(value: unknown, minimum: number, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(minimum, Math.floor(value))
+    : fallback;
+}
+
 export const extConfig = {
   autoCenterCommitDetailsView: (): boolean => getConfig("autoCenterCommitDetailsView", true),
   dateFormat: (): DateFormat => getConfig("dateFormat", "Date & Time"),
@@ -66,9 +76,9 @@ export const extConfig = {
   graphColours: (): string[] =>
     getConfig("graphColours", DEFAULT_GRAPH_COLOURS).filter((colour) => GRAPH_COLOUR.test(colour)),
   graphStyle: (): GraphStyle => getConfig("graphStyle", "rounded"),
-  initialLoadCommits: (): number => getConfig("initialLoadCommits", 300),
-  loadMoreCommits: (): number => getConfig("loadMoreCommits", 100),
-  maxDepthOfRepoSearch: (): number => getConfig("maxDepthOfRepoSearch", 0),
+  initialLoadCommits: (): number => wholeNumber(getConfig("initialLoadCommits", 300), 1, 300),
+  loadMoreCommits: (): number => wholeNumber(getConfig("loadMoreCommits", 100), 1, 100),
+  maxDepthOfRepoSearch: (): number => wholeNumber(getConfig("maxDepthOfRepoSearch", 0), 0, 0),
   showCurrentBranchByDefault: (): boolean => getConfig("showCurrentBranchByDefault", false),
   showUncommittedChanges: (): boolean => getConfig("showUncommittedChanges", true),
   tabIconColourTheme: (): TabIconColourTheme => getConfig("tabIconColourTheme", "colour")

@@ -20,6 +20,7 @@ The manifest carries the fork identity, `jcfurey.neo-git-graph`, continuing the 
 
 ### Fixed
 
+- Apply changed settings to an open graph instead of on its next start, and read fractional or negative commit counts and search depths as whole numbers within range.
 - Open menus activated with Enter, Space, or the context-menu key next to their button instead of in the window's top-left corner.
 - Refresh the restore dialog when the file changed after its preview, instead of failing on every click with "Preview the restore again".
 - Label an untracked nested repository in the uncommitted-changes list and explain it, with Open Its Graph, instead of failing when it is clicked.

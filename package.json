@@ -230,17 +230,20 @@
           "description": "%config.graphStyle%"
         },
         "neo-git-graph.initialLoadCommits": {
-          "type": "number",
+          "type": "integer",
+          "minimum": 1,
           "default": 300,
           "description": "%config.initialLoadCommits%"
         },
         "neo-git-graph.loadMoreCommits": {
-          "type": "number",
+          "type": "integer",
+          "minimum": 1,
           "default": 100,
           "description": "%config.loadMoreCommits%"
         },
         "neo-git-graph.maxDepthOfRepoSearch": {
-          "type": "number",
+          "type": "integer",
+          "minimum": 0,
           "default": 0,
           "description": "%config.maxDepthOfRepoSearch%"
         },
