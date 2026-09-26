@@ -9,3 +9,7 @@
 	gpgSign = false
 [tag]
 	gpgSign = false
+# Git starts maintenance after commits, detached in recent versions. Its lock files race with
+# tests that read the Git directory, and on Windows it holds files that a test is deleting.
+[maintenance]
+	auto = false
