@@ -6,7 +6,8 @@ const mocks = vi.hoisted(() => ({
   createPanel: vi.fn(),
   notify: vi.fn(),
   disposable: () => ({ dispose: vi.fn() }),
-  workTreeRoot: vi.fn(async (directory: string): Promise<string | null> => directory)
+  workTreeRoot: vi.fn(async (directory: string): Promise<string | null> => directory),
+  addSessionRepo: vi.fn()
 }));
 
 vi.mock("vscode", () => ({
@@ -18,6 +19,7 @@ vi.mock("@/extension/config", () => ({
   extConfig: { tabIconColourTheme: () => "colour", gitPath: () => "git" }
 }));
 vi.mock("@/backend/utils/git", () => ({ workTreeRoot: mocks.workTreeRoot }));
+vi.mock("@/extension/workspace-scan", () => ({ addSessionRepo: mocks.addSessionRepo }));
 vi.mock("@/extension/html", () => ({ createWevbviewHtml: () => "<html>graph</html>" }));
 vi.mock("@/extension/legacy", () => ({
   createMessageProtocol: () => ({ attach: mocks.disposable })
@@ -112,4 +114,6 @@ it("selects the top level of a clicked subfolder, and the latest click wins", as
   slow.resolve("/other");
   await settle();
   expect(mocks.notify.mock.calls).toEqual([["repo.select", { name: "repo", path: "/real/repo" }]]);
+  // The superseded click still offers its repository.
+  expect(mocks.addSessionRepo.mock.calls).toEqual([["/real/repo"], ["/other"]]);
 });

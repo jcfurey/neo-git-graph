@@ -41,12 +41,12 @@ export function createViewCommand(ctx: vscode.ExtensionContext) {
   const selectClicked = (folder: string, file: string | undefined) => {
     const request = ++selectionRequest;
     void workTreeRoot(folder, extConfig.gitPath()).then((root) => {
-      // A later click wins over one whose top level took longer to find.
+      const repo = root ?? folder;
+      // Every clicked repository stays on offer, but a later click wins the selection.
+      addSessionRepo(repo);
       if (request !== selectionRequest) {
         return;
       }
-      const repo = root ?? folder;
-      addSessionRepo(repo);
       pendingFile = file === undefined ? undefined : { repo, path: file };
       repoSelection?.select(repo);
     });

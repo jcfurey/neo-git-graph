@@ -368,6 +368,14 @@ async function contextRef(name) {
 async function openRepo(dir) {
   await vscode.commands.executeCommand("neo-git-graph.view", { rootUri: vscode.Uri.file(dir) });
   graph = await findGraph();
+  // The extension selects the repository once Git names its top level.
+  await until(
+    () =>
+      graph.evaluate(
+        `[...document.querySelectorAll('header button[aria-haspopup="listbox"]')].some(b => b.title === ${JSON.stringify(repoKey(dir))})`
+      ),
+    "selected repository " + dir
+  );
   await button("Refresh");
   await until(
     () => graph.evaluate('document.querySelectorAll("tbody tr").length > 0'),
