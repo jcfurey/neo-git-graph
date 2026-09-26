@@ -228,21 +228,21 @@ export async function loadBatchPlan(git: SimpleGit, hashes: string[]): Promise<B
   if (hashes.length === 0 || hashes.length > 100 || new Set(hashes).size !== hashes.length) {
     throw new Error(l10n.t("Select between 1 and 100 distinct commits."));
   }
-  const entries = await Promise.all(
-    hashes.map(
-      async (hash) =>
-        parseHistory(
-          await git.raw([
-            "log",
-            "-1",
-            "-z",
-            "--format=" + HISTORY_FORMAT,
-            await resolveCommit(git, hash),
-            "--"
-          ])
-        )[0]!
-    )
+  // One process lists every commit in the order given; a missing one fails the whole plan.
+  const entries = parseHistory(
+    await git.raw([
+      "log",
+      "--no-walk=unsorted",
+      "-z",
+      "--format=" + HISTORY_FORMAT,
+      "--end-of-options",
+      ...hashes.map((hash) => `${hash}^{commit}`),
+      "--"
+    ])
   );
+  if (entries.length !== hashes.length) {
+    throw new Error(l10n.t("Select between 1 and 100 distinct commits."));
+  }
   return {
     head: await resolveCommit(git, "HEAD"),
     branch: (await git.raw(["symbolic-ref", "--quiet", "--short", "HEAD"])).trim(),

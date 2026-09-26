@@ -194,16 +194,30 @@ export async function loadRebasePlan(git: SimpleGit, baseRef: string): Promise<R
   if ((await git.raw(["merge-base", base, head])).trim() !== base) {
     throw new Error(l10n.t("Choose an ancestor of the current branch for interactive rebase."));
   }
-  const rows = (
-    await git.raw(["rev-list", "--reverse", "--topo-order", "--parents", `${base}..${head}`])
-  )
-    .trim()
-    .split("\n")
-    .filter(Boolean);
+  // One process for every commit and its message; fields and records both end in NUL.
+  const fields = (
+    await git.raw([
+      "log",
+      "-z",
+      "--reverse",
+      "--topo-order",
+      "--format=%H%x00%P%x00%B",
+      `${base}..${head}`,
+      "--"
+    ])
+  ).split("\0");
+  const rows: { hash: string; parents: string[]; message: string }[] = [];
+  for (let index = 0; index + 2 < fields.length; index += 3) {
+    rows.push({
+      hash: fields[index]!,
+      parents: fields[index + 1]!.split(" ").filter(Boolean),
+      message: fields[index + 2]!.trimEnd()
+    });
+  }
   if (rows.length === 0) {
     throw new Error(l10n.t("There are no commits after this commit on the current branch."));
   }
-  if (rows.some((row) => row.split(" ").length > 2)) {
+  if (rows.some((row) => row.parents.length > 1)) {
     throw new Error(
       l10n.t(
         "This range contains merge commits. Choose a linear range for interactive rebase, or use Rebase onto this branch to preserve merges."
@@ -214,16 +228,7 @@ export async function loadRebasePlan(git: SimpleGit, baseRef: string): Promise<R
     base,
     head,
     branch,
-    entries: await Promise.all(
-      rows.map(async (row) => {
-        const hash = row.split(" ")[0]!;
-        return {
-          hash,
-          action: "pick" as const,
-          message: (await git.raw(["show", "-s", "--format=%B", hash])).trimEnd()
-        };
-      })
-    )
+    entries: rows.map(({ hash, message }) => ({ hash, action: "pick" as const, message }))
   };
 }
 

@@ -504,15 +504,15 @@ improvements rather than confirmed defects.
       A backend test covers it.
       Sources: [working-tree query](src/backend/queries/workingTree.ts).
 
-- [ ] **Batch per-item Git processes.** **Reproduced:** renaming a remote with 1,000 local branches
-      took 11.4 s under the repository lock, because each branch's push default is updated
-      separately (`git remote rename` alone took 3 ms). The rebase plan for 500 commits took
-      1.23 s, against 7 ms for a single `log -z`, and batch plans run two processes per commit.
-      **Accept:** these operations use `config --get-regexp` and single `log -z` calls, and
-      renaming a remote with 1,000 branches takes under 1 s.
-      Sources: [remote actions](src/backend/actions/remotes.ts),
-      [repository queries](src/backend/queries/repository.ts),
-      [history query](src/backend/queries/history.ts).
+- [x] **Batch per-item Git processes.** Completed 2026-09-26. Renaming or removing a remote reads
+      every push default with one `config --local -z --get-regexp` and writes only the keys that
+      name the remote. The rebase plan reads hashes, parents, and messages with one `log -z`, and
+      the batch plan reads every selected commit, in the given order, with one
+      `log --no-walk=unsorted -z`.
+      **Verified:** tests count the Git processes simple-git starts: renaming a remote with 1,000
+      branches used 1,006 before and fewer than 20 now, and takes under 1 s on Linux (9.8 s
+      before); a 500-commit rebase plan used 505 and now fewer than 10, keeping multi-line
+      messages; and a 13-commit batch plan used 28 and now fewer than 10, in the requested order.
 
 - [ ] **Open keyboard-activated menus next to their button.** Menus opened with Enter from the
       Branches pane, the settings cog, and the Workspace pane use zero mouse coordinates, so they

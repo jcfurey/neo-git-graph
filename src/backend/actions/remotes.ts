@@ -2,7 +2,6 @@ import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import type { RepositoryAction } from "@/backend/types";
-import { refNames } from "@/backend/utils/refs";
 import { runGit } from "@/backend/utils/runGit";
 import {
   requireBranchName,
@@ -56,16 +55,32 @@ async function replaceConfig(git: SimpleGit, key: string, values: string[]) {
   }
 }
 
+/** Point the repository's push defaults that name `oldName` at `newName`, or remove them. */
 async function updatePushDefaults(git: SimpleGit, oldName: string, newName: string | null) {
-  const branches = await refNames(git, "refs/heads/");
-  const keys = ["remote.pushDefault", ...branches.map((name) => `branch.${name}.pushRemote`)];
-  const settings = await Promise.all(keys.map((key) => git.getConfig(key)));
-  for (const [index, key] of keys.entries()) {
-    if (settings[index]?.value === oldName) {
-      // Serialize writes to the repository's config.lock.
-      // eslint-disable-next-line no-await-in-loop
-      await replaceConfig(git, key, newName === null ? [] : [newName]);
-    }
+  // One read for every branch; Git prints each key and value, then NUL.
+  const settings = await git
+    .raw([
+      "config",
+      "--local",
+      "-z",
+      "--get-regexp",
+      "^(remote\\.pushdefault|branch\\..+\\.pushremote)$"
+    ])
+    .catch(() => "");
+  const keys = settings
+    .split("\0")
+    .filter(Boolean)
+    .map((entry) => {
+      // A key without a value has no newline.
+      const [key = "", value = null] = entry.split(/\n(.*)/s);
+      return { key, value };
+    })
+    .filter((entry) => entry.value === oldName)
+    .map((entry) => entry.key);
+  for (const key of new Set(keys)) {
+    // Serialize writes to the repository's config.lock.
+    // eslint-disable-next-line no-await-in-loop
+    await replaceConfig(git, key, newName === null ? [] : [newName]);
   }
 }
 

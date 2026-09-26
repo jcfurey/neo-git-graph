@@ -20,6 +20,7 @@ The manifest carries the fork identity, `jcfurey.neo-git-graph`, continuing the 
 
 ### Fixed
 
+- Rename or remove a remote with many branches in a moment instead of seconds, and prepare interactive rebases and batch cherry-picks or reverts with one Git process instead of one or two per commit.
 - Keep the Branches pane and branch dropdown responsive with thousands of refs: menus no longer re-render every row, and long lists show 200 at a time with **Show more** or keyboard paging.
 - Keep contents that a file restore replaces as a Git object and offer **Undo Restore**, and refuse to restore a file with unsaved editor changes, which saving later would silently undo.
 - Keep failures of hidden or superseded Git operations visible in the header until Git Activity is opened, and keep a dialog opened by a double-click from closing on the second click.
