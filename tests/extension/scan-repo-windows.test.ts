@@ -23,7 +23,7 @@ vi.mock("node:fs/promises", async (importOriginal) => {
   return { ...actual, stat: directory, default: { ...actual, stat: directory } };
 });
 vi.mock("@/backend/utils/git", () => ({
-  isGitRepository: async () => true,
+  workTreeRoot: async (folder: string) => folder,
   getSubmodulePaths: async (repo: string) =>
     repo === "c:/workspace" ? ["C:/workspace/child module"] : []
 }));

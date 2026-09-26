@@ -2,6 +2,8 @@ import path from "node:path";
 
 import * as vscode from "vscode";
 
+import { workTreeRoot } from "@/backend/utils/git";
+import { addSessionRepo } from "@/extension/workspace-scan";
 import type { SidebarPane } from "@/types";
 
 import { extConfig } from "./config";
@@ -22,6 +24,7 @@ export function createViewCommand(ctx: vscode.ExtensionContext) {
   /** A pane to open once the webview listens for notifications. */
   let pendingPane: SidebarPane | undefined;
   let ready = false;
+  let selectionRequest = 0;
   const messageProtocol = createMessageProtocol(ctx);
   const rpcServer = createRpcServer();
 
@@ -34,14 +37,30 @@ export function createViewCommand(ctx: vscode.ExtensionContext) {
     void rpcNotify.notify("view.showPane", { pane });
   };
 
+  /** Select the repository that contains a clicked folder, once Git names its top level. */
+  const selectClicked = (folder: string, file: string | undefined) => {
+    const request = ++selectionRequest;
+    void workTreeRoot(folder, extConfig.gitPath()).then((root) => {
+      // A later click wins over one whose top level took longer to find.
+      if (request !== selectionRequest) {
+        return;
+      }
+      const repo = root ?? folder;
+      addSessionRepo(repo);
+      pendingFile = file === undefined ? undefined : { repo, path: file };
+      repoSelection?.select(repo);
+    });
+  };
+
   const view = (sourceControl?: Pick<vscode.SourceControl, "rootUri">, file?: string) => {
-    const repo = getSourceControlRepo(sourceControl);
-    pendingFile = repo !== undefined && file !== undefined ? { repo, path: file } : undefined;
+    const clicked = getSourceControlRepo(sourceControl);
+    if (clicked === undefined) {
+      pendingFile = undefined;
+    } else {
+      selectClicked(clicked, file);
+    }
     if (currentPanel) {
       currentPanel.reveal(vscode.window.activeTextEditor?.viewColumn);
-      if (repo !== undefined) {
-        repoSelection?.select(repo);
-      }
       return;
     }
 
@@ -106,9 +125,6 @@ export function createViewCommand(ctx: vscode.ExtensionContext) {
       currentPanel = undefined;
     });
     currentPanel = webPanel;
-    if (repo !== undefined) {
-      selection.select(repo);
-    }
   };
 
   return Object.assign(view, {

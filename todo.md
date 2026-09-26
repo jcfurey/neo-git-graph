@@ -249,18 +249,17 @@ improvements rather than confirmed defects.
       record, a partial second record, a bad hash, and a bad date; and a malformed `log` output
       rejects `loadCommits`. All four tests fail against the previous loader.
 
-- [ ] **Identify repositories by their real Git top level.** Discovery accepts any folder inside a
-      work tree. **Reproduced:** a workspace folder at `repo/packages/app`, or a symlink to a
-      repository, is listed under that path. The Workspace pane shows it as an uninitialized
-      submodule and offers Initialize; the SCM button and File History add a second entry for the
-      same repository, with separate preferences; and a watcher on the subfolder never sees `.git`
-      changes.
-      **Accept:** discovered folders map to the realpath of `--show-toplevel`, without duplicates,
-      and SCM and File History selections match existing picker entries. The picker and the
-      Workspace pane share one scanner. Tests cover a subfolder and a symlink.
-      Sources: [repository scan](src/extension/handlers/scan-repo.ts),
-      [repository search](src/backend/utils/repoSearch.ts),
-      [workspace query](src/backend/queries/workspace.ts).
+- [x] **Identify repositories by their real Git top level.** Completed 2026-09-26. Discovery maps
+      each folder inside a work tree to the real path of `rev-parse --show-toplevel`, and the
+      picker and the Workspace pane now share that one cached scanner. SCM clicks resolve through
+      the same function, with the latest click winning, and File History uses the folder's
+      `--show-prefix`, so a file opened through a symlink still maps to its repository path.
+      **Verified:** tests cover a workspace folder at a subfolder and at a symlink (a junction on
+      Windows), both of which list the repository once; `workTreeRoot` maps the repository, a
+      subfolder, and a symlink to one path and returns null inside `.git` or outside a work tree;
+      an SCM click on a subfolder selects the top level; and File History through a symlink opens
+      `sub dir/file #1.txt` in the real repository. The subfolder, symlink, and File History tests
+      fail against the previous discovery.
 
 - [ ] **Watch the real Git directories of worktrees and submodules.** The watcher only looks for
       `.git/` below the repository folder, but linked worktrees and submodules keep their HEAD,
@@ -272,17 +271,18 @@ improvements rather than confirmed defects.
       a worktree and a commit in a submodule each produce exactly one refresh.
       Sources: [repository watcher](src/extension/watchers/git-repo.watcher.ts).
 
-- [ ] **Follow workspace-folder changes and stop listing every repository ever viewed.** Nothing
-      listens to `onDidChangeWorkspaceFolders`, and the Workspace pane merges every persisted
-      repository state. **Reproduced:** a repository viewed only through File History stays listed
-      and is included in Fetch all, and a deleted repository stays listed. Live `.git` discovery
-      ignores `maxDepthOfRepoSearch`.
-      **Accept:** workspace-folder changes trigger a rescan. Workspace rows come from the current
-      scan plus this session's picker repositories, and state for missing paths is pruned. Live
-      discovery respects the search depth. Tests cover each case.
-      Sources: [message handler](src/old-extension/messageHandler.ts),
-      [repository manager](src/old-extension/repoManager.ts),
-      [Git watcher](src/extension/watchers/git.watcher.ts).
+- [x] **Follow workspace-folder changes and stop listing every repository ever viewed.**
+      Completed 2026-09-26. Workspace-folder changes and `.git` creations or deletions invalidate
+      the scan and ask the webview to rescan, which keeps the current list on screen until the
+      new one arrives. The scan, not the event, decides what is listed, so live discovery respects
+      `maxDepthOfRepoSearch`. Picker and Workspace rows are the scan plus repositories opened this
+      session from Source Control or File History while their `.git` exists; saved state no longer
+      adds rows and is still pruned for deleted folders.
+      **Verified:** tests show folder changes and deep `.git` events send a rescan rather than a
+      direct add, a repository with only saved state is not a Workspace row, the selected
+      repository is always included, and a session repository drops out once its `.git` is gone.
+      Each of these tests fails against the previous code. The unused repository-manager add,
+      remove, and replace functions and the `repo.changed` notification are removed.
 
 - [ ] **Keep hidden-remote exclusions within Windows command-line limits.** Hiding a remote adds
       one `--exclude` argument per branch to `git log`. At about 800 refs, the command line exceeds

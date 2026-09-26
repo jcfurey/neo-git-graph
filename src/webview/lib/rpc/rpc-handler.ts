@@ -45,11 +45,8 @@ function handleRpcNotification(message: RpcNotification): void {
       showPane(message.message.pane);
       return;
     case "repo.select":
-      repoListStore.apply({ type: "created", repo: message.message });
+      repoListStore.add(message.message);
       selectRepo(message.message.path);
-      return;
-    case "repo.changed":
-      repoListStore.apply(message.message);
       return;
     case "repo.rescan":
       void loadRepoList();

@@ -24,9 +24,8 @@ import type {
   GraphQueryCommand,
   QueryResult
 } from "@/backend/types";
-import { getSubmodulePaths } from "@/backend/utils/git";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
-import { isRepoWithinPath, normalizeRepoPath } from "@/backend/utils/repoPath";
+import { isRepoWithinPath } from "@/backend/utils/repoPath";
 import { abbrevCommit } from "@/backend/utils/string";
 import type { Config } from "@/extension/config";
 import { logger } from "@/extension/util/logger";
@@ -35,7 +34,7 @@ import {
   selectWatchedRepo,
   unmuteGitRepoWatcher
 } from "@/extension/watchers/git-repo.watcher";
-import { invalidateWorkspaceScan, scanWorkspaceRepos } from "@/extension/workspace-scan";
+import { invalidateWorkspaceScan, listRepos } from "@/extension/workspace-scan";
 import { AvatarManager } from "@/old-extension/avatarManager";
 import { encodeDiffBlobUri, encodeDiffDocUri } from "@/old-extension/diffDocProvider";
 import type { RequestMessage, ResponseMessage } from "@/types";
@@ -101,7 +100,6 @@ export function registerMessageHandlers(
 
   let currentRepo: string | null = null;
   const busyRepos = new Map<string, boolean>();
-  const viewedRepos = new Set<string>();
   const graphControllers = new Map<GraphQueryCommand, AbortController>();
 
   function cancelGraphQueries() {
@@ -117,8 +115,13 @@ export function registerMessageHandlers(
     }
     cancelGraphQueries();
     currentRepo = repo;
-    viewedRepos.add(repo);
     selectWatchedRepo(repo);
+  }
+
+  async function workspaceRepos(selected: string) {
+    await repoManager.pruneMissing();
+    const repos = await listRepos(config.gitPath(), config.maxDepthOfRepoSearch());
+    return repos.includes(selected) ? repos : [selected, ...repos];
   }
 
   function registerAction<T extends ActionRequest["command"]>(
@@ -252,9 +255,6 @@ export function registerMessageHandlers(
     }
     if (msg.action.kind === "submodule") {
       invalidateWorkspaceScan();
-      for (const repo of await getSubmodulePaths(msg.repo, config.gitPath())) {
-        repoManager.addRepo(normalizeRepoPath(repo));
-      }
     }
   });
 
@@ -296,19 +296,8 @@ export function registerMessageHandlers(
         gitClientFactory(msg.repo, config.gitPath(), controller.signal).getInstance(),
         msg.query,
         {
-          repos:
-            msg.query.kind === "workspace"
-              ? [
-                  ...new Set([
-                    msg.repo,
-                    ...viewedRepos,
-                    ...(await repoManager
-                      .pruneMissing()
-                      .then(() => Object.keys(repoManager.getRepos()))),
-                    ...(await scanWorkspaceRepos(config.gitPath(), config.maxDepthOfRepoSearch()))
-                  ])
-                ]
-              : [],
+          // The rows the picker offers, not every repository whose state was ever saved.
+          repos: msg.query.kind === "workspace" ? await workspaceRepos(msg.repo) : [],
           binary: config.gitPath(),
           signal: controller.signal
         }

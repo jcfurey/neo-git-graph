@@ -5,7 +5,8 @@ import { createViewCommand } from "@/extension/view-command";
 const mocks = vi.hoisted(() => ({
   createPanel: vi.fn(),
   notify: vi.fn(),
-  disposable: () => ({ dispose: vi.fn() })
+  disposable: () => ({ dispose: vi.fn() }),
+  workTreeRoot: vi.fn(async (directory: string): Promise<string | null> => directory)
 }));
 
 vi.mock("vscode", () => ({
@@ -13,7 +14,10 @@ vi.mock("vscode", () => ({
   ViewColumn: { One: 1 },
   Uri: { joinPath: (...parts: string[]) => parts.join("/") }
 }));
-vi.mock("@/extension/config", () => ({ extConfig: { tabIconColourTheme: () => "colour" } }));
+vi.mock("@/extension/config", () => ({
+  extConfig: { tabIconColourTheme: () => "colour", gitPath: () => "git" }
+}));
+vi.mock("@/backend/utils/git", () => ({ workTreeRoot: mocks.workTreeRoot }));
 vi.mock("@/extension/html", () => ({ createWevbviewHtml: () => "<html>graph</html>" }));
 vi.mock("@/extension/legacy", () => ({
   createMessageProtocol: () => ({ attach: mocks.disposable })
@@ -33,11 +37,14 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+/** Let pending top-level lookups finish. */
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 function sourceControl(fsPath: string) {
   return { rootUri: { fsPath } } as unknown as import("vscode").SourceControl;
 }
 
-it("honors SCM clicks on a new or existing panel, including clicks before initialization", () => {
+it("honors SCM clicks on a new or existing panel, including clicks before initialization", async () => {
   let receive: ((message: unknown) => void) | undefined;
   const panel = {
     webview: {
@@ -56,6 +63,7 @@ it("honors SCM clicks on a new or existing panel, including clicks before initia
   } as unknown as import("vscode").ExtensionContext);
   command(sourceControl("/workspace/first"));
   command(sourceControl("/workspace/second"));
+  await settle();
   expect(mocks.notify).not.toHaveBeenCalled();
   receive?.({ command: "viewReady" });
   expect(mocks.notify).toHaveBeenLastCalledWith("repo.select", {
@@ -64,13 +72,44 @@ it("honors SCM clicks on a new or existing panel, including clicks before initia
   });
 
   command(sourceControl("/workspace/first"));
+  await settle();
   expect(mocks.notify).toHaveBeenLastCalledWith("repo.select", {
     name: "first",
     path: "/workspace/first"
   });
   command();
+  await settle();
   expect(mocks.notify).toHaveBeenCalledTimes(2);
   expect(mocks.createPanel).toHaveBeenCalledOnce();
   expect(panel.reveal).toHaveBeenCalledTimes(3);
   expect(panel.webview.html).toBe("<html>graph</html>");
+});
+
+it("selects the top level of a clicked subfolder, and the latest click wins", async () => {
+  let receive: ((message: unknown) => void) | undefined;
+  mocks.createPanel.mockReturnValue({
+    webview: {
+      html: "",
+      onDidReceiveMessage: (handler: (message: unknown) => void) => {
+        receive = handler;
+        return mocks.disposable();
+      }
+    },
+    reveal: vi.fn(),
+    onDidDispose: mocks.disposable
+  });
+  const slow = Promise.withResolvers<string | null>();
+  mocks.workTreeRoot
+    .mockImplementationOnce(() => slow.promise)
+    .mockImplementationOnce(async () => "/real/repo");
+  const command = createViewCommand({
+    extensionUri: "/extension"
+  } as unknown as import("vscode").ExtensionContext);
+  command(sourceControl("/workspace/slow"));
+  command(sourceControl("/workspace/link/packages"));
+  receive?.({ command: "viewReady" });
+  await settle();
+  slow.resolve("/other");
+  await settle();
+  expect(mocks.notify.mock.calls).toEqual([["repo.select", { name: "repo", path: "/real/repo" }]]);
 });

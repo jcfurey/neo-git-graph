@@ -70,7 +70,6 @@ it("merges preference patches in workspace storage and restores them after exten
   };
   let extension = activate();
   try {
-    extension.manager.addRepo(repo);
     await extension.send({ command: "saveRepoState", repo, state: { hiddenRemotes: ["origin"] } });
     await extension.send({ command: "saveRepoState", repo, state: { graphPreferences } });
     await extension.send({
@@ -80,7 +79,6 @@ it("merges preference patches in workspace storage and restores them after exten
     });
     extension.lifetime.dispose();
     extension = activate();
-    extension.manager.setRepos([repo]);
     await extension.send({ command: "selectRepo", repo });
     expect(extension.post).toHaveBeenCalledWith({
       command: "repoState",

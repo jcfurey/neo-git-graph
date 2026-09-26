@@ -1,4 +1,5 @@
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -69,6 +70,27 @@ describe("repository picker scan", () => {
     expect(repos.map((repo) => repo.path).toSorted()).toEqual(
       [parent, child].map(normalizeRepoPath).toSorted()
     );
+  });
+
+  it("offers the repository of a subfolder or symlinked workspace folder once", async () => {
+    const outside = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-link-")));
+    try {
+      const link = path.join(outside, "linked");
+      fs.symlinkSync(parent, link, "junction");
+      workspace.workspaceFolders = [
+        { uri: { scheme: "file", fsPath: path.join(parent, "src") } },
+        { uri: { scheme: "file", fsPath: link } }
+      ];
+      const { repos } = await scanRepos();
+      expect(repos).toEqual(
+        [
+          { name: path.basename(parent), path: normalizeRepoPath(parent) },
+          { name: "child module", path: normalizeRepoPath(child) }
+        ].toSorted((a, b) => a.path.localeCompare(b.path))
+      );
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true });
+    }
   });
 
   it("returns an empty picker when there are no workspace folders", async () => {

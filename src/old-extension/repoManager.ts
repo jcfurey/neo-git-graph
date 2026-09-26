@@ -15,48 +15,12 @@ function sortRepos(repos: GitRepoSet) {
   return sorted;
 }
 
-/** The repositories this workspace has seen, with the state the editor keeps for each. */
+/** The state the editor keeps for each repository this workspace has shown. */
 export function createRepoManager(extensionState: ExtensionState) {
   let repos = extensionState.getRepos();
 
-  function setRepos(repoDirs: string[]) {
-    const next: GitRepoSet = {};
-    for (const repo of repoDirs) {
-      next[repo] = repos[repo] ?? { columnWidths: null };
-    }
-    repos = next;
-    extensionState.saveRepos(repos);
-  }
-
   function getRepos() {
     return sortRepos(repos);
-  }
-
-  function removeRepo(repo: string) {
-    delete repos[repo];
-    extensionState.saveRepos(repos);
-  }
-
-  function addRepo(repo: string) {
-    if (repos[repo]) {
-      return false;
-    }
-    repos[repo] = { columnWidths: null };
-    extensionState.saveRepos(repos);
-    return true;
-  }
-
-  function removeReposWithinFolder(path: string) {
-    const pathFolder = path + "/";
-    const repoPaths = Object.keys(repos);
-    let changes = false;
-    for (const repoPath of repoPaths) {
-      if (repoPath === path || repoPath.startsWith(pathFolder)) {
-        removeRepo(repoPath);
-        changes = true;
-      }
-    }
-    return changes;
   }
 
   /** Forget saved state for repositories whose folders no longer exist. */
@@ -97,10 +61,6 @@ export function createRepoManager(extensionState: ExtensionState) {
 
   return {
     getRepos,
-    setRepos,
-    addRepo,
-    removeRepo,
-    removeReposWithinFolder,
     pruneMissing,
     setRepoState,
     updateHiddenRemotes

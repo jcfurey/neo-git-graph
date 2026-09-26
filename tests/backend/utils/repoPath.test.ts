@@ -31,7 +31,7 @@ describe("repository path normalization", () => {
   it("deduplicates overlapping Windows workspace folders and filters known submodules", async () => {
     await usePlatform("win32");
     vi.doMock("@/backend/utils/git", () => ({
-      isGitRepository: async () => true,
+      workTreeRoot: async (directory: string) => directory,
       getSubmodulePaths: async (repo: string) =>
         repo === "c:/workspace" ? ["C:/workspace/child module"] : []
     }));
@@ -57,15 +57,15 @@ describe("repository path normalization", () => {
     ["win32", "C:\\workspace\\", "C:\\workspace\\child"]
   ] as const)("skips children of the %s known repo %s", async (platform, known, child) => {
     await usePlatform(platform);
-    const isGitRepository = vi.fn(async () => true);
+    const workTreeRoot = vi.fn(async (directory: string) => directory);
     vi.doMock("@/backend/utils/git", () => ({
-      isGitRepository,
+      workTreeRoot,
       getSubmodulePaths: async () => []
     }));
     try {
       const { searchDirectoryForRepos } = await import("@/backend/utils/repoSearch");
       expect(await searchDirectoryForRepos(child, 0, "git", [known])).toEqual([]);
-      expect(isGitRepository).not.toHaveBeenCalled();
+      expect(workTreeRoot).not.toHaveBeenCalled();
     } finally {
       vi.doUnmock("@/backend/utils/git");
     }
@@ -77,7 +77,7 @@ describe("repository path normalization", () => {
   ] as const)("still scans unrelated %s paths", async (platform, known, other) => {
     const { normalizeRepoPath } = await usePlatform(platform);
     vi.doMock("@/backend/utils/git", () => ({
-      isGitRepository: async () => true,
+      workTreeRoot: async (directory: string) => directory,
       getSubmodulePaths: async () => []
     }));
     try {

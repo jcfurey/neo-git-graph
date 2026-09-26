@@ -1,25 +1,22 @@
-import type { SimpleGit } from "simple-git";
+import { realpath } from "node:fs/promises";
 
 import { createGit } from "@/backend/gitClient";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 
 /**
- * Whether Git runs inside a work tree. Git reports "not a repository" in the user's language, so
- * the answer comes from the output and exit status alone, as Git recommends for scripts.
+ * The real path of the work tree that contains `directory`, or null outside a work tree. A
+ * subfolder or a symlink of a repository thus maps to the one entry for that repository.
  */
-export function isWorkTree(git: SimpleGit): Promise<boolean> {
-  return git.raw(["rev-parse", "--is-inside-work-tree"]).then(
-    (output) => output.trim() === "true",
-    () => false
-  );
-}
-
-export function isGitRepository(repoPath: string, gitPath: string): Promise<boolean> {
+export async function workTreeRoot(directory: string, gitPath: string): Promise<string | null> {
   try {
-    return isWorkTree(createGit(repoPath, gitPath));
+    const top = (await createGit(directory, gitPath).raw(["rev-parse", "--show-toplevel"])).replace(
+      /\n$/,
+      ""
+    );
+    return top === "" ? null : normalizeRepoPath(await realpath(top));
   } catch {
-    // The client rejects a directory that does not exist.
-    return Promise.resolve(false);
+    // Outside a work tree, Git fails, and the client rejects a directory that does not exist.
+    return null;
   }
 }
 
