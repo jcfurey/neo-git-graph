@@ -27,7 +27,7 @@ beforeEach(() => {
   );
   git(["tag", "v1"], repo);
 });
-afterEach(() => fs.rmSync(repo, { recursive: true, force: true, maxRetries: 5 }));
+afterEach(() => fs.rmSync(repo, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 }));
 
 it("stops a stalled push on request and releases the repository", async () => {
   const handlers = new Map<string, (message: unknown) => Promise<void> | void>();

@@ -1,7 +1,8 @@
+import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { pushBranch, fetchRemote } from "@/backend/actions/remote";
 import { createGit } from "@/backend/gitClient";
@@ -21,7 +22,7 @@ beforeEach(() => {
   const target = marker.split(path.sep).join("/");
   git(["remote", "add", "origin", "ssh://git@example.invalid/repository.git"], repo);
   git(
-    ["config", "core.sshCommand", `echo "$GIT_TERMINAL_PROMPT" > "${target}"; sleep 20; :`],
+    ["config", "core.sshCommand", `echo "$GIT_TERMINAL_PROMPT $$" > "${target}"; sleep 20; :`],
     repo
   );
 });
@@ -29,8 +30,18 @@ afterEach(() => {
   if (inheritedPrompt !== undefined) {
     process.env.GIT_TERMINAL_PROMPT = inheritedPrompt;
   }
-  fs.rmSync(repo, { recursive: true, force: true, maxRetries: 5 });
+  fs.rmSync(repo, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
 });
+
+/** Whether a process runs; an exited one that nobody reaped yet does not. */
+function running(pid: string) {
+  try {
+    const state = execFileSync("ps", ["-o", "stat=", "-p", pid]).toString().trim();
+    return state !== "" && !state.startsWith("Z");
+  } catch {
+    return false;
+  }
+}
 
 async function started() {
   for (let attempt = 0; attempt < 100 && !fs.existsSync(marker); attempt++) {
@@ -67,12 +78,18 @@ it.each([
       () => "stopped"
     );
     await started();
-    expect(fs.readFileSync(marker, "utf8").trim()).toBe("0");
+    const [prompt, sshPid] = fs.readFileSync(marker, "utf8").trim().split(" ");
+    expect(prompt).toBe("0");
     const stoppedAt = Date.now();
     controller.abort();
     expect(await outcome).toBe("stopped");
     expect(Date.now() - stoppedAt).toBeLessThan(5000);
     expect(gitOutput(["for-each-ref", "refs/remotes"], repo)).toBe("");
+    // The SSH command Git started stops too. Windows shells report their own process IDs; there,
+    // removing the repository afterwards shows that nothing still holds it.
+    if (process.platform !== "win32") {
+      await vi.waitFor(() => expect(running(sshPid!)).toBe(false));
+    }
   },
   20_000
 );

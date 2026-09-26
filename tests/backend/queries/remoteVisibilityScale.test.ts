@@ -18,8 +18,9 @@ const HIDDEN = ["upstream/mirror/private/secret"];
 
 beforeAll(() => {
   repo = makeRepo();
+  // Git 2.55 refuses to add a remote named below another, but older repositories have them.
   for (const remote of ["origin", "upstream", "upstream/mirror", "upstream/mirror/private"]) {
-    execFileSync("git", ["remote", "add", remote, "."], { cwd: repo });
+    execFileSync("git", ["config", `remote.${remote}.url`, "."], { cwd: repo });
   }
   // One fast-import process creates every commit and ref.
   const refs = [

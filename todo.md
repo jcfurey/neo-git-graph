@@ -303,13 +303,15 @@ improvements rather than confirmed defects.
       and workflow pushes run through `runGit`, which always sets `GIT_TERMINAL_PROMPT=0` and
       takes the Git path and abort signal from the client that started the action. The running
       dialog of these actions offers **Stop Git**; the extension aborts that action's
-      controller, which kills the process, reports "The Git operation was cancelled.", and
-      releases the repository lock. There is no automatic timeout, since a large fetch can be
+      controller, which stops Git and every process it started (its process group on POSIX,
+      `taskkill /T` on Windows, where `Git\cmd\git.exe` is only a launcher), reports "The Git
+      operation was cancelled.", and releases the repository lock. There is no automatic timeout, since a large fetch can be
       silent for a long time.
       **Verified:** backend tests start a fetch and a push over a `core.sshCommand` that records
       `GIT_TERMINAL_PROMPT` and sleeps: with the variable cleared from the test environment, Git
       sees `0`, which fails against the previous code, and aborting ends each within five
-      seconds without creating refs. An extension test stops a stalled push through
+      seconds without creating refs and, on Linux and macOS, stops the SSH command's shell, which
+      the first version left running; on Windows the repository can then be removed. An extension test stops a stalled push through
       `cancelAction`, shows that another request id does not stop it and that the repository is
       busy until then, and then deletes a tag in the same repository. Webview tests show Stop
       Git for network actions only and check the message it posts.
