@@ -28,6 +28,7 @@ import { remoteForRef } from "@/backend/utils/remoteVisibility";
 import { isRepoWithinPath } from "@/backend/utils/repoPath";
 import { abbrevCommit } from "@/backend/utils/string";
 import type { Config } from "@/extension/config";
+import { openConflict } from "@/extension/conflicts";
 import { logger } from "@/extension/util/logger";
 import {
   muteGitRepoWatcher,
@@ -212,12 +213,7 @@ export function registerMessageHandlers(
     if (effect?.kind === "worktree") {
       await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(effect.path), true);
     } else if (effect?.kind === "conflict") {
-      const uri = vscode.Uri.file(effect.path);
-      try {
-        await vscode.commands.executeCommand("git.openMergeEditor", uri);
-      } catch {
-        await vscode.commands.executeCommand("vscode.open", uri);
-      }
+      await openConflict(effect.path, effect.status);
     } else if (effect?.kind === "document") {
       const document = await vscode.workspace.openTextDocument({
         language: "diff",

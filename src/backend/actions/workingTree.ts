@@ -31,7 +31,7 @@ export async function viewWorkingTreeFile(
   }
   const destination = await checkedWorktreePath(git, file.path);
   if (group === "conflicts") {
-    return { kind: "conflict", path: destination };
+    return { kind: "conflict", path: destination, status: file.status };
   }
   const staged = group === "staged";
   const added = group === "untracked" || file.status === "A";

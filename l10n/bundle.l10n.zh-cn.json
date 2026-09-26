@@ -3,6 +3,8 @@
   "Added in {0}": "在 {0} 中添加",
   "Deleted in {0}": "在 {0} 中删除",
   "Another Git operation is running in this repository. Wait for it to finish.": "此仓库中已有另一个 Git 操作正在运行，请等待其完成。",
+  "Both sides deleted {0}. Stage its deletion to resolve the conflict.": "双方都删除了 {0}。暂存其删除以解决冲突。",
+  "{0} is not in the working tree. Restore it or stage its deletion to resolve the conflict.": "{0} 不在工作区中。请恢复它或暂存其删除以解决冲突。",
   "The Git operation was cancelled.": "Git 操作已取消。",
   "Select a workspace file to view its history.": "请选择工作区文件以查看其历史。",
   "Unable to open file history: {0}": "无法打开文件历史：{0}",

@@ -14,13 +14,16 @@ import { manageRemote } from "@/backend/actions/remotes";
 import { runWorkflowAction } from "@/backend/actions/workflows";
 import { viewWorkingTreeFile } from "@/backend/actions/workingTree";
 import { loadOperation, loadStashes, loadWorktrees } from "@/backend/queries/repository";
+import { loadWorkingTree } from "@/backend/queries/workingTree";
 import type { RepositoryAction, StashDetails } from "@/backend/types";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { runGit } from "@/backend/utils/runGit";
 import { requireBranchName, resolveCommit } from "@/backend/utils/validation";
 
 export type RepositoryEffect =
-  | { kind: "worktree" | "conflict"; path: string }
+  | { kind: "worktree"; path: string }
+  /** `status` is the conflict's two-letter code from `git status`, such as `UU` or `DD`. */
+  | { kind: "conflict"; path: string; status: string }
   | { kind: "document"; text: string }
   | { kind: "diff"; left: string | null; right: string | null; before: string; after: string }
   | { kind: "historicalFile"; hash: string; path: string }
@@ -145,7 +148,10 @@ export async function runRepositoryAction(
       return;
     }
     case "conflict": {
-      if (!(await git.status()).conflicted.includes(action.path)) {
+      const conflict = (await loadWorkingTree(git)).find(
+        (file) => file.group === "conflicts" && file.path === action.path
+      );
+      if (conflict === undefined) {
         throw new Error(l10n.t("This file is no longer conflicted. Refresh the graph."));
       }
       if (action.operation === "stage") {
@@ -153,7 +159,7 @@ export async function runRepositoryAction(
         return;
       }
       const root = (await git.revparse(["--show-toplevel"])).trim();
-      return { kind: "conflict", path: path.join(root, action.path) };
+      return { kind: "conflict", path: path.join(root, action.path), status: conflict.status };
     }
     case "addWorktree": {
       if (!path.isAbsolute(action.path)) {

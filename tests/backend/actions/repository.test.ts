@@ -264,7 +264,8 @@ describe("operation recovery", () => {
     ).rejects.toThrow(/Resolve and stage/);
     expect(await run({ kind: "conflict", path: "f", operation: "open" })).toEqual({
       kind: "conflict",
-      path: path.join(repo, "f")
+      path: path.join(repo, "f"),
+      status: "UU"
     });
     fs.writeFileSync(path.join(repo, "f"), "resolved");
     await run({ kind: "conflict", path: "f", operation: "stage" });

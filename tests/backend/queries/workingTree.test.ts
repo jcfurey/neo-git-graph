@@ -173,7 +173,11 @@ it("reports conflicts once and opens their merge editor", async () => {
     kind: "workingTree",
     files: [{ path: "f", oldPath: "f", status: "UU", group: "conflicts" }]
   });
-  expect(await view("f", "conflicts")).toEqual({ kind: "conflict", path: path.join(repo, "f") });
+  expect(await view("f", "conflicts")).toEqual({
+    kind: "conflict",
+    path: path.join(repo, "f"),
+    status: "UU"
+  });
 });
 
 it("uses a patch for a gitlink whose target object is not in the parent repository", async () => {

@@ -335,15 +335,16 @@ improvements rather than confirmed defects.
       Sources: [restore action](src/backend/actions/history.ts),
       [restore dialog](src/webview/components/history/HistoryTools.tsx).
 
-- [ ] **Open conflicted files when VS Code's Git extension does not track the repository.** The
-      merge-editor command returns without an error for repositories the built-in Git extension does
-      not know, such as repositories deeper than its scan depth or with auto-detection off. The
-      fallback therefore never runs, and clicking the file does nothing. `DD` conflicts open a
-      missing file, and only `UU` conflicts are tested. **Code review.**
-      **Accept:** the extension checks the Git extension API first and otherwise opens the file, or
-      explains `DD`. Tests cover `UD`, `AU`, and `DD`.
-      Sources: [message handler](src/old-extension/messageHandler.ts),
-      [working-tree actions](src/backend/actions/workingTree.ts).
+- [x] **Open conflicted files when VS Code's Git extension does not track the repository.**
+      Completed 2026-09-26. The conflict effect now carries Git's two-letter status. The extension
+      opens the merge editor only for `UU` and `AA` conflicts in repositories that the Git
+      extension's API reports; otherwise it opens the file, and when neither side kept the file,
+      as in `DD`, it explains how to resolve the conflict.
+      **Verified:** backend tests build `UD`, `DU`, `AU`, `UA`, `AA`, `UU`, and `DD` conflicts in
+      the index and check the status the working-tree list, the file view, and the conflict
+      action report. Extension tests cover the merge editor for tracked `UU` and `AA`, the file for
+      an untracked repository, a disabled or missing Git extension, and one-sided conflicts, and
+      the explanation for `DD`.
 
 ### Webview
 

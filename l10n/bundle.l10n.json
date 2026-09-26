@@ -407,6 +407,8 @@
   "Unknown date": "Unknown date",
   "This view could not be shown: {0}": "This view could not be shown: {0}",
   "Try Again": "Try Again",
+  "Both sides deleted {0}. Stage its deletion to resolve the conflict.": "Both sides deleted {0}. Stage its deletion to resolve the conflict.",
+  "{0} is not in the working tree. Restore it or stage its deletion to resolve the conflict.": "{0} is not in the working tree. Restore it or stage its deletion to resolve the conflict.",
   "Remote '{0}' is not configured for this repository.": "Remote '{0}' is not configured for this repository.",
   "Enter a valid branch name.": "Enter a valid branch name.",
   "Enter a valid tag name.": "Enter a valid tag name.",

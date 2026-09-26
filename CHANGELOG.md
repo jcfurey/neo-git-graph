@@ -43,6 +43,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Fixed
 
+- Open conflicted files in repositories that VS Code's Git extension does not track, open one-sided conflicts as files, and explain conflicts where both sides deleted the file.
 - Open file diffs and restore previews while another view or Git action is running, instead of reporting that another operation is running.
 - Show commits whose dates are out of range, such as `@99999999999999`, with an unknown date instead of an empty graph, and keep a failing graph or dialog from blanking the whole view.
 - Name the Reset mode and merge parent choices for screen readers.
