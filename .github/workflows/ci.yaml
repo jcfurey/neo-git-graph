@@ -7,6 +7,9 @@ on:
     branches: [main]
   workflow_dispatch:
   workflow_call:
+  # Stable VS Code and Git change between pushes; a nightly run finds drift before the next change.
+  schedule:
+    - cron: "23 5 * * *"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -108,6 +111,12 @@ jobs:
       - name: Run extension and UI tests (Windows/macOS)
         if: runner.os != 'Linux'
         run: pnpm run test:ext
+
+      - name: Run extension and UI tests against VS Code Insiders (nightly)
+        if: runner.os == 'Linux' && github.event_name == 'schedule'
+        env:
+          NGG_VSCODE_VERSION: insiders
+        run: xvfb-run -a pnpm run test:ext
 
       - name: Verify failure artifacts and minimum VS Code compatibility
         if: runner.os == 'Linux'

@@ -410,15 +410,15 @@ improvements rather than confirmed defects.
       method, unknown methods including `toString` and `__proto__`, handlers that throw an Error
       or another value, and non-RPC messages.
 
-- [ ] **Keep `main` green and require CI before checking off work.** `main` failed CI on five
-      consecutive pushes (2026-09-16 to 2026-09-23), including the push that recorded the full suite
-      passing on three platforms, and the branch is unprotected. The failures were fixed at their
-      root causes, not masked. Remaining risks: two fixed 400 ms sleeps after Refresh in the VS Code
-      suite, and CI tests only against stable VS Code, which changes between pushes.
-      **Accept:** a ruleset requires lint and all three test jobs on `main`, and checked-off items
-      cite a green run. The sleeps poll for state instead. A nightly scheduled CI run exists.
-      Sources: [CI workflow](.github/workflows/ci.yaml),
-      [VS Code UI tests](tests-ext/ui/history.test.cjs).
+- [x] **Keep `main` green and require CI before checking off work.** Completed 2026-09-26 in
+      code; the ruleset is a repository setting that needs an administrator (see the hand-off
+      notes in the pull request). The two 400 ms sleeps after Refresh now poll for the graph
+      state they waited for: the reset commit gone, and the new branch label present. CI runs
+      nightly at 05:23 UTC, and the nightly Linux job also runs the VS Code suite against VS Code
+      Insiders, so drift in stable or upcoming VS Code shows up between pushes. From this batch
+      on, checked-off items were pushed and followed until the three test jobs passed.
+      **Remaining (settings):** a ruleset on `main` requiring `lint (24)`,
+      `test (ubuntu-latest)`, `test (macos-latest)`, and `test (windows-latest)`.
 
 - [ ] **Harden the release workflow and make it dry-runnable.** Publishing has never run. The
       repository has no secrets, and the deploy job has no protected environment. The Marketplace

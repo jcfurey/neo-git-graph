@@ -1136,7 +1136,10 @@ suite("Git Graph workflow UI", function () {
     const lost = git(["rev-parse", "HEAD"], history);
     git(["reset", "--hard", "HEAD^"], history);
     await button("Refresh");
-    await delay(400);
+    await until(
+      () => graph.evaluate('!document.querySelector("tbody").innerText.includes("lost contents")'),
+      "graph without the reset commit"
+    );
     await button("Settings & Tools");
     await menu("Recover lost commits (reflog)");
     await until(
@@ -1399,7 +1402,10 @@ suite("Git Graph workflow UI", function () {
     commit("keep", "unmerged work", local);
     git(["checkout", "main"], local);
     await button("Refresh");
-    await delay(400);
+    await until(
+      () => graph.evaluate('document.querySelector("tbody").innerText.includes("merged-cleanup")'),
+      "graph with the new branch"
+    );
     await button("Settings & Tools");
     await menu("Clean Up Merged Branches");
     await until(
