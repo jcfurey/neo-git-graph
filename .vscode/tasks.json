@@ -50,23 +50,13 @@
       }
     },
     {
-      "label": "compile-src",
+      "label": "test",
       "type": "shell",
-      "command": "pnpm run compile-src",
-      "group": "build",
-      "problemMatcher": "$esbuild-watch",
+      "command": "pnpm test",
+      "group": "test",
+      "problemMatcher": [],
       "presentation": {
-        "reveal": "silent"
-      }
-    },
-    {
-      "label": "compile-web",
-      "type": "shell",
-      "command": "pnpm run compile-web",
-      "group": "build",
-      "problemMatcher": "$esbuild-watch",
-      "presentation": {
-        "reveal": "silent"
+        "reveal": "always"
       }
     },
     {

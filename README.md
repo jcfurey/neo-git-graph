@@ -81,6 +81,7 @@ Build the fork from this checkout using **Node.js 24**, **pnpm 11.15.1** (pinned
 ```sh
 git clone https://github.com/jcfurey/neo-git-graph.git
 cd neo-git-graph
+corepack enable pnpm
 pnpm install --frozen-lockfile
 pnpm run package:vsix
 code --install-extension ./neo-git-graph-0.9.7.vsix --force

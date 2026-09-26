@@ -6,9 +6,10 @@ Retain the upstream author credits and license when changing metadata.
 
 ## Build and install
 
-Use Node.js 24 and the pnpm version pinned in `package.json`:
+Use Node.js 24 and the pnpm version pinned in `package.json`, which Corepack provides:
 
 ```sh
+corepack enable pnpm
 pnpm install --frozen-lockfile
 pnpm run package:vsix
 code --install-extension ./neo-git-graph-0.9.7.vsix --force

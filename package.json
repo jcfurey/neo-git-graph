@@ -48,6 +48,7 @@
     "test:release": "node --test scripts/check-release.test.cjs scripts/markdown-links.test.cjs",
     "test:package": "node scripts/test-package.cjs",
     "clean": "node -e \"require('fs').rmSync('out',{recursive:true,force:true})\"",
+    "clean:all": "node -e \"const fs=require('fs');for(const p of ['out','tests-ext/out','.vscode-test','test-results',...fs.readdirSync('.').filter(f=>f.endsWith('.vsix'))])fs.rmSync(p,{recursive:true,force:true})\"",
     "compile": "pnpm run clean && node esbuild.js",
     "test": "vitest run --project backend && vitest run --project extension && vitest run --project webview",
     "test:coverage": "vitest run --project webview --coverage",

@@ -466,16 +466,16 @@ improvements rather than confirmed defects.
       link to `performance.md` before the move. The package smoke test runs the same check on the
       installed extension. `test:release` covers the link parser and checker.
 
-- [ ] **Document a setup for the pinned pnpm without Nix, and fix stale editor tasks.** pnpm is
-      provided only by the Nix development shell. `corepack pnpm` works, but it aborts in
-      non-interactive shells when `node_modules` records a store directory that no longer exists.
-      `.vscode/tasks.json` references scripts that do not exist.
-      **Accept:** the docs give `corepack enable pnpm` as the setup step. After a frozen reinstall,
-      `pnpm run format`, `pnpm test`, and `pnpm run typecheck` work without a terminal. Tasks
-      reference only existing scripts. Optionally, a `clean:all` script removes `.vscode-test/` and
-      old VSIX files.
-      Sources: [testing guide](docs/testing.md), [packaging guide](docs/packaging.md),
-      [editor tasks](.vscode/tasks.json).
+- [x] **Document a setup for the pinned pnpm without Nix, and fix stale editor tasks.** Completed
+      2026-09-26. The README, packaging guide, and testing guide give `corepack enable pnpm` before
+      the frozen install. The testing guide explains `COREPACK_ENABLE_DOWNLOAD_PROMPT=0` for shells
+      without a terminal and `--config.confirm-modules-purge=false` for a `node_modules` installed
+      from another store. `.vscode/tasks.json` drops the missing `compile-src` and `compile-web`
+      scripts and adds a test task, and `pnpm run clean:all` removes build output, VS Code test
+      downloads, test results, and VSIX files.
+      **Verified:** Corepack installed the pinned pnpm 11.15.1 with stdin closed; every task names
+      an existing script; `clean:all` removed each of its targets; and format, lint, type checks,
+      and the test suites ran throughout this batch from a shell without a terminal.
 
 ## P3 — Optional usability and performance improvements
 
