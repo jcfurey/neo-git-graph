@@ -9,6 +9,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 - Click the Uncommitted Changes row to browse staged, unstaged, untracked, and conflicted files and open their native diff or merge editor.
 
+- Tests that submit each classic action dialog and check the request, the action dispatch table, and the repository lock, with CI keeping `menus.tsx` function coverage at 80% or more.
 - Failure-time UI screenshots, DOM snapshots, browser errors, and extension logs, with an automated failure/recovery check and a minimum-version VS Code smoke test in CI.
 - Repeatable backend focus and VS Code interaction benchmarks for large histories, with timing reports and hover CPU profiles in Linux CI.
 - Graph topology and rendering regression coverage for complex merges, partial history, both graph styles, zoom, resizing, and expanded details.

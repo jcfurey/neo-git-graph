@@ -72,6 +72,10 @@ jobs:
       - name: Run tests
         run: pnpm run test
 
+      - name: Check menu coverage
+        if: runner.os == 'Linux'
+        run: pnpm run test:coverage
+
       # Each destructive-action test builds its own repository, so order must not matter. Vitest
       # prints the seed, so a failing order can be reproduced with --sequence.seed.
       - name: Run backend tests in a shuffled order

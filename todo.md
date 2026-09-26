@@ -187,19 +187,17 @@ improvements rather than confirmed defects.
       [tag tests](tests/backend/actions/tag/add.test.ts),
       [branch tests](tests/backend/actions/branch/delete.test.ts).
 
-- [ ] **Test the classic destructive actions from menu to Git, including the repository lock.**
-      Among these actions, the VS Code suite drives only merge end to end. The tag, branch,
-      checkout, reset, rename, and delete dialogs (`menus.tsx` is at 52% line coverage) have no unit
-      tests, and neither do the extension's action dispatch table or its per-repository lock.
-      **Code review,** with coverage measurements.
-      **Accept:** webview tests submit non-default choices in each of these dialogs and assert the
-      exact request. A table-driven extension test maps each action command to its backend
-      function. Lock tests cover the same repository, descendant repositories, submodule ancestors,
-      and release after an error. `menus.tsx` function coverage reaches 80%. Diff URI encoding
-      round-trips paths containing spaces, `#`, `%`, `?`, Unicode, and `\`.
-      Sources: [menus](src/webview/lib/menus.tsx),
-      [message handler](src/old-extension/messageHandler.ts),
-      [diff document provider](src/old-extension/diffDocProvider.ts).
+- [x] **Test the classic destructive actions from menu to Git, including the repository lock.**
+      Completed 2026-09-26. Webview tests open every commit, tag, local-branch, and remote-branch
+      menu entry, submit non-default choices in the tag, branch, checkout, merge, reset, rename, and
+      delete dialogs, and assert the exact request, including the destructive flag. A table-driven
+      extension test maps each action command to its backend function and repository, and lock
+      tests cover the same repository, descendants of a running submodule action, a submodule
+      action refused while a submodule below it is busy, and release after an error.
+      **Verified:** `menus.tsx` function coverage rose from 39% to 95%, and CI now fails below 80%
+      (`pnpm run test:coverage`). Removing either the descendant check or the lock release makes
+      the lock tests fail. The existing `historyDocuments` VS Code test round-trips diff URIs whose
+      paths contain spaces, `#`, `%`, `?`, a tab, Unicode, quotes, a newline, and `\`.
 
 ## P2 — Robustness, coverage, and maintainability
 

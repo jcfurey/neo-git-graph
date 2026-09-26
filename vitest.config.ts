@@ -9,6 +9,13 @@ const alias = [
 
 export default defineConfig({
   test: {
+    // Measured with `pnpm run test:coverage`, which CI runs on Linux.
+    coverage: {
+      provider: "v8",
+      include: ["src/webview/lib/menus.tsx"],
+      reporter: ["text"],
+      thresholds: { "src/webview/lib/menus.tsx": { functions: 80 } }
+    },
     projects: [
       {
         resolve: { alias },
