@@ -43,6 +43,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Fixed
 
+- Keep the Branches pane and branch dropdown responsive with thousands of refs: menus no longer re-render every row, and long lists show 200 at a time with **Show more** or keyboard paging.
 - Keep contents that a file restore replaces as a Git object and offer **Undo Restore**, and refuse to restore a file with unsaved editor changes, which saving later would silently undo.
 - Keep failures of hidden or superseded Git operations visible in the header until Git Activity is opened, and keep a dialog opened by a double-click from closing on the second click.
 - Open conflicted files in repositories that VS Code's Git extension does not track, open one-sided conflicts as files, and explain conflicts where both sides deleted the file.

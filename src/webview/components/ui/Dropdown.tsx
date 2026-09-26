@@ -2,6 +2,12 @@ import { useEffect, useId, useRef, useState } from "preact/hooks";
 
 import { ChevronDownIcon } from "./Icons";
 
+/**
+ * Options rendered at once. Keyboard moves page through the rest, and the filter narrows them,
+ * so thousands of branches open as fast as a few.
+ */
+export const DROPDOWN_PAGE = 200;
+
 type DropdownOption = {
   label: string;
   value: string;
@@ -45,6 +51,8 @@ export function Dropdown({
     option.label.toLowerCase().includes(query.toLowerCase())
   );
   const active = Math.min(activeIndex, matches.length - 1);
+  const pageStart = Math.max(0, Math.floor(active / DROPDOWN_PAGE) * DROPDOWN_PAGE);
+  const page = matches.slice(pageStart, pageStart + DROPDOWN_PAGE);
 
   useEffect(() => {
     if (!open) {
@@ -194,28 +202,39 @@ export function Dropdown({
                 aria-labelledby={labelId}
                 class="min-h-0 overflow-y-auto py-1"
               >
-                {matches.map((option, index) => (
-                  <li
-                    key={option.value}
-                    id={`${id}-option-${index}`}
-                    role="option"
-                    aria-selected={option.value === value}
-                    data-active={index === active}
-                    title={option.value === option.label ? undefined : option.value}
-                    class={`cursor-pointer truncate px-3 py-1 ${
-                      index === active
-                        ? "bg-menu-active text-menu-active-fg"
-                        : option.value === value
-                          ? "bg-btn-hover"
-                          : ""
-                    }`}
-                    onPointerMove={() => setActiveIndex(index)}
-                    onClick={() => select(option)}
-                  >
-                    {option.label}
-                  </li>
-                ))}
+                {page.map((option, offset) => {
+                  const index = pageStart + offset;
+                  return (
+                    <li
+                      key={option.value}
+                      id={`${id}-option-${index}`}
+                      role="option"
+                      aria-selected={option.value === value}
+                      data-active={index === active}
+                      title={option.value === option.label ? undefined : option.value}
+                      class={`cursor-pointer truncate px-3 py-1 ${
+                        index === active
+                          ? "bg-menu-active text-menu-active-fg"
+                          : option.value === value
+                            ? "bg-btn-hover"
+                            : ""
+                      }`}
+                      onPointerMove={() => setActiveIndex(index)}
+                      onClick={() => select(option)}
+                    >
+                      {option.label}
+                    </li>
+                  );
+                })}
               </ul>
+            )}
+            {matches.length > DROPDOWN_PAGE && (
+              <div class="border-t border-line px-3 py-1 text-xs text-muted" role="status">
+                {window.l10n.dropdownPage
+                  .replace("{0}", String(pageStart + 1))
+                  .replace("{1}", String(pageStart + page.length))
+                  .replace("{2}", String(matches.length))}
+              </div>
             )}
           </div>
         )}

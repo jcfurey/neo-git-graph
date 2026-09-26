@@ -287,6 +287,8 @@
   "Skip Commit": "Skip Commit",
   "{0} the current {1}? Abort restores the pre-operation state; Skip discards the current patch.": "{0} the current {1}? Abort restores the pre-operation state; Skip discards the current patch.",
   "Open Conflict": "Open Conflict",
+  "Show {0} more ({1} hidden)": "Show {0} more ({1} hidden)",
+  "{0}–{1} of {2}. Type to narrow the list, or use the arrow keys.": "{0}–{1} of {2}. Type to narrow the list, or use the arrow keys.",
   "Stage Resolution": "Stage Resolution",
   "Mark {0} as resolved and stage its current contents?": "Mark {0} as resolved and stage its current contents?",
   "Merge": "Merge",

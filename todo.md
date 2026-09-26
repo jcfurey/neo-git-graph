@@ -376,18 +376,18 @@ improvements rather than confirmed defects.
       with every row present, and show that a throwing child leaves its siblings and recovers on
       Try Again. The formatter and graph tests fail against the previous code.
 
-- [ ] **Keep the Branches pane and branch dropdown responsive with thousands of refs.** Every
-      Branches pane row reads the active context-menu source, so opening any menu or dialog
-      re-renders every row. The filter and the Branch dropdown also render every match.
-      **Reproduced** in Chrome with 3,000 each of branches, remote branches, and tags: a filter
-      keystroke took 175 ms, clearing the filter 956 ms, opening a graph menu 190 ms, and opening
-      the Branch dropdown 384 ms. With 10 of each, the same actions took 3–15 ms.
-      **Accept:** the cost of opening a menu does not depend on the number of refs. Lists are
-      virtualized, or capped with Show more. The performance report adds measurements at 3k and 10k
-      refs.
-      Sources: [Branches pane](src/webview/components/repository/RefsPane.tsx),
-      [dropdown](src/webview/components/ui/Dropdown.tsx),
-      [performance report](docs/performance.md).
+- [x] **Keep the Branches pane and branch dropdown responsive with thousands of refs.** Completed
+      2026-09-26. Each row subscribes to a computed "my menu is open" signal instead of the shared
+      active source, so opening a menu re-renders only the rows it affects. Local branches, each
+      remote's branches, and tags render 200 rows with Show more, and the branch dropdown renders
+      the page of 200 matches that holds the active option, paging with the arrow keys, with a
+      count of the rest.
+      **Verified:** `RefsScale.test.ts` renders 3,000 of each ref and asserts one page per list,
+      Show more, one re-rendered row when a menu opens and two when it moves, bounded rows for a
+      filter keystroke, and 200 of 10,000 dropdown options with End reaching the last one; all
+      four fail against the previous code, which re-rendered 9,001 rows per menu. The
+      performance report adds jsdom medians at 3,000 and 10,000 refs: opening a menu fell from
+      286 and 3,034 ms to about 1 ms, and clearing the filter from 4.3 and 44 s to 93 and 95 ms.
 
 - [x] **Give dialog selects without a label an accessible name.** Completed 2026-09-26. `Select`
       now accepts and forwards `aria-labelledby`, so an unlabelled choice is named by the dialog's

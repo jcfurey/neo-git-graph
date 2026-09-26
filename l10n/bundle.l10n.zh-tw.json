@@ -258,6 +258,8 @@
   "Skip Commit": "略過提交",
   "{0} the current {1}? Abort restores the pre-operation state; Skip discards the current patch.": "對目前{1}執行{0}？中止會還原操作前的狀態；略過會捨棄目前修補程式。",
   "Open Conflict": "開啟衝突",
+  "Show {0} more ({1} hidden)": "再顯示 {0} 個（隱藏 {1} 個）",
+  "{0}–{1} of {2}. Type to narrow the list, or use the arrow keys.": "第 {0}–{1} 個，共 {2} 個。輸入以縮小清單，或使用方向鍵。",
   "Stage Resolution": "暫存解決結果",
   "Mark {0} as resolved and stage its current contents?": "將 {0} 標記為已解決並暫存其目前內容？",
   "Merge": "合併",

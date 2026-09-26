@@ -258,6 +258,8 @@
   "Skip Commit": "跳过提交",
   "{0} the current {1}? Abort restores the pre-operation state; Skip discards the current patch.": "对当前{1}执行{0}？中止会恢复操作前的状态；跳过会丢弃当前补丁。",
   "Open Conflict": "打开冲突",
+  "Show {0} more ({1} hidden)": "再显示 {0} 个（隐藏 {1} 个）",
+  "{0}–{1} of {2}. Type to narrow the list, or use the arrow keys.": "第 {0}–{1} 个，共 {2} 个。输入以缩小列表，或使用方向键。",
   "Stage Resolution": "暂存解决结果",
   "Mark {0} as resolved and stage its current contents?": "将 {0} 标记为已解决并暂存其当前内容？",
   "Merge": "合并",

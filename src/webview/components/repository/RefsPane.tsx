@@ -1,3 +1,4 @@
+import { useComputed } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 import { useId, useState } from "preact/hooks";
 
@@ -53,6 +54,8 @@ import { format } from "@/webview/utils/format";
 const ACTION_CLASS =
   "flex shrink-0 cursor-pointer items-center rounded px-1.5 py-0.5 text-xs hover:bg-btn-hover focus:outline-1 focus:outline-focus disabled:cursor-not-allowed disabled:opacity-50";
 const ROW_ICON = "size-3.5 shrink-0 text-muted";
+/** Rows each list renders before Show more, so thousands of refs stay responsive. */
+export const REF_PAGE = 200;
 
 type RemoteGroup = { remote: string; details: RemoteDetails | undefined; branches: RefDetails[] };
 
@@ -134,7 +137,8 @@ function Row({
   onSelect: () => void;
   menu?: () => Array<ContextMenuEntry>;
 }) {
-  const menuOpen = activeSource.value === source;
+  // Only the rows whose menu opens or closes re-render, however many refs are listed.
+  const menuOpen = useComputed(() => activeSource.value === source).value;
   return (
     <div
       class={`group flex items-center gap-1 pr-1 ${
@@ -218,6 +222,70 @@ function Section({
   );
 }
 
+/** The first `limit` items of a list, and a button that shows the next page. */
+function usePage<T>(items: T[]) {
+  const [limit, setLimit] = useState(REF_PAGE);
+  const more = items.length - limit;
+  return {
+    shown: more > 0 ? items.slice(0, limit) : items,
+    more:
+      more > 0 ? (
+        <button
+          type="button"
+          class="w-full cursor-pointer px-3 py-1 text-left text-xs text-muted hover:text-fg hover:underline focus:outline-1 focus:outline-focus"
+          onClick={() => setLimit(limit + REF_PAGE)}
+        >
+          {window.l10n.showMoreRefs
+            .replace("{0}", String(Math.min(more, REF_PAGE)))
+            .replace("{1}", String(more))}
+        </button>
+      ) : null
+  };
+}
+
+function RemoteBranches({
+  group,
+  shown
+}: {
+  group: { remote: string; branches: RefDetails[] };
+  shown: boolean;
+}) {
+  const page = usePage(group.branches);
+  return (
+    <>
+      {page.shown.map((ref) => {
+        const gitRef: GitRef = { type: "remote", name: ref.name, hash: ref.hash };
+        const value = "remotes/" + ref.name;
+        return (
+          <Row
+            key={ref.name}
+            depth={2}
+            source={refMenuSource(gitRef)}
+            label={ref.name.slice(group.remote.length + 1)}
+            title={ref.name}
+            icon={<BranchIcon class={ROW_ICON} />}
+            dimmed={!shown}
+            active={selectedBranch.value === value}
+            badge={<BranchFocusBadge branch={value} />}
+            onSelect={() => selectBranch(value)}
+            menu={() => refMenu(gitRef, false)}
+            actions={
+              <button
+                type="button"
+                class={ACTION_CLASS}
+                onClick={() => checkoutBranchAction(gitRef)}
+              >
+                {window.l10n.checkout}
+              </button>
+            }
+          />
+        );
+      })}
+      {page.more}
+    </>
+  );
+}
+
 function Hint({
   children,
   tone = "muted"
@@ -255,6 +323,8 @@ export function RefsPane() {
   const head = commitHead.value;
   const nothing =
     needle !== "" && branches.length + groups.length + tags.length + visibleStashes.length === 0;
+  const branchPage = usePage(branches);
+  const tagPage = usePage(tags);
 
   return (
     <nav
@@ -302,7 +372,7 @@ export function RefsPane() {
                 onSelect={() => selectBranch(SHOW_ALL_BRANCHES)}
               />
             )}
-            {branches.map((branch) => {
+            {branchPage.shown.map((branch) => {
               const gitRef: GitRef = { type: "head", name: branch.name, hash: branch.hash };
               const isHead = state.head === branch.name;
               const worktree = isHead
@@ -348,6 +418,7 @@ export function RefsPane() {
                 />
               );
             })}
+            {branchPage.more}
           </Section>
           <Section
             id="remotes"
@@ -435,34 +506,7 @@ export function RefsPane() {
                     </span>
                   }
                 >
-                  {group.branches.map((ref) => {
-                    const gitRef: GitRef = { type: "remote", name: ref.name, hash: ref.hash };
-                    const value = "remotes/" + ref.name;
-                    return (
-                      <Row
-                        key={ref.name}
-                        depth={2}
-                        source={refMenuSource(gitRef)}
-                        label={ref.name.slice(group.remote.length + 1)}
-                        title={ref.name}
-                        icon={<BranchIcon class={ROW_ICON} />}
-                        dimmed={!shown}
-                        active={selectedBranch.value === value}
-                        badge={<BranchFocusBadge branch={value} />}
-                        onSelect={() => selectBranch(value)}
-                        menu={() => refMenu(gitRef, false)}
-                        actions={
-                          <button
-                            type="button"
-                            class={ACTION_CLASS}
-                            onClick={() => checkoutBranchAction(gitRef)}
-                          >
-                            {window.l10n.checkout}
-                          </button>
-                        }
-                      />
-                    );
-                  })}
+                  <RemoteBranches group={group} shown={shown} />
                 </Section>
               );
             })}
@@ -474,7 +518,7 @@ export function RefsPane() {
             icon={<TagIcon class={ROW_ICON} />}
           >
             {state.tags.length === 0 && <Hint>{window.l10n.noTags}</Hint>}
-            {tags.map((tag) => {
+            {tagPage.shown.map((tag) => {
               const gitRef: GitRef = { type: "tag", name: tag.name, hash: tag.hash };
               return (
                 <Row
@@ -497,6 +541,7 @@ export function RefsPane() {
                 />
               );
             })}
+            {tagPage.more}
           </Section>
           <Section
             id="stashes"

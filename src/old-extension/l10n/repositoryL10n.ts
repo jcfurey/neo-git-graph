@@ -90,6 +90,8 @@ export function getRepositoryLocalizedStrings() {
       "{0} the current {1}? Abort restores the pre-operation state; Skip discards the current patch."
     ),
     openConflict: vscode.l10n.t("Open Conflict"),
+    showMoreRefs: vscode.l10n.t("Show {0} more ({1} hidden)"),
+    dropdownPage: vscode.l10n.t("{0}–{1} of {2}. Type to narrow the list, or use the arrow keys."),
     stageResolution: vscode.l10n.t("Stage Resolution"),
     stageResolutionConfirm: vscode.l10n.t("Mark {0} as resolved and stage its current contents?"),
     mergeOperation: vscode.l10n.t("Merge"),
