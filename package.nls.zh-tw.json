@@ -38,6 +38,8 @@
   "walkthrough.actOnCommit.description": "在提交上按右鍵或點選其 ⋯ 按鈕，即可簽出、揀選、還原、加標籤、建立分支等。每次變更都會先要求確認。",
   "walkthrough.branchesPane.title": "使用分支面板",
   "walkthrough.branchesPane.description": "在分支圖旁瀏覽分支、遠端儲存庫、標籤和暫存紀錄，簽出、擷取和套用只需一次點選。\n[顯示分支面板](command:neo-git-graph.showBranches)",
+  "walkthrough.focusAndRemotes.title": "聚焦分支並隱藏遠端儲存庫",
+  "walkthrough.focusAndRemotes.description": "醒目顯示一個分支的歷史而不隱藏其他分支，並將嘈雜的遠端儲存庫分支排除在圖表之外。\n[顯示分支窗格](command:neo-git-graph.showBranches)",
   "walkthrough.recover.title": "從錯誤中復原",
   "walkthrough.recover.description": "合併和重定基底期間，狀態列提供「繼續」和「中止」；Git 活動會保留每個錯誤；「找回遺失的提交」可找到分支的舊位置。\n[開啟文件](command:neo-git-graph.openDocumentation)",
   "capabilities.virtualWorkspaces": "Git Graph 在本機檔案上執行 Git，而虛擬工作區沒有本機檔案。",

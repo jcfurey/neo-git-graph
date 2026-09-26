@@ -38,6 +38,8 @@
   "walkthrough.actOnCommit.description": "Right-click a commit or click its ⋯ button for checkout, cherry-pick, revert, tag, branch and more. Every change asks for confirmation first.",
   "walkthrough.branchesPane.title": "Use the Branches pane",
   "walkthrough.branchesPane.description": "Browse branches, remotes, tags and stashes beside the graph, with checkout, fetch and apply one click away.\n[Show the Branches pane](command:neo-git-graph.showBranches)",
+  "walkthrough.focusAndRemotes.title": "Focus a branch and hide remotes",
+  "walkthrough.focusAndRemotes.description": "Highlight one branch's history without hiding the others, and keep a noisy remote's branches out of the graph.\n[Show the Branches pane](command:neo-git-graph.showBranches)",
   "walkthrough.recover.title": "Recover from a mistake",
   "walkthrough.recover.description": "The status strip offers Continue and Abort during merges and rebases, Git Activity keeps every error, and Recover lost commits finds old branch positions.\n[Open the documentation](command:neo-git-graph.openDocumentation)",
   "capabilities.virtualWorkspaces": "Git Graph runs Git on local files, which a virtual workspace does not have.",

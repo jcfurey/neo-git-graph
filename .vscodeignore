@@ -15,8 +15,8 @@
 !resources/webview-icon-dark.svg
 !resources/webview-icon-light.svg
 
+# The user guide that Learn more opens. Contributor documents stay in the repository; the
+# README's links to them point there once packaged.
 !docs/git-actions.md
-!docs/packaging.md
-!docs/testing.md
 
 !walkthroughs/

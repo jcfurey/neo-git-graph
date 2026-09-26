@@ -453,15 +453,18 @@ improvements rather than confirmed defects.
       or different heading, a version that only resembles the manifest's, and stale install
       instructions.
 
-- [ ] **Ship every document the in-product guide links to.** The guide that Learn more opens links
-      to `performance.md` from a contributor-only validation section, but the VSIX excludes that
-      file. The walkthroughs do not mention branch focus, per-remote visibility, or uncommitted
-      changes, and the Branches pane walkthrough still describes a single eye button.
-      **Accept:** the package test fails on any relative link in shipped Markdown that does not
-      resolve. The user guide has no developer-only section. The walkthroughs cover focus and remote
-      visibility.
-      Sources: [package exclusions](.vscodeignore), [user guide](docs/git-actions.md),
-      [walkthroughs](walkthroughs), [package smoke test](scripts/package-smoke.cjs).
+- [x] **Ship every document the in-product guide links to.** Completed 2026-09-26. The guide's
+      developer-only "Validation and performance" section moved to the testing guide, and the
+      package now ships only the user guide from `docs/`; the README's links to contributor
+      documents already point to the repository once vsce packages it. A new walkthrough step,
+      "Focus a branch and hide remotes", covers branch focus and per-remote visibility, the
+      Branches pane step describes the per-remote eye buttons, Focus this branch, and Show more,
+      and the graph step says that clicking Uncommitted Changes lists the changed files.
+      **Verified:** `pnpm run check:links` lists the packaged files with `vsce ls` and fails on
+      any relative link in packaged Markdown, other than the README and changelog that vsce
+      rewrites, whose target is not packaged; it runs in the lint job and reported the guide's
+      link to `performance.md` before the move. The package smoke test runs the same check on the
+      installed extension. `test:release` covers the link parser and checker.
 
 - [ ] **Document a setup for the pinned pnpm without Nix, and fix stale editor tasks.** pnpm is
       provided only by the Nix development shell. `corepack pnpm` works, but it aborts in

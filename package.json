@@ -44,7 +44,8 @@
     "package": "pnpm run typecheck && pnpm run lint && node esbuild.js --production",
     "package:vsix": "node scripts/check-release.cjs && vsce package --no-dependencies",
     "check:release": "node scripts/check-release.cjs",
-    "test:release": "node --test scripts/check-release.test.cjs",
+    "check:links": "node scripts/markdown-links.cjs",
+    "test:release": "node --test scripts/check-release.test.cjs scripts/markdown-links.test.cjs",
     "test:package": "node scripts/test-package.cjs",
     "clean": "node -e \"require('fs').rmSync('out',{recursive:true,force:true})\"",
     "compile": "pnpm run clean && node esbuild.js",
@@ -310,6 +311,14 @@
             "completionEvents": [
               "onCommand:neo-git-graph.showBranches"
             ]
+          },
+          {
+            "id": "focusAndRemotes",
+            "title": "%walkthrough.focusAndRemotes.title%",
+            "description": "%walkthrough.focusAndRemotes.description%",
+            "media": {
+              "markdown": "walkthroughs/focus-and-remotes.md"
+            }
           },
           {
             "id": "recover",
