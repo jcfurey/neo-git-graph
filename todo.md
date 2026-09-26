@@ -479,15 +479,18 @@ improvements rather than confirmed defects.
 
 ## P3 — Optional usability and performance improvements
 
-- [ ] **Keep the uncommitted-changes list, focus, and scroll position across refreshes.** Every
-      watcher refresh, including one caused by auto-save, hides the list while it reloads.
-      **Reproduced:** with focus on the 30th of 50 files, a refresh emptied the list and left focus
-      on the page body; 20,000 untracked files took 1.4 s to render in jsdom.
-      **Accept:** the previous list stays visible during a refresh, and focus is kept by group and
-      path, with a test. Large groups are capped with Show more, and the timing is added to the
-      performance report.
-      Sources: [working-tree details](src/webview/components/commit/WorkingTreeDetails.tsx),
-      [query hook](src/webview/lib/use-repository-query.ts).
+- [x] **Keep the uncommitted-changes list, focus, and scroll position across refreshes.**
+      Completed 2026-09-26. The list keeps the previous files on screen, marked `aria-busy`, until
+      the refreshed ones arrive, so rows that stay in their group keep their elements, focus, and
+      scroll position. When a refresh removes the focused row, for example after staging it,
+      focus moves to the same path in its new group, or to the row now at its place in the old
+      group; focus the user moved elsewhere is left alone. Each group renders 200 files at a time
+      with **Show more**, sharing the Branches pane's paging.
+      **Verified:** webview tests keep the 50-file list and the focused 30th file through a
+      refresh, follow a staged file to Staged Changes, hand focus to a removed file's neighbour,
+      leave focus outside the list alone, and page 20,000 untracked files; each fails against the
+      previous list. The performance report adds a jsdom timing with 20,000 untracked files:
+      showing the list fell from 1,282 ms to 27 ms and a refresh from 1,386 ms to 6 ms.
 
 - [x] **Let the restore dialog recover from a stale preview.** Completed 2026-09-26. Preview and
       Restore both plan again with the same source and destination first. Preview then opens the

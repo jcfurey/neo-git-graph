@@ -47,6 +47,7 @@ import {
   selectedRepo,
   showRemoteBranch
 } from "@/webview/lib/stores";
+import { PAGE_SIZE, usePage } from "@/webview/lib/use-page";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 import type { ContextMenuEntry } from "@/webview/types";
 import { format } from "@/webview/utils/format";
@@ -55,7 +56,7 @@ const ACTION_CLASS =
   "flex shrink-0 cursor-pointer items-center rounded px-1.5 py-0.5 text-xs hover:bg-btn-hover focus:outline-1 focus:outline-focus disabled:cursor-not-allowed disabled:opacity-50";
 const ROW_ICON = "size-3.5 shrink-0 text-muted";
 /** Rows each list renders before Show more, so thousands of refs stay responsive. */
-export const REF_PAGE = 200;
+export const REF_PAGE = PAGE_SIZE;
 
 type RemoteGroup = { remote: string; details: RemoteDetails | undefined; branches: RefDetails[] };
 
@@ -223,26 +224,6 @@ function Section({
 }
 
 /** The first `limit` items of a list, and a button that shows the next page. */
-function usePage<T>(items: T[]) {
-  const [limit, setLimit] = useState(REF_PAGE);
-  const more = items.length - limit;
-  return {
-    shown: more > 0 ? items.slice(0, limit) : items,
-    more:
-      more > 0 ? (
-        <button
-          type="button"
-          class="w-full cursor-pointer px-3 py-1 text-left text-xs text-muted hover:text-fg hover:underline focus:outline-1 focus:outline-focus"
-          onClick={() => setLimit(limit + REF_PAGE)}
-        >
-          {window.l10n.showMoreRefs
-            .replace("{0}", String(Math.min(more, REF_PAGE)))
-            .replace("{1}", String(more))}
-        </button>
-      ) : null
-  };
-}
-
 function RemoteBranches({
   group,
   shown

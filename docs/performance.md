@@ -119,3 +119,24 @@ Medians in milliseconds (before → after):
 Opening a menu no longer depends on the number of refs, and `RefsScale.test.ts` asserts that it
 re-renders only the rows whose menu opened or closed, where it previously re-rendered all 9,001.
 A filter keystroke still re-renders up to one page of each list.
+
+## Uncommitted changes list, 2026-09-26
+
+Every refresh, including one caused by auto-save, replaced the uncommitted-changes list with a
+loading indicator and then rebuilt it, which dropped focus and the scroll position, and every
+group rendered all of its files. The previous list now stays on screen, marked busy, until the
+new one arrives, so rows that stay in their group keep their elements, focus, and scroll
+position. When a refresh removes the focused row, focus moves to the same file in its new group
+or to the row that took its place. Each group shows 200 files at a time with **Show more**.
+
+This comparison renders the list in jsdom with 20,000 untracked files. Refresh is the render of
+the refresh request plus the render of its answer. Run it with
+`NGG_BENCH_WORKING_TREE=1 pnpm exec vitest run --project webview --reporter=verbose tests/webview/components/commit/WorkingTreeTiming.test.ts`,
+which prints the medians as a `benchmark-working-tree` JSON line. Raw medians are in
+[the comparison data](benchmarks/2026-09-26-working-tree.json).
+
+Medians in milliseconds (before → after):
+
+| Files  | Show the list | Refresh    |
+| ------ | ------------- | ---------- |
+| 20,000 | 1281.9 → 26.6 | 1386 → 6.4 |
