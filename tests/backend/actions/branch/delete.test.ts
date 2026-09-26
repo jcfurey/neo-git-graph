@@ -1,74 +1,47 @@
-import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { deleteBranch } from "@/backend/actions/branch";
 import { createGit } from "@/backend/gitClient";
 
-import { git, makeRepo } from "@tests/backend/helpers";
+import { freshRepo, git, gitOutput } from "@tests/backend/helpers";
 
-let repo: string;
-
-beforeAll(() => {
-  repo = makeRepo();
+// "merged" points into main's history; "unmerged" has a commit main does not.
+const repo = freshRepo((dir) => {
+  git(["branch", "merged"], dir);
+  git(["checkout", "-q", "-b", "unmerged"], dir);
+  fs.writeFileSync(path.join(dir, "g"), "y");
+  git(["add", "g"], dir);
+  git(["commit", "-m", "unmerged commit"], dir);
+  git(["checkout", "-q", "main"], dir);
 });
-
-afterAll(() => {
-  fs.rmSync(repo, { recursive: true, force: true });
-});
+const branches = () =>
+  gitOutput(["for-each-ref", "--format=%(refname:short)", "refs/heads/"], repo()).split("\n");
 
 describe("deleteBranch", () => {
-  it("deletes an existing branch", async () => {
-    git(["branch", "to-delete"], repo);
-
-    await deleteBranch(createGit(repo, "git"), {
-      branchName: "to-delete",
-      forceDelete: false
-    });
-
-    const listed = cp
-      .execFileSync("git", ["branch", "--no-color", "--list", "to-delete"], { cwd: repo })
-      .toString()
-      .trim();
-    expect(listed).toBe("");
+  it("deletes a merged branch without force", async () => {
+    await deleteBranch(createGit(repo(), "git"), { branchName: "merged", forceDelete: false });
+    expect(branches()).toEqual(["main", "unmerged"]);
   });
 
-  it("throws when deleting a branch with unmerged changes without force", async () => {
-    git(["checkout", "-b", "unmerged"], repo);
-    fs.writeFileSync(path.join(repo, "g"), "y");
-    git(["add", "."], repo);
-    git(["commit", "-m", "unmerged commit"], repo);
-    git(["checkout", "main"], repo);
-
+  it("refuses to delete an unmerged branch without force", async () => {
     await expect(
-      deleteBranch(createGit(repo, "git"), {
-        branchName: "unmerged",
-        forceDelete: false
-      })
+      deleteBranch(createGit(repo(), "git"), { branchName: "unmerged", forceDelete: false })
     ).rejects.toThrow();
+    expect(branches()).toEqual(["main", "merged", "unmerged"]);
   });
 
-  it("force-deletes a branch with unmerged changes", async () => {
-    await deleteBranch(createGit(repo, "git"), {
-      branchName: "unmerged",
-      forceDelete: true
-    });
-
-    const listed = cp
-      .execFileSync("git", ["branch", "--no-color", "--list", "unmerged"], { cwd: repo })
-      .toString()
-      .trim();
-    expect(listed).toBe("");
+  it("force-deletes an unmerged branch", async () => {
+    await deleteBranch(createGit(repo(), "git"), { branchName: "unmerged", forceDelete: true });
+    expect(branches()).toEqual(["main", "merged"]);
   });
 
   it("throws when the branch does not exist", async () => {
     await expect(
-      deleteBranch(createGit(repo, "git"), {
-        branchName: "nonexistent",
-        forceDelete: false
-      })
+      deleteBranch(createGit(repo(), "git"), { branchName: "nonexistent", forceDelete: true })
     ).rejects.toThrow();
+    expect(branches()).toEqual(["main", "merged", "unmerged"]);
   });
 });

@@ -1,83 +1,53 @@
-import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { mergeCommit } from "@/backend/actions/merge";
 import { createGit } from "@/backend/gitClient";
 
-import { git, makeRepo } from "@tests/backend/helpers";
+import { freshRepo, git, gitOutput } from "@tests/backend/helpers";
 
-let repo: string;
-let featureCommitHash: string;
-
-beforeAll(() => {
-  repo = makeRepo();
-  git(["checkout", "-b", "feature"], repo);
-  fs.writeFileSync(path.join(repo, "feature.txt"), "feature");
-  git(["add", "."], repo);
-  git(["commit", "-m", "feature commit"], repo);
-  featureCommitHash = cp
-    .execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo })
-    .toString()
-    .trim();
-  git(["checkout", "main"], repo);
+const repo = freshRepo((dir) => {
+  git(["checkout", "-q", "-b", "feature"], dir);
+  fs.writeFileSync(path.join(dir, "feature.txt"), "feature");
+  git(["add", "feature.txt"], dir);
+  git(["commit", "-m", "feature commit"], dir);
+  git(["checkout", "-q", "main"], dir);
 });
-
-afterAll(() => {
-  fs.rmSync(repo, { recursive: true, force: true });
-});
+const feature = () => gitOutput(["rev-parse", "feature"], repo());
 
 describe("mergeCommit", () => {
-  it("merges a commit hash", async () => {
+  it("fast-forwards to a commit when a merge commit is not requested", async () => {
     await mergeCommit(
-      createGit(repo, "git"),
-      {
-        commitHash: featureCommitHash,
-        createNewCommit: false
-      },
+      createGit(repo(), "git"),
+      { commitHash: feature(), createNewCommit: false },
       "git"
     );
-
-    const log = cp.execFileSync("git", ["log", "--oneline"], { cwd: repo }).toString();
-    expect(log).toContain("feature commit");
+    expect(gitOutput(["rev-parse", "main"], repo())).toBe(feature());
   });
 
-  it("merges a commit hash with --no-ff when createNewCommit is true", async () => {
-    git(["checkout", "-b", "feature2"], repo);
-    fs.writeFileSync(path.join(repo, "feature2.txt"), "feature2");
-    git(["add", "."], repo);
-    git(["commit", "-m", "feature2 commit"], repo);
-    const commit2Hash = cp
-      .execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo })
-      .toString()
-      .trim();
-    git(["checkout", "main"], repo);
-
+  it("creates a merge commit with --no-ff", async () => {
+    const main = gitOutput(["rev-parse", "main"], repo());
     await mergeCommit(
-      createGit(repo, "git"),
-      {
-        commitHash: commit2Hash,
-        createNewCommit: true
-      },
+      createGit(repo(), "git"),
+      { commitHash: feature(), createNewCommit: true },
       "git"
     );
-
-    const log = cp.execFileSync("git", ["log", "--oneline"], { cwd: repo }).toString();
-    expect(log).toContain("Merge commit");
+    expect(gitOutput(["rev-parse", "HEAD^1"], repo())).toBe(main);
+    expect(gitOutput(["rev-parse", "HEAD^2"], repo())).toBe(feature());
+    expect(gitOutput(["log", "-1", "--format=%s"], repo())).toMatch(/^Merge commit '/);
   });
 
-  it("throws when the commit hash is invalid", async () => {
+  it("throws when the commit hash is invalid and leaves main unchanged", async () => {
+    const main = gitOutput(["rev-parse", "main"], repo());
     await expect(
       mergeCommit(
-        createGit(repo, "git"),
-        {
-          commitHash: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-          createNewCommit: false
-        },
+        createGit(repo(), "git"),
+        { commitHash: "deadbeef".repeat(5), createNewCommit: false },
         "git"
       )
     ).rejects.toThrow();
+    expect(gitOutput(["rev-parse", "main"], repo())).toBe(main);
   });
 });

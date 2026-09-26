@@ -174,14 +174,15 @@ improvements rather than confirmed defects.
       [repository watcher](src/extension/watchers/git-repo.watcher.ts),
       [bridge tests](tests/extension/webviewBridge.test.ts).
 
-- [ ] **Make the destructive-action backend tests independent and specific.** Twenty-three backend
-      test files share one repository per file and depend on earlier tests' side effects.
-      **Reproduced:** `vitest run --project backend --sequence.shuffle --sequence.seed=2` fails 5
-      tests in reset, tag, and branch deletion. A mutant `resetToCommit` that runs mixed for hard and
-      soft for mixed passes all four reset tests.
-      **Accept:** each destructive-action test builds its own fixture, and shuffled runs pass for
-      seeds 1–5 (optionally, CI adds one shuffled run). Reset tests assert the index and working
-      tree for each mode and fail against the mutant. The duplicate-tag test creates its own tag.
+- [x] **Make the destructive-action backend tests independent and specific.** Completed
+      2026-09-26. The commit, branch, tag, and merge action tests (twelve files) use a new
+      `freshRepo()` helper that builds a repository for every test. Each test asserts the exact
+      refs, commits, index, or files it expects, and that failures leave the repository unchanged.
+      The duplicate-tag test creates its own tag.
+      **Verified:** the full backend suite passes shuffled with seeds 1–5 (seeds 2 and 3 failed
+      before), and Linux CI adds a shuffled run with a random seed. The reset tests assert HEAD,
+      the index, and the working tree for each mode, and the mutant that runs mixed for hard and
+      soft for mixed now fails two of them.
       Sources: [reset tests](tests/backend/actions/commit/reset.test.ts),
       [tag tests](tests/backend/actions/tag/add.test.ts),
       [branch tests](tests/backend/actions/branch/delete.test.ts).

@@ -72,6 +72,12 @@ jobs:
       - name: Run tests
         run: pnpm run test
 
+      # Each destructive-action test builds its own repository, so order must not matter. Vitest
+      # prints the seed, so a failing order can be reproduced with --sequence.seed.
+      - name: Run backend tests in a shuffled order
+        if: runner.os == 'Linux'
+        run: pnpm exec vitest run --project backend --sequence.shuffle
+
       # Git translates its messages but not its plumbing, porcelain, or -z output, and reports
       # failures through its exit status. Parsing must not depend on the user's configuration,
       # such as log.showSignature or color.ui=always, or on the language of Git's messages.

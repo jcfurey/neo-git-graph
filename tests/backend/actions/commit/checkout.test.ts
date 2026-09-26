@@ -1,38 +1,25 @@
-import * as cp from "node:child_process";
-import * as fs from "node:fs";
-
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { checkoutCommit } from "@/backend/actions/commit";
 import { createGit } from "@/backend/gitClient";
 
-import { makeRepo } from "@tests/backend/helpers";
+import { freshRepo, git, gitOutput } from "@tests/backend/helpers";
 
-let repo: string;
-let commitHash: string;
-
-beforeAll(() => {
-  repo = makeRepo();
-  commitHash = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
-});
-
-afterAll(() => {
-  fs.rmSync(repo, { recursive: true, force: true });
-});
+const repo = freshRepo((dir) => git(["commit", "--allow-empty", "-m", "second"], dir));
 
 describe("checkoutCommit", () => {
-  it("checks out a commit hash (detaches HEAD)", async () => {
-    await checkoutCommit(createGit(repo, "git"), { commitHash });
-
-    const head = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
-    expect(head).toBe(commitHash);
+  it("checks out a commit with a detached HEAD", async () => {
+    const first = gitOutput(["rev-parse", "HEAD^"], repo());
+    await checkoutCommit(createGit(repo(), "git"), { commitHash: first });
+    expect(gitOutput(["rev-parse", "HEAD"], repo())).toBe(first);
+    expect(() => gitOutput(["symbolic-ref", "-q", "HEAD"], repo())).toThrow();
+    expect(gitOutput(["rev-parse", "main"], repo())).not.toBe(first);
   });
 
-  it("throws for a nonexistent commit hash", async () => {
+  it("throws for a nonexistent commit and stays on the branch", async () => {
     await expect(
-      checkoutCommit(createGit(repo, "git"), {
-        commitHash: "0000000000000000000000000000000000000000"
-      })
+      checkoutCommit(createGit(repo(), "git"), { commitHash: "0".repeat(40) })
     ).rejects.toThrow();
+    expect(gitOutput(["symbolic-ref", "HEAD"], repo())).toBe("refs/heads/main");
   });
 });
