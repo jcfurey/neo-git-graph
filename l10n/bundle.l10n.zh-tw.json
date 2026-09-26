@@ -320,6 +320,7 @@
   "Commits only on the right": "僅右側包含的提交",
   "No file differences between these revisions.": "這些版本之間沒有檔案差異。",
   "Open File at This Revision": "開啟此版本的檔案",
+  "Open File Changes": "開啟檔案變更",
   "Restore File Contents": "還原檔案內容",
   "Restore to path": "還原至路徑",
   "Preview Restore": "預覽還原",

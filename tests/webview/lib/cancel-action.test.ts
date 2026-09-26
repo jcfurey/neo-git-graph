@@ -87,3 +87,19 @@ it("shows Stop Git beside Hide only while a network action runs", () => {
   act(() => render(null, container));
   container.remove();
 });
+
+it.each([
+  ["viewWorkingTreeFile", "openFileChanges"],
+  ["viewRangeFile", "compareRevisions"],
+  ["viewHistoricalFile", "openHistoricalFile"],
+  ["previewFileRestore", "restorePreview"]
+])("logs %s under its own activity title", async (kind, title) => {
+  const { activity } = await import("@/webview/lib/activity");
+  remote.sendRemoteAction(
+    { command: "repositoryAction", requestId: kind, action: { kind } } as never,
+    "/repo",
+    "Running",
+    { background: true }
+  );
+  expect(activity.value[0]).toMatchObject({ id: kind, title });
+});

@@ -53,6 +53,7 @@ const titles: Record<string, keyof LocalizedStrings> = {
   fixup: "createFixup",
   batch: "batchCherryPick",
   recoverBranch: "recoverBranch",
+  viewWorkingTreeFile: "openFileChanges",
   viewRangeFile: "compareRevisions",
   viewHistoricalFile: "openHistoricalFile",
   previewFileRestore: "restorePreview",

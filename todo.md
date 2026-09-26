@@ -316,15 +316,14 @@ improvements rather than confirmed defects.
 
 ### Uncommitted changes and restore
 
-- [ ] **Let read-only file views run while other views are open.** File views and restore previews
-      hold the per-repository action lock until the diff editor opens. **Reproduced:** a second
-      quick click on a changed file returned "Another Git operation is running…", which appears as
-      an error dialog. Each view is also logged as a generic "Running Git operation".
-      **Accept:** views and previews bypass the lock while mutations keep it. Two overlapping views
-      both succeed, viewing during a mutation does not error, and views have their own activity
-      titles.
-      Sources: [message handler](src/old-extension/messageHandler.ts),
-      [activity titles](src/webview/lib/activity.ts).
+- [x] **Let read-only file views run while other views are open.** Completed 2026-09-26. File
+      views and restore previews no longer take the repository lock or mute the watcher, while
+      mutations keep both. Opening a working-tree change is logged as "Open File Changes"; the
+      other views already had their own titles.
+      **Verified:** an extension test holds one view and a reset open, runs every other view kind
+      alongside them without a busy error, and then runs a tag deletion once the reset ends while
+      the view is still pending; it fails against the previous lock. A webview test checks the
+      activity title of each view kind.
 
 - [ ] **Make a file restore recoverable and account for unsaved editors.** **Proposed;** the
       unsaved-editor behavior is **Code review.** Local content that a restore replaces is lost

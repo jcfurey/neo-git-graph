@@ -135,10 +135,14 @@ export function registerMessageHandlers(
       let acquired = false;
       try {
         const request: ActionRequest = msg;
+        // Opening a diff or preview reads the repository, so it neither waits for nor blocks
+        // other actions.
+        const exclusive = !viewOnly(request);
         const recursive =
           request.command === "repositoryAction" &&
           (request.action.kind === "submodule" || request.action.kind === "submodulePointer");
         if (
+          exclusive &&
           [...busyRepos].some(
             ([repo, descendants]) =>
               repo === msg.repo ||
@@ -152,9 +156,9 @@ export function registerMessageHandlers(
             )
           );
         }
-        busyRepos.set(msg.repo, recursive);
-        acquired = true;
-        if (!viewOnly(request)) {
+        if (exclusive) {
+          busyRepos.set(msg.repo, recursive);
+          acquired = true;
           muteGitRepoWatcher(msg.repo);
         }
         const controller = new AbortController();
@@ -177,9 +181,7 @@ export function registerMessageHandlers(
         }
         if (acquired) {
           busyRepos.delete(msg.repo);
-          if (!viewOnly(msg)) {
-            unmuteGitRepoWatcher(msg.repo);
-          }
+          unmuteGitRepoWatcher(msg.repo);
         }
       }
       bridge.post({

@@ -177,6 +177,32 @@ describe("repository lock", () => {
     await running;
   });
 
+  it("runs file views and previews alongside each other and alongside a mutation", async () => {
+    const { post, send } = register();
+    const reset = hold("resetToCommit");
+    const running = send("resetToCommit", "/repo");
+    const firstView = hold("runRepositoryAction");
+    const view = send("repositoryAction", "/repo", {
+      action: { kind: "viewWorkingTreeFile", path: "a", group: "unstaged" }
+    });
+    // Overlapping views, all while the reset and the first view run.
+    await Promise.all(
+      ["viewWorkingTreeFile", "viewRangeFile", "viewHistoricalFile", "previewFileRestore"].map(
+        (kind) => send("repositoryAction", "/repo", { action: { kind } })
+      )
+    );
+    expect(backend.runRepositoryAction).toHaveBeenCalledTimes(5);
+    expect(post).not.toHaveBeenCalledWith(expect.objectContaining({ status: BUSY }));
+
+    // A view does not hold the repository either.
+    reset.resolve();
+    await running;
+    await send("deleteTag", "/repo");
+    expect(backend.deleteTag).toHaveBeenCalledOnce();
+    firstView.resolve();
+    await view;
+  });
+
   it("refuses a submodule action while a submodule below it is busy", async () => {
     const { post, send } = register();
     const child = hold("resetToCommit");

@@ -41,6 +41,7 @@ export function getHistoryLocalizedStrings() {
     onlyOnRight: vscode.l10n.t("Commits only on the right"),
     identicalFiles: vscode.l10n.t("No file differences between these revisions."),
     openHistoricalFile: vscode.l10n.t("Open File at This Revision"),
+    openFileChanges: vscode.l10n.t("Open File Changes"),
     restoreHistoricalFile: vscode.l10n.t("Restore File Contents"),
     restoreDestination: vscode.l10n.t("Restore to path"),
     restorePreview: vscode.l10n.t("Preview Restore"),
