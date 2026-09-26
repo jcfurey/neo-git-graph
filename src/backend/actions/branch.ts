@@ -2,6 +2,7 @@ import type { SimpleGit } from "simple-git";
 
 import type { ActionPayload } from "@/backend/types";
 import { refNames } from "@/backend/utils/refs";
+import { runGit } from "@/backend/utils/runGit";
 import { requireBranchName, splitRemoteRef } from "@/backend/utils/validation";
 
 export async function createBranch(
@@ -42,7 +43,7 @@ export async function checkoutBranch(
     ? await splitRemoteRef(git, input.remoteBranch)
     : await splitRemoteRef(git, input.remoteBranch).catch(() => null);
   if (input.fetch && source !== null) {
-    await git.raw([
+    await runGit(git, [
       "fetch",
       "--no-tags",
       "--",

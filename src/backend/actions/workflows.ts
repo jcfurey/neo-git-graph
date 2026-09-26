@@ -67,7 +67,7 @@ export async function runWorkflowAction(
           );
         }
         // An object ID fixes the exact source even if another Git client moves the branch.
-        await git.raw([
+        await runGit(git, [
           "push",
           ...(action.force
             ? [`--force-with-lease=refs/heads/${plan.remoteBranch}:${plan.remoteHead}`]

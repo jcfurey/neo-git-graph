@@ -83,7 +83,7 @@ it("runs an action against its requested repository even if the selected reposit
   finish();
   await pending;
   expect(mocks.unmute).toHaveBeenCalledExactlyOnceWith("/original-repo");
-  expect(mocks.factory).toHaveBeenCalledWith("/original-repo", "git");
+  expect(mocks.factory).toHaveBeenCalledWith("/original-repo", "git", expect.any(AbortSignal));
   expect(mocks.push).toHaveBeenCalledWith(boundGit, request);
   expect(post).toHaveBeenCalledWith({
     command: "pushBranch",

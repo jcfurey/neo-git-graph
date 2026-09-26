@@ -31,6 +31,13 @@ export const PARSED_OUTPUT_ARGS = [
   ...PARSED_OUTPUT_CONFIG.flatMap((setting) => ["-c", setting])
 ];
 
+/** The executable and cancellation of each client, for Git processes started without it. */
+const processes = new WeakMap<SimpleGit, { gitPath: string; abort?: AbortSignal }>();
+
+export function gitProcessOf(git: SimpleGit) {
+  return processes.get(git);
+}
+
 export function createGit(repoPath: string, gitPath: string, abort?: AbortSignal): SimpleGit {
   // The executable comes from VS Code's Git extension or the user's `git.path`, and can contain
   // spaces or parentheses, as in `C:\Program Files\Git\cmd\git.exe`. simple-git rejects such
@@ -40,7 +47,7 @@ export function createGit(repoPath: string, gitPath: string, abort?: AbortSignal
   // eslint-disable-next-line no-console
   console.warn = () => {};
   try {
-    return simpleGit({
+    const git = simpleGit({
       baseDir: repoPath,
       // The prefix argument follows the binary, before any command.
       binary: [gitPath, "--no-optional-locks"],
@@ -50,6 +57,8 @@ export function createGit(repoPath: string, gitPath: string, abort?: AbortSignal
       config: PARSED_OUTPUT_CONFIG,
       ...(abort ? { abort } : {})
     });
+    processes.set(git, { gitPath, ...(abort ? { abort } : {}) });
+    return git;
   } finally {
     // eslint-disable-next-line no-console
     console.warn = warn;

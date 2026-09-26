@@ -514,7 +514,7 @@ export function openErrorDialog(message: string, reason: string | null = null) {
 /** Report a command that runs longer than the others. The response replaces it. */
 export function openRunningDialog(
   message: string,
-  context: { detail: string; started: number } | undefined = undefined
+  context: { detail: string; started: number; onCancel?: () => void } | undefined = undefined
 ) {
   openDialog({ kind: "running", message, ...context });
 }

@@ -298,14 +298,21 @@ improvements rather than confirmed defects.
       took 61,084 and the test fails. The test runs in Windows CI too, and the existing nested and
       orphan remote tests pass unchanged.
 
-- [ ] **Let long network actions time out or be cancelled.** **Investigate.** Push, pull, fetch,
-      and fetch-before-checkout run with no timeout, no cancellation, and no
-      `GIT_TERMINAL_PROMPT=0`. A stalled SSH connection, or a credential prompt on an inherited
-      terminal, leaves the action pending and the repository locked.
-      **Accept:** `GIT_TERMINAL_PROMPT=0` is set, and Cancel kills the process and releases the
-      lock. Tested with a `core.sshCommand` that sleeps.
-      Sources: [message handler](src/old-extension/messageHandler.ts),
-      [Git client](src/backend/gitClient.ts).
+- [x] **Let long network actions time out or be cancelled.** Completed 2026-09-26. Push, pull,
+      fetch, tag push, remote ref deletion, fetch-before-checkout, fetch after adding a remote,
+      and workflow pushes run through `runGit`, which always sets `GIT_TERMINAL_PROMPT=0` and
+      takes the Git path and abort signal from the client that started the action. The running
+      dialog of these actions offers **Stop Git**; the extension aborts that action's
+      controller, which kills the process, reports "The Git operation was cancelled.", and
+      releases the repository lock. There is no automatic timeout, since a large fetch can be
+      silent for a long time.
+      **Verified:** backend tests start a fetch and a push over a `core.sshCommand` that records
+      `GIT_TERMINAL_PROMPT` and sleeps: with the variable cleared from the test environment, Git
+      sees `0`, which fails against the previous code, and aborting ends each within five
+      seconds without creating refs. An extension test stops a stalled push through
+      `cancelAction`, shows that another request id does not stop it and that the repository is
+      busy until then, and then deletes a tag in the same repository. Webview tests show Stop
+      Git for network actions only and check the message it posts.
 
 ### Uncommitted changes and restore
 

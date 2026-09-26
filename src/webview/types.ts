@@ -55,7 +55,14 @@ export type DialogBody =
       /** The dialog opens with focus on Cancel, so a stray Enter cannot confirm it. */
       destructive?: boolean;
     }
-  | { kind: "running"; message: string; detail?: string; started?: number }
+  | {
+      kind: "running";
+      message: string;
+      detail?: string;
+      started?: number;
+      /** Stops a network action, such as a push waiting on an unresponsive server. */
+      onCancel?: () => void;
+    }
   | { kind: "error"; message: string; reason: string | null };
 
 /** Adds the field to every member of a union, so it stays discriminated. */

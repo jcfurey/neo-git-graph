@@ -82,6 +82,7 @@ export type ResponseRefresh = {
 };
 
 export type RequestMessage =
+  | { command: "cancelAction"; repo: string; requestId: string }
   | { command: "cancelRepositoryQuery"; repo: string; requestId: string }
   | { command: "viewReady" }
   | ActionRequest

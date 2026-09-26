@@ -3,6 +3,7 @@ import type { SimpleGit } from "simple-git";
 
 import type { RepositoryAction } from "@/backend/types";
 import { refNames } from "@/backend/utils/refs";
+import { runGit } from "@/backend/utils/runGit";
 import {
   requireBranchName,
   requireRefName,
@@ -75,7 +76,7 @@ export async function manageRemote(git: SimpleGit, action: RemoteAction) {
       requireUrl(action.url);
       await git.raw(["remote", "add", "--", action.name, action.url]);
       if (action.fetch) {
-        await git.raw(["fetch", "--", action.name]);
+        await runGit(git, ["fetch", "--", action.name]);
       }
       return;
     case "editRemote":
@@ -116,7 +117,7 @@ export async function manageRemote(git: SimpleGit, action: RemoteAction) {
       await requireRemote(git, action.remote);
       await (action.refType === "tag" ? requireTagName : requireBranchName)(git, action.name);
       const ref = `refs/${action.refType === "tag" ? "tags" : "heads"}/${action.name}`;
-      await git.raw(["push", "--", action.remote, `:${ref}`]);
+      await runGit(git, ["push", "--", action.remote, `:${ref}`]);
       return;
     }
   }

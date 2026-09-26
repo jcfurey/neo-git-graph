@@ -56,6 +56,30 @@ export function openRemoteAction(action: RemoteAction, branchName = "", remoteRe
   });
 }
 
+/** Whether the action talks to a remote, which can stall; local actions always finish. */
+function usesNetwork(command: RemoteCommand) {
+  switch (command.command) {
+    case "pushBranch":
+    case "pullBranch":
+    case "fetchRemote":
+    case "pushTag":
+      return true;
+    case "checkoutBranch":
+      return command.remoteBranch !== null && command.fetch === true;
+    case "repositoryAction": {
+      const { action } = command;
+      return (
+        action.kind === "fetch" ||
+        action.kind === "deleteRemoteRef" ||
+        (action.kind === "addRemote" && action.fetch) ||
+        (action.kind === "sync" && action.operation === "push")
+      );
+    }
+    default:
+      return false;
+  }
+}
+
 export function sendRemoteAction(
   command: RemoteCommand,
   repo: string,
@@ -76,7 +100,13 @@ export function sendRemoteAction(
   if (!options.background) {
     openRunningDialog(entry.title, {
       detail: [repo, entry.detail].filter(Boolean).join("\n"),
-      started: entry.started
+      started: entry.started,
+      ...(usesNetwork(command)
+        ? {
+            onCancel: () =>
+              vscode.postMessage({ command: "cancelAction", repo, requestId: command.requestId })
+          }
+        : {})
     });
   }
   pendingActions.set(command.requestId, {

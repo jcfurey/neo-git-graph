@@ -100,6 +100,7 @@ export function registerMessageHandlers(
 
   let currentRepo: string | null = null;
   const busyRepos = new Map<string, boolean>();
+  const actionControllers = new Map<string, { repo: string; controller: AbortController }>();
   const graphControllers = new Map<GraphQueryCommand, AbortController>();
 
   function cancelGraphQueries() {
@@ -156,10 +157,24 @@ export function registerMessageHandlers(
         if (!viewOnly(request)) {
           muteGitRepoWatcher(msg.repo);
         }
-        await handler(gitClientFactory(msg.repo, config.gitPath()).getInstance(), msg);
+        const controller = new AbortController();
+        if ("requestId" in msg) {
+          actionControllers.set(msg.requestId, { repo: msg.repo, controller });
+        }
+        await handler(
+          gitClientFactory(msg.repo, config.gitPath(), controller.signal).getInstance(),
+          msg
+        ).catch((error: unknown) => {
+          throw controller.signal.aborted
+            ? new Error(vscode.l10n.t("The Git operation was cancelled."))
+            : error;
+        });
       } catch (e: unknown) {
         status = e instanceof Error ? e.message : String(e);
       } finally {
+        if ("requestId" in msg) {
+          actionControllers.delete(msg.requestId);
+        }
         if (acquired) {
           busyRepos.delete(msg.repo);
           if (!viewOnly(msg)) {
@@ -279,6 +294,13 @@ export function registerMessageHandlers(
   // --- Query handlers ---
 
   const queryControllers = new Map<string, { repo: string; controller: AbortController }>();
+  // Stops the action's Git processes, such as a push waiting on an unresponsive server.
+  bridge.onMessage("cancelAction", (msg) => {
+    const pending = actionControllers.get(msg.requestId);
+    if (pending?.repo === msg.repo) {
+      pending.controller.abort();
+    }
+  });
   bridge.onMessage("cancelRepositoryQuery", (msg) => {
     const pending = queryControllers.get(msg.requestId);
     if (pending?.repo === msg.repo) {

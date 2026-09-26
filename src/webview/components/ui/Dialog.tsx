@@ -334,6 +334,9 @@ function MessageBody({
             {window.l10n.copyError}
           </Button>
         )}
+        {state.kind === "running" && state.onCancel && (
+          <Button onClick={state.onCancel}>{window.l10n.cancelOperation}</Button>
+        )}
         <Button onClick={closeDialog}>
           {state.kind === "running" ? window.l10n.hideOperation : window.l10n.dialogDismiss}
         </Button>
