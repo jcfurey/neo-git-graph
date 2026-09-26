@@ -348,17 +348,16 @@ improvements rather than confirmed defects.
 
 ### Webview
 
-- [ ] **Show failures of hidden or superseded Git operations.** A result is dropped when its dialog
-      was hidden, replaced, or closed by a repository switch, even though the running dialog says
-      Git continues while hidden. **Reproduced:** a hidden fetch that failed appeared only in
-      Operation activity, whose indicator shows only running operations; double-clicking Fetch
-      closed its own loading dialog.
-      **Accept:** these failures get a persistent, non-modal cue that does not replace newer
-      dialogs. Tests cover hiding, a repository switch, and a newer dialog. Optionally, the opening
-      double-click's backdrop click is ignored.
-      Sources: [remote actions](src/webview/lib/remote-actions.tsx),
-      [activity view](src/webview/components/history/ActivityView.tsx),
-      [dialog](src/webview/components/ui/Dialog.tsx).
+- [x] **Show failures of hidden or superseded Git operations.** Completed 2026-09-26. A failure
+      whose running dialog was hidden, replaced by a newer dialog, or closed by a repository switch
+      is marked unseen, and the header shows "Failed Git operations: n" beside the running
+      indicator until Git Activity is opened. It never opens over a newer dialog. The dialog
+      backdrop also ignores the second click of the double-click that opened it.
+      **Verified:** webview tests fail a fetch after hiding its dialog, after a repository switch,
+      and under a newer error dialog: each leaves the cue, the newer dialog stays, and opening the
+      cue shows Git Activity and clears it. A failure shown in its own dialog adds no cue, and a
+      backdrop click with `detail` 2 keeps the dialog open. The four behavior tests fail against
+      the previous handling.
 
 - [x] **Render commits with out-of-range dates.** Completed 2026-09-26. The date formatters
       return a localized "Unknown date" when a timestamp does not fit in a JavaScript date, and an

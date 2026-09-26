@@ -399,6 +399,7 @@
   "{0}s elapsed": "{0}s elapsed",
   "Copy Error Details": "Copy Error Details",
   "Clear Completed Activity": "Clear Completed Activity",
+  "Failed Git operations: {0}": "Failed Git operations: {0}",
   "Hide": "Hide",
   "Stop Git": "Stop Git",
   "Git continues running when this dialog is hidden.": "Git continues running when this dialog is hidden.",

@@ -12,6 +12,8 @@ export type ActivityEntry = {
   started: number;
   finished: number | null;
   error: string | null;
+  /** Failed while its dialog was hidden or replaced, so the user has not seen the error. */
+  unseen?: boolean;
 };
 export const activity = signal<ActivityEntry[]>([]);
 
@@ -116,6 +118,26 @@ export function beginActivity(
   };
   activity.value = [entry, ...activity.value].slice(0, 100);
   return entry;
+}
+
+/** Keep a failure that no dialog showed visible until the user opens Git Activity. */
+export function reportUnseenFailure(message: ActionResponse) {
+  if (message.status === null) {
+    return;
+  }
+  activity.value = activity.value.map((entry) =>
+    entry.id === message.requestId && entry.repo === message.repo
+      ? Object.assign({}, entry, { unseen: true })
+      : entry
+  );
+}
+
+export function markFailuresSeen() {
+  if (activity.value.some((entry) => entry.unseen)) {
+    activity.value = activity.value.map((entry) =>
+      entry.unseen ? Object.assign({}, entry, { unseen: false }) : entry
+    );
+  }
 }
 
 export function finishActivity(message: ActionResponse) {

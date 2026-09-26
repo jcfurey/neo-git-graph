@@ -7,7 +7,7 @@ import {
   openFormDialog,
   openRunningDialog
 } from "@/webview/lib/actions";
-import { beginActivity, finishActivity } from "@/webview/lib/activity";
+import { beginActivity, finishActivity, reportUnseenFailure } from "@/webview/lib/activity";
 import { sendRepositoryAction } from "@/webview/lib/repository-actions";
 import { dialog, selectedRepo } from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
@@ -144,22 +144,25 @@ export function acceptRemoteActionResult(message: ActionResponse): boolean {
   finishActivity(message);
   pending?.onComplete?.(message.status);
   if (pending?.background) {
-    if (
-      pending.repo === message.repo &&
-      selectedRepo.value === pending.viewRepo &&
-      dialog.value === pending.dialog &&
-      message.status !== null &&
-      !pending.onComplete
-    ) {
-      openErrorDialog(window.l10n.unableToRunGitAction, message.status);
+    // A caller with its own completion handler shows the result itself.
+    if (message.status !== null && !pending.onComplete) {
+      if (selectedRepo.value === pending.viewRepo && dialog.value === pending.dialog) {
+        openErrorDialog(window.l10n.unableToRunGitAction, message.status);
+      } else {
+        reportUnseenFailure(message);
+      }
     }
     return false;
   }
-  if (pending === undefined || pending.repo !== message.repo || dialog.value !== pending.dialog) {
+  // The running dialog was hidden or replaced: a newer dialog stays, and a failure waits in
+  // Git Activity.
+  if (pending === undefined || dialog.value !== pending.dialog) {
+    reportUnseenFailure(message);
     return false;
   }
   if (selectedRepo.value !== (pending.viewRepo ?? pending.repo)) {
     closeDialog();
+    reportUnseenFailure(message);
     return false;
   }
   return true;

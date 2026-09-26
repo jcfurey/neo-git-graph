@@ -367,6 +367,7 @@
   "{0}s elapsed": "已用时 {0} 秒",
   "Copy Error Details": "复制错误详情",
   "Clear Completed Activity": "清除已完成的活动",
+  "Failed Git operations: {0}": "失败的 Git 操作：{0}",
   "Hide": "隐藏",
   "Stop Git": "停止 Git",
   "Git continues running when this dialog is hidden.": "隐藏此对话框后 Git 仍会继续运行。",

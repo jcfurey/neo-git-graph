@@ -114,7 +114,15 @@ function Panel({
 
   return (
     <>
-      <div class="fixed inset-0 z-30 bg-black/20" onClick={closeDialog} />
+      <div
+        class="fixed inset-0 z-30 bg-black/20"
+        onClick={(event) => {
+          // The second click of the double-click that opened the dialog lands here.
+          if (event.detail < 2) {
+            closeDialog();
+          }
+        }}
+      />
       <div
         ref={panel}
         role="dialog"
