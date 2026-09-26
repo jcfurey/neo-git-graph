@@ -22,7 +22,8 @@ export function App({ repos }: { repos: Array<GitRepo> }) {
       <RepositoryStatus />
       <div class="flex min-w-0 flex-1 flex-col items-start md:flex-row">
         {sidebar && (
-          <div class="flex w-full shrink-0 flex-col border-r border-line-soft md:sticky md:top-12 md:h-[calc(100vh-3rem)] md:w-72 md:max-w-[40vw]">
+          // The header wraps on narrow windows, so the sidebar sticks below its measured height.
+          <div class="flex w-full shrink-0 flex-col border-r border-line-soft md:sticky md:top-[var(--main-header-height,3rem)] md:h-[calc(100vh_-_var(--main-header-height,3rem))] md:w-72 md:max-w-[40vw]">
             {refsVisible.value && <RefsPane />}
             {workspaceVisible.value && <WorkspacePane />}
           </div>

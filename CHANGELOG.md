@@ -20,6 +20,7 @@ The manifest carries the fork identity, `jcfurey.neo-git-graph`, continuing the 
 
 ### Fixed
 
+- Keep dropdown lists inside narrow windows, opening upwards when there is more room above, and keep the Branches and Workspace sidebar below the header when the header wraps.
 - Keep the uncommitted-changes list, its focus, and its scroll position on screen while it refreshes, follow a staged file to its new group, and show large groups 200 files at a time.
 - Apply changed settings to an open graph instead of on its next start, and read fractional or negative commit counts and search depths as whole numbers within range.
 - Open menus activated with Enter, Space, or the context-menu key next to their button instead of in the window's top-left corner.

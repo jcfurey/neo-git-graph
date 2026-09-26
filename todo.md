@@ -531,13 +531,17 @@ improvements rather than confirmed defects.
       button and keeps pointer clicks and right-clicks at the pointer; the keyboard cases fail
       against the previous code.
 
-- [ ] **Keep dropdowns and the sidebar inside narrow windows.** **Reproduced:** at 400 px wide, the
-      Branch dropdown list extends 157 px past the left edge. When the header wraps (at 800–1000
-      px), the sticky sidebar ignores the measured header height, and its top 36 px sit under the
-      header.
-      **Accept:** dropdowns flip or clamp to the viewport, and the sidebar uses the measured header
-      height. UI checks run at 400 and 800 px.
-      Sources: [dropdown](src/webview/components/ui/Dropdown.tsx), [app layout](src/webview/App.tsx).
+- [x] **Keep dropdowns and the sidebar inside narrow windows.** Completed 2026-09-26. An open
+      dropdown measures itself and its trigger: it stays right-aligned where it fits, shifts to
+      keep 8 px from the window's edges, narrows to the window, and opens upwards when there is
+      more room above; it places itself again when the window resizes. The sticky sidebar's top
+      and height now use the header's measured `--main-header-height` instead of a fixed 3rem.
+      **Verified:** unit tests place panels at 400 px and 1,200 px, narrow an oversized panel, and
+      flip and shorten panels in low windows; a webview test applies the placement and redoes it
+      on resize. A VS Code UI test opens every header dropdown at 400 px and checks it stays
+      inside the window (the Branch list reached 218 px past the left edge before), then checks
+      at 822 px, where the header wraps to 84 px, that the sidebar sticks at 84 px (48 px before)
+      with the remaining height.
 
 - [ ] **Keep keyboard focus in list editors and give each row's controls a distinct name.**
       **Reproduced:** moving an entry in the interactive rebase or batch editors sends focus to the
