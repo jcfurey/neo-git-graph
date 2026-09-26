@@ -231,6 +231,13 @@ describe("previews, background actions and progress", () => {
     expect(controls()).toHaveLength(2);
     expect(controls().every((button) => !button.disabled)).toBe(true);
     click("restorePreview");
+    expect(lastRequest().query).toEqual({
+      kind: "restorePlan",
+      source: plan.source,
+      sourcePath: plan.sourcePath,
+      destination: plan.destination
+    });
+    respond({ kind: "restorePlan", plan });
     const preview = lastRequest();
     expect(preview.action).toEqual({ kind: "previewFileRestore", plan });
     expect(dialog.value).toBe(original);
@@ -250,7 +257,52 @@ describe("previews, background actions and progress", () => {
     expect(dialog.value).toBe(original);
     expect(controls().every((button) => !button.disabled)).toBe(true);
     click("restoreHistoricalFile");
+    respond({ kind: "restorePlan", plan });
     expect(lastRequest().action).toEqual({ kind: "restoreFile", plan });
+  });
+
+  it("plans again when the file changed after its preview, and restores only after review", () => {
+    const plan = {
+      source: "a".repeat(40),
+      sourcePath: "old.txt",
+      destination: "current.txt",
+      snapshot: "before",
+      dirty: false
+    };
+    const edited = { ...plan, snapshot: "after", dirty: true };
+    openRestoreFile(plan.source, plan.sourcePath, plan.destination);
+    const form = dialog.value;
+    if (form?.kind !== "form") {
+      throw new Error("Expected restore form");
+    }
+    form.onSubmit([plan.destination]);
+    respond({ kind: "restorePlan", plan });
+    act(() => render(h(Dialog, {}), container));
+    expect(container.textContent).not.toContain("restoreDirty");
+
+    // The file was edited, perhaps in the preview: Restore shows the new state instead.
+    click("restoreHistoricalFile");
+    respond({ kind: "restorePlan", plan: edited });
+    expect(
+      vscodeApi.postMessage.mock.calls.some(([message]) => message.action?.kind === "restoreFile")
+    ).toBe(false);
+    expect(container.textContent).toContain("restorePlanChanged");
+    expect(container.textContent).toContain("restoreDirty");
+
+    click("restorePreview");
+    respond({ kind: "restorePlan", plan: edited });
+    expect(lastRequest().action).toEqual({ kind: "previewFileRestore", plan: edited });
+    act(() =>
+      handleActionResult({
+        command: "repositoryAction",
+        requestId: lastRequest().requestId,
+        repo: lastRequest().repo,
+        status: null
+      })
+    );
+    click("restoreHistoricalFile");
+    respond({ kind: "restorePlan", plan: edited });
+    expect(lastRequest().action).toEqual({ kind: "restoreFile", plan: edited });
   });
 
   it("keeps comparison open when a native diff finishes", () => {

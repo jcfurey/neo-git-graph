@@ -11,6 +11,7 @@ import {
   sendRepositoryAction
 } from "@/webview/lib/repository-actions";
 import { commitHead, headBranch, selectedRepo } from "@/webview/lib/stores";
+import { moveButton, useListMove } from "@/webview/lib/use-list-move";
 import { format } from "@/webview/utils/format";
 
 export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string }) {
@@ -26,15 +27,10 @@ export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string })
       current.map((entry, i) => (i === index ? { ...entry, ...patch } : entry))
     );
   }
-  function move(index: number, delta: number) {
-    setEntries((current) => {
-      const next = [...current];
-      [next[index], next[index + delta]] = [next[index + delta]!, next[index]!];
-      return next;
-    });
-  }
+  const { root, move, status } = useListMove(entries, setEntries);
   return (
     <form
+      ref={root}
       class="space-y-3 text-left"
       onSubmit={(event) => {
         event.preventDefault();
@@ -54,7 +50,11 @@ export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string })
         {window.l10n.arrangeAutosquash}
       </Button>
       {entries.map((entry, index) => (
-        <div key={entry.hash} class="space-y-2 rounded border border-line p-2">
+        <div
+          key={entry.hash}
+          data-entry={entry.hash}
+          class="space-y-2 rounded border border-line p-2"
+        >
           <p class="break-words">
             <code>{entry.hash.slice(0, 8)}</code> {entry.message.split("\n")[0]}
           </p>
@@ -71,10 +71,18 @@ export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string })
                 { label: window.l10n.dropCommit, value: "drop" }
               ]}
             />
-            <Button disabled={index === 0} onClick={() => move(index, -1)}>
+            <Button
+              {...moveButton(entry.hash, "earlier")}
+              disabled={index === 0}
+              onClick={() => move(index, -1)}
+            >
               {window.l10n.moveEarlier}
             </Button>
-            <Button disabled={index === entries.length - 1} onClick={() => move(index, 1)}>
+            <Button
+              {...moveButton(entry.hash, "later")}
+              disabled={index === entries.length - 1}
+              onClick={() => move(index, 1)}
+            >
               {window.l10n.moveLater}
             </Button>
           </div>
@@ -89,6 +97,7 @@ export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string })
           )}
         </div>
       ))}
+      {status}
       {invalid && <p role="alert">{window.l10n.firstCannotCombine}</p>}
       <Button type="submit" disabled={invalid}>
         {window.l10n.startRebase}

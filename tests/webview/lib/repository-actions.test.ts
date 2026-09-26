@@ -2,7 +2,7 @@
 
 import { h, render } from "preact";
 import { act } from "preact/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { RepositoryQueryData, RepositoryState } from "@/backend/types";
 import { RebaseEditor } from "@/webview/components/repository/RebaseEditor";
@@ -14,11 +14,14 @@ import { openErrorDialog } from "@/webview/lib/actions";
 import { handleLoadRemotes, openRemoteAction } from "@/webview/lib/remote-actions";
 import {
   handleRepositoryQuery,
+  repositoryRevision,
   repositoryState,
   requestRepositoryState,
   resetRepositoryState
 } from "@/webview/lib/repository-actions";
 import { dialog, selectedRepo } from "@/webview/lib/stores";
+
+import { setupWebviewTest } from "@tests/webview/test-utils";
 
 const mocks = vi.hoisted(() => ({ postMessage: vi.fn() }));
 vi.mock("@/webview/lib/vscode", () => ({
@@ -64,15 +67,13 @@ function click(label: string) {
   act(() => button.click());
 }
 
+// Running dialogs format their elapsed time in the configured locale.
+beforeAll(() => setupWebviewTest());
 beforeEach(() => {
   mocks.postMessage.mockClear();
   selectedRepo.value = "/repo";
   dialog.value = null;
   resetRepositoryState();
-  Object.defineProperty(window, "l10n", {
-    configurable: true,
-    value: new Proxy({}, { get: (_target, key) => String(key) })
-  });
   container = document.createElement("div");
   document.body.append(container);
 });
@@ -200,6 +201,69 @@ describe("repository dialogs", () => {
       repo: "/repo",
       action: { kind: "sync", operation: "push", force: true, setUpstream: false, plan }
     });
+  });
+
+  it("keeps the sync review and its focus through background refreshes", () => {
+    openRemoteAction("push", "feature");
+    handleLoadRemotes({
+      ...lastRequest(),
+      remotes: ["origin"],
+      upstream: null,
+      pushRemote: null,
+      status: null
+    });
+    act(() => {
+      form().onSubmit(["origin", "feature", false, false]);
+      render(h(Dialog, {}), container);
+    });
+    const planRequest = () =>
+      mocks.postMessage.mock.calls
+        .map(([message]) => message)
+        .findLast((message) => message.query?.kind === "syncPlan");
+    const plan = {
+      branch: "feature",
+      remote: "origin",
+      remoteBranch: "feature",
+      local: "b".repeat(40),
+      remoteHead: "a".repeat(40),
+      incoming: { entries: [], more: false },
+      outgoing: { entries: [], more: false },
+      ahead: 1,
+      behind: 0,
+      canFastForward: true
+    };
+    respond({ kind: "syncPlan", plan }, planRequest());
+    const push = () =>
+      [...container.querySelectorAll("button")].find(
+        (element) => element.textContent === "pushBranch"
+      )!;
+    const first = push();
+    act(() => first.focus());
+
+    // The watcher refreshes the repository while the review is open.
+    const before = planRequest();
+    act(() => {
+      repositoryRevision.value++;
+    });
+    expect(planRequest()).not.toBe(before);
+    expect(push()).toBe(first);
+    expect(first.closest("[aria-busy]")?.getAttribute("aria-busy")).toBe("true");
+    expect(document.activeElement).toBe(first);
+    respond({ kind: "syncPlan", plan }, planRequest());
+    expect(push()).toBe(first);
+    expect(document.activeElement).toBe(first);
+
+    // A new commit is a new plan to review; focus moves into it instead of to the page.
+    act(() => {
+      repositoryRevision.value++;
+    });
+    respond(
+      { kind: "syncPlan", plan: { ...plan, local: "c".repeat(40), ahead: 2 } },
+      planRequest()
+    );
+    expect(push()).not.toBe(first);
+    expect(document.activeElement).not.toBe(document.body);
+    expect(push().closest("[aria-busy]")?.contains(document.activeElement)).toBe(true);
   });
 
   it("keeps a newer dialog when a repository query completes late", () => {

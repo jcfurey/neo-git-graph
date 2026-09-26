@@ -1,5 +1,5 @@
 import type { LocalizedStrings } from "@/old-extension/l10n/webviewL10n";
-import type { GitRepo, RepoChange, RepoUpdate, WebviewConfig } from "@/types";
+import type { GitRepo, RepoUpdate, WebviewConfig } from "@/types";
 
 export type WebviewInitialize = {
   l10n: LocalizedStrings;
@@ -49,8 +49,8 @@ export type SidebarPane = "refs" | "workspace";
 export type RpcNotificationMap = {
   "view.showPane": { pane: SidebarPane };
   "repo.select": GitRepo;
-  "repo.changed": RepoChange;
   "repo.rescan": null;
+  "config.changed": WebviewConfig;
   "repo.updated": RepoUpdate;
 };
 

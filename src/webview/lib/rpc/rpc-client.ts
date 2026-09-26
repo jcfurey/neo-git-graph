@@ -1,5 +1,6 @@
 import type { RpcMethod, RpcMethodMap, RpcRequest } from "@/types";
 import { initRpcHandler, type PendingRpcRequest } from "@/webview/lib/rpc/rpc-handler";
+import { shellText } from "@/webview/lib/shell-text";
 import { vscode } from "@/webview/lib/vscode";
 
 const RPC_TIMEOUT_MS = 30_000;
@@ -25,7 +26,7 @@ export const rpcClient = {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         if (requests.delete(id)) {
-          reject(new Error(`RPC request timed out: ${method}`));
+          reject(new Error(shellText("rpcTimeout").replace("{0}", method)));
         }
       }, RPC_TIMEOUT_MS);
 

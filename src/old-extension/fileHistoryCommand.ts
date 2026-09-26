@@ -3,7 +3,7 @@ import path from "node:path";
 import * as vscode from "vscode";
 
 import { gitClientFactory } from "@/backend/gitClient";
-import { normalizeRepoPath } from "@/backend/utils/repoPath";
+import { workTreeRoot } from "@/backend/utils/git";
 import { extConfig } from "@/extension/config";
 
 export function registerFileHistoryCommand(
@@ -17,11 +17,18 @@ export function registerFileHistoryCommand(
         if (!file || !["file", "vscode-remote"].includes(file.scheme)) {
           throw new Error(vscode.l10n.t("Select a workspace file to view its history."));
         }
-        const git = gitClientFactory(path.dirname(file.fsPath), extConfig.gitPath()).getInstance();
-        const repo = normalizeRepoPath(
-          (await git.raw(["rev-parse", "--show-toplevel"])).replace(/\n$/, "")
-        );
-        open(repo, path.relative(repo, file.fsPath).split(path.sep).join("/"));
+        const folder = path.dirname(file.fsPath);
+        const git = gitClientFactory(folder, extConfig.gitPath()).getInstance();
+        // The folder's path within the repository holds even when the file was opened through
+        // a symlink, which a path relative to the repository's real location would not.
+        const [repo, prefix] = await Promise.all([
+          workTreeRoot(folder, extConfig.gitPath()),
+          git.raw(["rev-parse", "--show-prefix"])
+        ]);
+        if (repo === null) {
+          throw new Error(vscode.l10n.t("Select a workspace file to view its history."));
+        }
+        open(repo, prefix.replace(/\n$/, "") + path.basename(file.fsPath));
       } catch (error) {
         void vscode.window.showErrorMessage(
           vscode.l10n.t(

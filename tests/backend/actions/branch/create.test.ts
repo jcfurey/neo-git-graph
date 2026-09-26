@@ -1,51 +1,40 @@
-import * as cp from "node:child_process";
-import * as fs from "node:fs";
-
-import { simpleGit } from "simple-git";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { createBranch } from "@/backend/actions/branch";
+import { createGit } from "@/backend/gitClient";
 
-import { makeRepo } from "@tests/backend/helpers";
+import { freshRepo, git, gitOutput } from "@tests/backend/helpers";
 
-let repo: string;
-let commitHash: string;
-
-beforeAll(() => {
-  repo = makeRepo();
-  commitHash = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
-});
-
-afterAll(() => {
-  fs.rmSync(repo, { recursive: true, force: true });
-});
+const repo = freshRepo((dir) => git(["commit", "--allow-empty", "-m", "second"], dir));
 
 describe("createBranch", () => {
-  it("creates a new branch at the given commit", async () => {
-    await createBranch(simpleGit(repo), {
-      branchName: "new-branch",
-      commitHash
-    });
-
-    const listed = cp
-      .execFileSync("git", ["branch", "--list", "new-branch"], { cwd: repo })
-      .toString()
-      .trim();
-    expect(listed).toBe("new-branch");
+  it("creates a branch at the given commit without checking it out", async () => {
+    const first = gitOutput(["rev-parse", "HEAD^"], repo());
+    await createBranch(createGit(repo(), "git"), { branchName: "new-branch", commitHash: first });
+    expect(gitOutput(["rev-parse", "refs/heads/new-branch"], repo())).toBe(first);
+    expect(gitOutput(["symbolic-ref", "HEAD"], repo())).toBe("refs/heads/main");
   });
 
-  it("throws when the branch already exists", async () => {
+  it("throws when the branch already exists and keeps it", async () => {
+    const main = gitOutput(["rev-parse", "main"], repo());
     await expect(
-      createBranch(simpleGit(repo), { branchName: "main", commitHash })
+      createBranch(createGit(repo(), "git"), {
+        branchName: "main",
+        commitHash: gitOutput(["rev-parse", "HEAD^"], repo())
+      })
     ).rejects.toThrow();
+    expect(gitOutput(["rev-parse", "main"], repo())).toBe(main);
   });
 
   it("throws when the commit hash is invalid", async () => {
     await expect(
-      createBranch(simpleGit(repo), {
+      createBranch(createGit(repo(), "git"), {
         branchName: "bad-branch",
-        commitHash: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+        commitHash: "deadbeef".repeat(5)
       })
     ).rejects.toThrow();
+    expect(gitOutput(["for-each-ref", "--format=%(refname)", "refs/heads/"], repo())).toBe(
+      "refs/heads/main"
+    );
   });
 });

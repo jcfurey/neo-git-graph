@@ -2,11 +2,10 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { runRepositoryAction } from "@/backend/actions/repository";
-import { gitClientFactory } from "@/backend/gitClient";
+import { createGit, gitClientFactory } from "@/backend/gitClient";
 import { bisectResult, loadBisect } from "@/backend/queries/bisect";
 import { repositoryQuery } from "@/backend/queries/repository";
 import {
@@ -23,7 +22,7 @@ import { makeRepo } from "@tests/backend/helpers";
 
 let repo: string;
 let dirs: string[];
-const git = () => simpleGit({ baseDir: repo, trimmed: false });
+const git = () => createGit(repo, "git");
 const read = (args: string[], cwd = repo) =>
   execFileSync("git", args, { cwd, stdio: "pipe" }).toString().trim();
 const run = (action: RepositoryAction) => runRepositoryAction(git(), action);
@@ -174,8 +173,8 @@ describe("merged branch cleanup", () => {
     expect(plan.branches.map((item) => item.name)).toEqual(["merged"]);
     read(["config", "branch.merged.description", "remove with branch"]);
     await run({ kind: "cleanup", plan });
-    expect(read(["branch", "--list", "merged"])).toBe("");
-    expect(read(["branch", "--list", "unmerged"])).toContain("unmerged");
+    expect(read(["branch", "--no-color", "--list", "merged"])).toBe("");
+    expect(read(["branch", "--no-color", "--list", "unmerged"])).toContain("unmerged");
     read(["branch", "merged"]);
     const stale = await loadCleanupPlan(git());
     read(["branch", "-f", "merged", "unmerged"]);

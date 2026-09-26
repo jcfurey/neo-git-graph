@@ -1,75 +1,63 @@
-import * as cp from "node:child_process";
-import * as fs from "node:fs";
-
-import { simpleGit } from "simple-git";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { addTag } from "@/backend/actions/tag";
+import { createGit } from "@/backend/gitClient";
 
-import { makeRepo } from "@tests/backend/helpers";
+import { freshRepo, git, gitOutput, refNames } from "@tests/backend/helpers";
 
-let repo: string;
-let commitHash: string;
-
-beforeAll(() => {
-  repo = makeRepo();
-  commitHash = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
-});
-
-afterAll(() => {
-  fs.rmSync(repo, { recursive: true, force: true });
-});
+const repo = freshRepo();
+const head = () => gitOutput(["rev-parse", "HEAD"], repo());
 
 describe("addTag", () => {
   it("creates a lightweight tag at the given commit", async () => {
-    await addTag(simpleGit(repo), {
+    await addTag(createGit(repo(), "git"), {
       tagName: "v1.0-lw",
-      commitHash,
+      commitHash: head(),
       lightweight: true,
       message: ""
     });
-
-    const tagName = cp
-      .execFileSync("git", ["tag", "-l", "v1.0-lw"], { cwd: repo })
-      .toString()
-      .trim();
-    expect(tagName).toBe("v1.0-lw");
+    expect(gitOutput(["cat-file", "-t", "refs/tags/v1.0-lw"], repo())).toBe("commit");
+    expect(gitOutput(["rev-parse", "refs/tags/v1.0-lw"], repo())).toBe(head());
   });
 
-  it("creates an annotated tag at the given commit", async () => {
-    await addTag(simpleGit(repo), {
+  it("creates an annotated tag with its message at the given commit", async () => {
+    await addTag(createGit(repo(), "git"), {
       tagName: "v1.0",
-      commitHash,
+      commitHash: head(),
       lightweight: false,
       message: "Release v1.0"
     });
-
-    const tagType = cp
-      .execFileSync("git", ["cat-file", "-t", "v1.0"], { cwd: repo })
-      .toString()
-      .trim();
-    expect(tagType).toBe("tag");
+    expect(gitOutput(["cat-file", "-t", "refs/tags/v1.0"], repo())).toBe("tag");
+    expect(gitOutput(["rev-parse", "v1.0^{commit}"], repo())).toBe(head());
+    expect(gitOutput(["tag", "-l", "--format=%(contents:subject)", "v1.0"], repo())).toBe(
+      "Release v1.0"
+    );
   });
 
-  it("throws when the tag already exists", async () => {
+  it("throws when the tag already exists and keeps it", async () => {
+    git(["commit", "--allow-empty", "-m", "newer"], repo());
+    git(["tag", "existing", "HEAD^"], repo());
+    const tagged = gitOutput(["rev-parse", "existing"], repo());
     await expect(
-      addTag(simpleGit(repo), {
-        tagName: "v1.0-lw",
-        commitHash,
+      addTag(createGit(repo(), "git"), {
+        tagName: "existing",
+        commitHash: head(),
         lightweight: true,
         message: ""
       })
     ).rejects.toThrow();
+    expect(gitOutput(["rev-parse", "existing"], repo())).toBe(tagged);
   });
 
   it("throws when the commit hash is invalid", async () => {
     await expect(
-      addTag(simpleGit(repo), {
+      addTag(createGit(repo(), "git"), {
         tagName: "v2.0",
-        commitHash: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+        commitHash: "deadbeef".repeat(5),
         lightweight: true,
         message: ""
       })
     ).rejects.toThrow();
+    expect(refNames("refs/tags/", repo())).toEqual([]);
   });
 });

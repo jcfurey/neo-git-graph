@@ -1,71 +1,49 @@
-import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { resetToCommit } from "@/backend/actions/commit";
+import { createGit } from "@/backend/gitClient";
+import type { GitResetMode } from "@/backend/types";
 
-import { git, makeRepo } from "@tests/backend/helpers";
+import { freshRepo, git, gitOutput } from "@tests/backend/helpers";
 
-let repo: string;
-let firstHash: string;
-
-beforeAll(() => {
-  repo = makeRepo();
-  firstHash = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
-  fs.writeFileSync(path.join(repo, "f"), "y");
-  git(["add", "."], repo);
-  git(["commit", "-m", "second"], repo);
+// The first commit has f = "x"; the second, checked out, has f = "y".
+const repo = freshRepo((dir) => {
+  fs.writeFileSync(path.join(dir, "f"), "y");
+  git(["commit", "-am", "second"], dir);
 });
 
-afterAll(() => {
-  fs.rmSync(repo, { recursive: true, force: true });
-});
+async function reset(resetMode: GitResetMode) {
+  const first = gitOutput(["rev-parse", "HEAD^"], repo());
+  await resetToCommit(createGit(repo(), "git"), { commitHash: first, resetMode });
+  return {
+    moved: gitOutput(["rev-parse", "HEAD"], repo()) === first,
+    index: gitOutput(["show", ":f"], repo()),
+    worktree: fs.readFileSync(path.join(repo(), "f"), "utf8")
+  };
+}
 
 describe("resetToCommit", () => {
-  it("soft-resets to a previous commit", async () => {
-    await resetToCommit(simpleGit(repo), {
-      commitHash: firstHash,
-      resetMode: "soft"
-    });
-
-    const head = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
-    expect(head).toBe(firstHash);
-
-    git(["commit", "-m", "second"], repo);
+  // Each mode keeps a different part of the newer commit.
+  it("soft-resets HEAD and keeps the index and working tree", async () => {
+    expect(await reset("soft")).toEqual({ moved: true, index: "y", worktree: "y" });
   });
 
-  it("mixed-resets to a previous commit", async () => {
-    await resetToCommit(simpleGit(repo), {
-      commitHash: firstHash,
-      resetMode: "mixed"
-    });
-
-    const head = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
-    expect(head).toBe(firstHash);
-
-    git(["add", "."], repo);
-    git(["commit", "-m", "second"], repo);
+  it("mixed-resets HEAD and the index and keeps the working tree", async () => {
+    expect(await reset("mixed")).toEqual({ moved: true, index: "x", worktree: "y" });
   });
 
-  it("hard-resets to a previous commit", async () => {
-    await resetToCommit(simpleGit(repo), {
-      commitHash: firstHash,
-      resetMode: "hard"
-    });
-
-    const head = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
-    expect(head).toBe(firstHash);
+  it("hard-resets HEAD, the index, and the working tree", async () => {
+    expect(await reset("hard")).toEqual({ moved: true, index: "x", worktree: "x" });
   });
 
-  it("throws for an invalid commit hash", async () => {
+  it("throws for an unknown commit and leaves HEAD in place", async () => {
+    const head = gitOutput(["rev-parse", "HEAD"], repo());
     await expect(
-      resetToCommit(simpleGit(repo), {
-        commitHash: "0000000000000000000000000000000000000000",
-        resetMode: "hard"
-      })
+      resetToCommit(createGit(repo(), "git"), { commitHash: "0".repeat(40), resetMode: "hard" })
     ).rejects.toThrow();
+    expect(gitOutput(["rev-parse", "HEAD"], repo())).toBe(head);
   });
 });

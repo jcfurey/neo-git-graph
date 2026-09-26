@@ -181,3 +181,103 @@ it("ignores a late commit error after switching to working changes and cancels o
   });
   expect(document.activeElement).toBe(row());
 });
+
+it("labels an untracked nested repository and asks the extension to explain it", () => {
+  act(() => row().click());
+  reply([
+    { path: "nested/", oldPath: "nested/", status: "?", group: "untracked", repository: true },
+    { path: "plain.txt", oldPath: "plain.txt", status: "?", group: "untracked" }
+  ]);
+  const [nested, plain] = [
+    ...container.querySelectorAll<HTMLButtonElement>('section[aria-label="untrackedFiles"] button')
+  ];
+  expect(nested?.textContent).toContain("(nestedRepository)");
+  expect(plain?.textContent).not.toContain("nestedRepository");
+  act(() => nested!.click());
+  expect(vscodeApi.postMessage).toHaveBeenCalledWith(
+    expect.objectContaining({
+      action: { kind: "viewWorkingTreeFile", path: "nested/", group: "untracked" }
+    })
+  );
+});
+
+const files = (group: WorkingTreeFile["group"], names: string[]): WorkingTreeFile[] =>
+  names.map((path) => ({ path, oldPath: path, status: group === "untracked" ? "?" : "M", group }));
+const numbered = (count: number) => Array.from({ length: count }, (_, i) => `file-${i}.txt`);
+const fileButton = (group: string, path: string) =>
+  container.querySelector<HTMLButtonElement>(
+    `button[data-file-group="${group}"][data-file-path="${path}"]`
+  );
+const refreshList = () =>
+  act(() =>
+    container.querySelector<HTMLButtonElement>("[data-working-tree-details] button")!.click()
+  );
+
+it("keeps the list and focus on screen while a refresh reloads it", () => {
+  act(() => row().click());
+  reply(files("unstaged", numbered(50)));
+  const list = container.querySelector<HTMLElement>("[aria-busy]")!;
+  const target = fileButton("unstaged", "file-29.txt")!;
+  act(() => target.focus());
+
+  const previous = request();
+  refreshList();
+  expect(request()).not.toEqual(previous);
+  // The old list stays, marked busy, instead of a loading indicator.
+  expect(container.querySelector("[aria-busy]")).toBe(list);
+  expect(list.getAttribute("aria-busy")).toBe("true");
+  expect(list.querySelector('[role="status"]')).toBeNull();
+  expect(list.querySelectorAll("button[data-file-path]")).toHaveLength(50);
+  expect(document.activeElement).toBe(target);
+
+  reply(files("unstaged", numbered(50)));
+  expect(list.getAttribute("aria-busy")).toBe("false");
+  expect(document.activeElement).toBe(target);
+});
+
+it("keeps focus on a file that moved to another group, or on its neighbour", () => {
+  act(() => row().click());
+  reply(files("unstaged", numbered(50)));
+  act(() => fileButton("unstaged", "file-29.txt")!.focus());
+
+  // Staging the focused file moves it to Staged Changes.
+  refreshList();
+  const unstaged = numbered(50).filter((name) => name !== "file-29.txt");
+  reply([...files("unstaged", unstaged), ...files("staged", ["file-29.txt"])]);
+  expect(document.activeElement).toBe(fileButton("staged", "file-29.txt"));
+
+  // A file that is gone hands focus to the one that took its place.
+  act(() => fileButton("unstaged", "file-5.txt")!.focus());
+  refreshList();
+  reply(
+    files(
+      "unstaged",
+      unstaged.filter((name) => name !== "file-5.txt")
+    )
+  );
+  expect(document.activeElement).toBe(fileButton("unstaged", "file-6.txt"));
+
+  // Focus that the user moved elsewhere stays there.
+  const outside = container.querySelector<HTMLButtonElement>('[aria-label="close"]')!;
+  act(() => fileButton("unstaged", "file-6.txt")!.focus());
+  act(() => outside.focus());
+  refreshList();
+  reply(files("unstaged", ["file-7.txt"]));
+  expect(document.activeElement).toBe(outside);
+});
+
+it("shows 200 files of a large group at a time", () => {
+  act(() => row().click());
+  reply([...files("untracked", numbered(20_000)), ...files("staged", ["staged.txt"])]);
+  const untracked = () =>
+    container.querySelectorAll('section[aria-label="untrackedFiles"] button[data-file-path]');
+  expect(untracked()).toHaveLength(200);
+  expect(container.textContent).toContain("untrackedFiles (20000)");
+  const more = [
+    ...container.querySelectorAll<HTMLButtonElement>('section[aria-label="untrackedFiles"] button')
+  ].at(-1)!;
+  expect(more.dataset["filePath"]).toBeUndefined();
+  act(() => more.click());
+  expect(untracked()).toHaveLength(400);
+  expect(fileButton("staged", "staged.txt")).not.toBeNull();
+});

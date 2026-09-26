@@ -1,3 +1,4 @@
+import { useComputed } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 import { useId, useState } from "preact/hooks";
 
@@ -46,6 +47,7 @@ import {
   selectedRepo,
   showRemoteBranch
 } from "@/webview/lib/stores";
+import { PAGE_SIZE, usePage } from "@/webview/lib/use-page";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 import type { ContextMenuEntry } from "@/webview/types";
 import { format } from "@/webview/utils/format";
@@ -53,6 +55,8 @@ import { format } from "@/webview/utils/format";
 const ACTION_CLASS =
   "flex shrink-0 cursor-pointer items-center rounded px-1.5 py-0.5 text-xs hover:bg-btn-hover focus:outline-1 focus:outline-focus disabled:cursor-not-allowed disabled:opacity-50";
 const ROW_ICON = "size-3.5 shrink-0 text-muted";
+/** Rows each list renders before Show more, so thousands of refs stay responsive. */
+export const REF_PAGE = PAGE_SIZE;
 
 type RemoteGroup = { remote: string; details: RemoteDetails | undefined; branches: RefDetails[] };
 
@@ -106,10 +110,13 @@ function TrackingBadge({ branch }: { branch: BranchDetails }) {
 /**
  * One ref, stash or remote. The label selects it; the trailing controls and
  * the context menu carry its actions. `depth` indents rows under a remote.
+ * `name` identifies the row in its controls' names, such as `refs/remotes/origin/main` for a
+ * row labelled `main`, so rows with the same label stay distinct.
  */
 function Row({
   source,
   label,
+  name = label,
   icon,
   title,
   active = false,
@@ -123,6 +130,7 @@ function Row({
 }: {
   source: string;
   label: string;
+  name?: string;
   icon: ComponentChildren;
   title?: string;
   active?: boolean;
@@ -134,7 +142,8 @@ function Row({
   onSelect: () => void;
   menu?: () => Array<ContextMenuEntry>;
 }) {
-  const menuOpen = activeSource.value === source;
+  // Only the rows whose menu opens or closes re-render, however many refs are listed.
+  const menuOpen = useComputed(() => activeSource.value === source).value;
   return (
     <div
       class={`group flex items-center gap-1 pr-1 ${
@@ -164,7 +173,7 @@ function Row({
           <button
             type="button"
             class={ACTION_CLASS}
-            aria-label={window.l10n.refActions.replace("{0}", label)}
+            aria-label={window.l10n.refActions.replace("{0}", name)}
             aria-haspopup="menu"
             onClick={(event) => openContextMenu(event, source, menu())}
           >
@@ -218,6 +227,52 @@ function Section({
   );
 }
 
+/** The first `limit` items of a list, and a button that shows the next page. */
+function RemoteBranches({
+  group,
+  shown
+}: {
+  group: { remote: string; branches: RefDetails[] };
+  shown: boolean;
+}) {
+  const page = usePage(group.branches);
+  return (
+    <>
+      {page.shown.map((ref) => {
+        const gitRef: GitRef = { type: "remote", name: ref.name, hash: ref.hash };
+        const value = "remotes/" + ref.name;
+        return (
+          <Row
+            key={ref.name}
+            depth={2}
+            source={refMenuSource(gitRef)}
+            label={ref.name.slice(group.remote.length + 1)}
+            name={`refs/remotes/${ref.name}`}
+            title={ref.name}
+            icon={<BranchIcon class={ROW_ICON} />}
+            dimmed={!shown}
+            active={selectedBranch.value === value}
+            badge={<BranchFocusBadge branch={value} />}
+            onSelect={() => selectBranch(value)}
+            menu={() => refMenu(gitRef, false)}
+            actions={
+              <button
+                type="button"
+                class={ACTION_CLASS}
+                aria-label={`${window.l10n.checkout} refs/remotes/${ref.name}`}
+                onClick={() => checkoutBranchAction(gitRef)}
+              >
+                {window.l10n.checkout}
+              </button>
+            }
+          />
+        );
+      })}
+      {page.more}
+    </>
+  );
+}
+
 function Hint({
   children,
   tone = "muted"
@@ -255,6 +310,8 @@ export function RefsPane() {
   const head = commitHead.value;
   const nothing =
     needle !== "" && branches.length + groups.length + tags.length + visibleStashes.length === 0;
+  const branchPage = usePage(branches);
+  const tagPage = usePage(tags);
 
   return (
     <nav
@@ -302,7 +359,7 @@ export function RefsPane() {
                 onSelect={() => selectBranch(SHOW_ALL_BRANCHES)}
               />
             )}
-            {branches.map((branch) => {
+            {branchPage.shown.map((branch) => {
               const gitRef: GitRef = { type: "head", name: branch.name, hash: branch.hash };
               const isHead = state.head === branch.name;
               const worktree = isHead
@@ -313,6 +370,7 @@ export function RefsPane() {
                   key={branch.name}
                   source={refMenuSource(gitRef)}
                   label={branch.name}
+                  name={`refs/heads/${branch.name}`}
                   bold={isHead}
                   icon={<BranchIcon class={ROW_ICON} />}
                   active={selectedBranch.value === branch.name}
@@ -339,6 +397,7 @@ export function RefsPane() {
                       <button
                         type="button"
                         class={ACTION_CLASS}
+                        aria-label={`${window.l10n.checkout} refs/heads/${branch.name}`}
                         onClick={() => checkoutBranchAction(gitRef)}
                       >
                         {window.l10n.checkout}
@@ -348,6 +407,7 @@ export function RefsPane() {
                 />
               );
             })}
+            {branchPage.more}
           </Section>
           <Section
             id="remotes"
@@ -435,34 +495,7 @@ export function RefsPane() {
                     </span>
                   }
                 >
-                  {group.branches.map((ref) => {
-                    const gitRef: GitRef = { type: "remote", name: ref.name, hash: ref.hash };
-                    const value = "remotes/" + ref.name;
-                    return (
-                      <Row
-                        key={ref.name}
-                        depth={2}
-                        source={refMenuSource(gitRef)}
-                        label={ref.name.slice(group.remote.length + 1)}
-                        title={ref.name}
-                        icon={<BranchIcon class={ROW_ICON} />}
-                        dimmed={!shown}
-                        active={selectedBranch.value === value}
-                        badge={<BranchFocusBadge branch={value} />}
-                        onSelect={() => selectBranch(value)}
-                        menu={() => refMenu(gitRef, false)}
-                        actions={
-                          <button
-                            type="button"
-                            class={ACTION_CLASS}
-                            onClick={() => checkoutBranchAction(gitRef)}
-                          >
-                            {window.l10n.checkout}
-                          </button>
-                        }
-                      />
-                    );
-                  })}
+                  <RemoteBranches group={group} shown={shown} />
                 </Section>
               );
             })}
@@ -474,13 +507,14 @@ export function RefsPane() {
             icon={<TagIcon class={ROW_ICON} />}
           >
             {state.tags.length === 0 && <Hint>{window.l10n.noTags}</Hint>}
-            {tags.map((tag) => {
+            {tagPage.shown.map((tag) => {
               const gitRef: GitRef = { type: "tag", name: tag.name, hash: tag.hash };
               return (
                 <Row
                   key={tag.name}
                   source={refMenuSource(gitRef)}
                   label={tag.name}
+                  name={`refs/tags/${tag.name}`}
                   title={`${tag.name}\n${tag.hash}`}
                   icon={<TagIcon class={ROW_ICON} />}
                   onSelect={() => focusHistory(tag.hash)}
@@ -489,6 +523,7 @@ export function RefsPane() {
                     <button
                       type="button"
                       class={ACTION_CLASS}
+                      aria-label={`${window.l10n.showInGraph} refs/tags/${tag.name}`}
                       onClick={() => focusHistory(tag.hash)}
                     >
                       {window.l10n.showInGraph}
@@ -497,6 +532,7 @@ export function RefsPane() {
                 />
               );
             })}
+            {tagPage.more}
           </Section>
           <Section
             id="stashes"
@@ -526,6 +562,7 @@ export function RefsPane() {
                   key={stash.hash}
                   source={`stash:${stash.hash}`}
                   label={stash.message}
+                  name={stash.ref}
                   title={`${stash.ref}\n${stash.message}`}
                   icon={<StashIcon class={ROW_ICON} />}
                   badge={<span class="shrink-0 text-xs text-muted">{stash.ref}</span>}
@@ -537,6 +574,7 @@ export function RefsPane() {
                         type="button"
                         class={ACTION_CLASS}
                         title={window.l10n.applyStash}
+                        aria-label={`${window.l10n.applyShort} ${stash.ref}`}
                         onClick={() => applyStash("apply", stash, repo)}
                       >
                         {window.l10n.applyShort}
@@ -545,6 +583,7 @@ export function RefsPane() {
                         type="button"
                         class={ACTION_CLASS}
                         title={window.l10n.popStash}
+                        aria-label={`${window.l10n.popShort} ${stash.ref}`}
                         onClick={() => applyStash("pop", stash, repo)}
                       >
                         {window.l10n.popShort}

@@ -3,13 +3,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { checkoutBranch } from "@/backend/actions/branch";
 import { pushBranch } from "@/backend/actions/remote";
 import { runRepositoryAction } from "@/backend/actions/repository";
 import { pushTag } from "@/backend/actions/tag";
+import { createGit } from "@/backend/gitClient";
 import {
   loadOperation,
   loadRebasePlan,
@@ -27,7 +27,7 @@ let repo: string;
 let dirs: string[];
 const read = (args: string[], cwd = repo) =>
   execFileSync("git", args, { cwd, stdio: "pipe" }).toString().trim();
-const run = (action: RepositoryAction) => runRepositoryAction(simpleGit(repo), action);
+const run = (action: RepositoryAction) => runRepositoryAction(createGit(repo, "git"), action);
 function directory() {
   const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-workflow-")));
   dirs.push(dir);
@@ -76,13 +76,17 @@ describe("remote and tracking configuration", () => {
     await run({ kind: "setTracking", branch: "main", upstream: "refs/remotes/team/origin/main" });
     await run({ kind: "pushDefault", remote: "team/origin" });
     read(["config", "branch.main.pushRemote", "team/origin"]);
+    // Colored `git branch` output must not hide branches whose push remote changes.
+    read(["config", "color.branch", "always"]);
+    read(["branch", "topic"]);
+    read(["config", "branch.topic.pushRemote", "team/origin"]);
     await run({
       kind: "editRemote",
       name: "team/origin",
       fetchUrls: [bare, bare + "-mirror"],
       pushUrls: [bare]
     });
-    expect((await loadRepositoryState(simpleGit(repo))).remotes[0]).toEqual({
+    expect((await loadRepositoryState(createGit(repo, "git"))).remotes[0]).toEqual({
       name: "team/origin",
       fetchUrls: [bare, bare + "-mirror"],
       pushUrls: [bare]
@@ -90,27 +94,28 @@ describe("remote and tracking configuration", () => {
     await run({ kind: "renameRemote", name: "team/origin", newName: "team/upstream" });
     expect(read(["config", "remote.pushDefault"])).toBe("team/upstream");
     expect(read(["config", "branch.main.pushRemote"])).toBe("team/upstream");
+    expect(read(["config", "branch.topic.pushRemote"])).toBe("team/upstream");
     expect(read(["rev-parse", "--abbrev-ref", "@{upstream}"])).toBe("team/upstream/main");
     await run({ kind: "editRemote", name: "team/upstream", fetchUrls: [bare], pushUrls: [] });
-    expect((await loadRepositoryState(simpleGit(repo))).remotes[0]?.pushUrls).toEqual([]);
+    expect((await loadRepositoryState(createGit(repo, "git"))).remotes[0]?.pushUrls).toEqual([]);
     await run({ kind: "removeRemote", name: "team/upstream" });
-    expect((await loadRepositoryState(simpleGit(repo))).remotes).toEqual([]);
+    expect((await loadRepositoryState(createGit(repo, "git"))).remotes).toEqual([]);
     expect(read(["branch", "--show-current"])).toBe("main");
     expect(fs.existsSync(bare)).toBe(true);
-    expect((await loadRepositoryState(simpleGit(repo))).pushDefault).toBeNull();
+    expect((await loadRepositoryState(createGit(repo, "git"))).pushDefault).toBeNull();
   });
 
   it("reports ahead/behind and allows tracking to be cleared without pushing", async () => {
     remote();
     await run({ kind: "setTracking", branch: "main", upstream: "backup/main" });
     commit("a", "local");
-    expect((await loadRepositoryState(simpleGit(repo))).branches[0]).toMatchObject({
+    expect((await loadRepositoryState(createGit(repo, "git"))).branches[0]).toMatchObject({
       upstream: "backup/main",
       ahead: 1,
       behind: 0
     });
     await run({ kind: "setTracking", branch: "main", upstream: null });
-    expect((await loadRepositoryState(simpleGit(repo))).branches[0]?.upstream).toBe("");
+    expect((await loadRepositoryState(createGit(repo, "git"))).branches[0]?.upstream).toBe("");
   });
 
   it("validates all URLs before changing an existing remote", async () => {
@@ -128,11 +133,11 @@ describe("remote and tracking configuration", () => {
     const bare = remote();
     read(["branch", "release"]);
     read(["tag", "release"]);
-    await pushTag(simpleGit(repo), { remote: "backup", tagName: "release" });
+    await pushTag(createGit(repo, "git"), { remote: "backup", tagName: "release" });
     read(["push", "backup", "refs/heads/release"]);
     await run({ kind: "deleteRemoteRef", remote: "backup", name: "release", refType: "branch" });
     expect(read(["tag", "--list"], bare)).toBe("release");
-    expect(read(["branch", "--list", "release"], bare)).toBe("");
+    expect(read(["branch", "--no-color", "--list", "release"], bare)).toBe("");
     await run({ kind: "deleteRemoteRef", remote: "backup", name: "release", refType: "tag" });
     expect(read(["tag", "--list"], bare)).toBe("");
     expect(read(["tag", "--list"])).toBe("release");
@@ -148,7 +153,7 @@ describe("remote and tracking configuration", () => {
     const latest = commit("latest", "latest", peer);
     read(["push", "origin", "main"], peer);
     read(["config", "branch.autoSetupMerge", "false"]);
-    await checkoutBranch(simpleGit(repo), {
+    await checkoutBranch(createGit(repo, "git"), {
       branchName: "feature/navigation",
       remoteBranch: "team/origin/main",
       fetch: true
@@ -159,7 +164,7 @@ describe("remote and tracking configuration", () => {
 
   it("uses an explicit lease that remains protective after a background fetch", async () => {
     const bare = remote();
-    const lease = await repositoryQuery(simpleGit(repo), {
+    const lease = await repositoryQuery(createGit(repo, "git"), {
       kind: "lease",
       remote: "backup",
       branch: "main"
@@ -168,7 +173,7 @@ describe("remote and tracking configuration", () => {
       throw new Error("Expected lease");
     }
     read(["commit", "--amend", "-m", "rewritten"]);
-    await pushBranch(simpleGit(repo), {
+    await pushBranch(createGit(repo, "git"), {
       requestId: "push",
       remote: "backup",
       branchName: "main",
@@ -181,7 +186,7 @@ describe("remote and tracking configuration", () => {
     read(["fetch", "backup"]);
     read(["commit", "--amend", "-m", "another rewrite"]);
     await expect(
-      pushBranch(simpleGit(repo), {
+      pushBranch(createGit(repo, "git"), {
         requestId: "push",
         remote: "backup",
         branchName: "main",
@@ -189,7 +194,7 @@ describe("remote and tracking configuration", () => {
         setUpstream: false,
         expectedRemoteHash: lease.hash
       })
-    ).rejects.toThrow(/stale info/);
+    ).rejects.toThrow();
     expect(read(["rev-parse", "main"], bare)).toBe(rewritten);
   });
 });
@@ -200,7 +205,7 @@ describe("stashes", () => {
     read(["add", "f"]);
     fs.writeFileSync(path.join(repo, "untracked"), "new file");
     await run({ kind: "saveStash", message: "my work", includeUntracked: true });
-    const stash = (await loadStashes(simpleGit(repo)))[0]!;
+    const stash = (await loadStashes(createGit(repo, "git")))[0]!;
     expect(stash.message).toContain("my work");
     expect(read(["status", "--porcelain"])).toBe("");
     const inspected = await run({
@@ -218,7 +223,7 @@ describe("stashes", () => {
     await run({ kind: "stash", operation: "pop", stash, reinstateIndex: true });
     expect(fs.readFileSync(path.join(repo, "untracked"), "utf8")).toBe("new file");
     expect(read(["diff", "--cached"])).toContain("staged");
-    expect((await loadStashes(simpleGit(repo))).map((entry) => entry.message)).toEqual([
+    expect((await loadStashes(createGit(repo, "git"))).map((entry) => entry.message)).toEqual([
       expect.stringContaining("newer")
     ]);
   });
@@ -226,21 +231,21 @@ describe("stashes", () => {
   it("retains a stash when pop conflicts and exposes the conflicted files", async () => {
     fs.writeFileSync(path.join(repo, "f"), "stashed");
     await run({ kind: "saveStash", message: "conflict", includeUntracked: false });
-    const stash = (await loadStashes(simpleGit(repo)))[0]!;
+    const stash = (await loadStashes(createGit(repo, "git")))[0]!;
     commit("f", "committed change");
     await expect(
       run({ kind: "stash", operation: "pop", stash, reinstateIndex: false })
     ).rejects.toThrow();
-    expect((await loadStashes(simpleGit(repo)))[0]?.hash).toBe(stash.hash);
-    expect((await loadRepositoryState(simpleGit(repo))).conflicts).toEqual(["f"]);
+    expect((await loadStashes(createGit(repo, "git")))[0]?.hash).toBe(stash.hash);
+    expect((await loadRepositoryState(createGit(repo, "git"))).conflicts).toEqual(["f"]);
   });
 
   it("drops the selected stash and rejects a stale selection", async () => {
     fs.writeFileSync(path.join(repo, "f"), "stash");
     await run({ kind: "saveStash", message: "drop", includeUntracked: false });
-    const stash = (await loadStashes(simpleGit(repo)))[0]!;
+    const stash = (await loadStashes(createGit(repo, "git")))[0]!;
     await run({ kind: "stash", operation: "drop", stash, reinstateIndex: false });
-    expect(await loadStashes(simpleGit(repo))).toEqual([]);
+    expect(await loadStashes(createGit(repo, "git"))).toEqual([]);
     await expect(
       run({ kind: "stash", operation: "drop", stash, reinstateIndex: false })
     ).rejects.toThrow(/changed/);
@@ -250,41 +255,43 @@ describe("stashes", () => {
 describe("operation recovery", () => {
   it("detects and completes a conflicted merge after explicitly staging the resolution", async () => {
     conflictBranches();
-    await expect(simpleGit(repo).merge(["other"])).rejects.toThrow();
-    const state = await loadRepositoryState(simpleGit(repo));
+    // Git reports conflicts in the user's language; its exit status is the stable signal.
+    expect(() => read(["merge", "other"])).toThrow();
+    const state = await loadRepositoryState(createGit(repo, "git"));
     expect(state.operation?.kind).toBe("merge");
     await expect(
       run({ kind: "recover", operation: state.operation!, resolution: "continue" })
     ).rejects.toThrow(/Resolve and stage/);
     expect(await run({ kind: "conflict", path: "f", operation: "open" })).toEqual({
       kind: "conflict",
-      path: path.join(repo, "f")
+      path: path.join(repo, "f"),
+      status: "UU"
     });
     fs.writeFileSync(path.join(repo, "f"), "resolved");
     await run({ kind: "conflict", path: "f", operation: "stage" });
     await run({ kind: "recover", operation: state.operation!, resolution: "continue" });
-    expect(await loadOperation(simpleGit(repo))).toBeNull();
+    expect(await loadOperation(createGit(repo, "git"))).toBeNull();
     expect(read(["show", "-s", "--format=%P", "HEAD"]).split(" ")).toHaveLength(2);
   });
 
   it.each(["abort", "skip"] as const)("can %s a conflicted cherry-pick", async (resolution) => {
     const { other, head } = conflictBranches();
-    await expect(simpleGit(repo).raw(["cherry-pick", other])).rejects.toThrow();
-    const operation = (await loadOperation(simpleGit(repo)))!;
+    await expect(createGit(repo, "git").raw(["cherry-pick", other])).rejects.toThrow();
+    const operation = (await loadOperation(createGit(repo, "git")))!;
     expect(operation.kind).toBe("cherry-pick");
     await run({ kind: "recover", operation, resolution });
-    expect(await loadOperation(simpleGit(repo))).toBeNull();
+    expect(await loadOperation(createGit(repo, "git"))).toBeNull();
     expect(read(["rev-parse", "HEAD"])).toBe(head);
   });
 
   it("detects and aborts a conflicted revert", async () => {
     const first = commit("f", "first");
     commit("f", "second");
-    await expect(simpleGit(repo).raw(["revert", first])).rejects.toThrow();
-    const operation = (await loadOperation(simpleGit(repo)))!;
+    await expect(createGit(repo, "git").raw(["revert", first])).rejects.toThrow();
+    const operation = (await loadOperation(createGit(repo, "git")))!;
     expect(operation.kind).toBe("revert");
     await run({ kind: "recover", operation, resolution: "abort" });
-    expect(await loadOperation(simpleGit(repo))).toBeNull();
+    expect(await loadOperation(createGit(repo, "git"))).toBeNull();
   });
 
   it.each(["abort", "skip", "continue"] as const)(
@@ -294,14 +301,14 @@ describe("operation recovery", () => {
       await expect(
         run({ kind: "rebase", branch: "main", onto: "other", expectedHead: head })
       ).rejects.toThrow();
-      const operation = (await loadOperation(simpleGit(repo)))!;
+      const operation = (await loadOperation(createGit(repo, "git")))!;
       expect(operation.kind).toBe("rebase");
       if (resolution === "continue") {
         fs.writeFileSync(path.join(repo, "f"), "resolved");
         await run({ kind: "conflict", path: "f", operation: "stage" });
       }
       await run({ kind: "recover", operation, resolution });
-      expect(await loadOperation(simpleGit(repo))).toBeNull();
+      expect(await loadOperation(createGit(repo, "git"))).toBeNull();
       if (resolution === "abort") {
         expect(read(["rev-parse", "HEAD"])).toBe(head);
       }
@@ -313,8 +320,9 @@ describe("operation recovery", () => {
 
   it("rejects recovery for an operation that already ended", async () => {
     conflictBranches();
-    await expect(simpleGit(repo).merge(["other"])).rejects.toThrow();
-    const operation = (await loadOperation(simpleGit(repo)))!;
+    // Git reports conflicts in the user's language; its exit status is the stable signal.
+    expect(() => read(["merge", "other"])).toThrow();
+    const operation = (await loadOperation(createGit(repo, "git")))!;
     await run({ kind: "recover", operation, resolution: "abort" });
     await expect(run({ kind: "recover", operation, resolution: "abort" })).rejects.toThrow(
       /changed/
@@ -328,7 +336,7 @@ describe("interactive rebase", () => {
     for (const name of ["a", "b", "c", "d"]) {
       commit(name, name);
     }
-    const plan = await loadRebasePlan(simpleGit(repo), base);
+    const plan = await loadRebasePlan(createGit(repo, "git"), base);
     const [a, b, c, d] = plan.entries;
     const message = "reworded `literal` $(text) 'quoted'\n\nDetailed message";
     plan.entries = [
@@ -348,7 +356,7 @@ describe("interactive rebase", () => {
   it("refuses stale or invalid plans before rewriting history", async () => {
     const base = read(["rev-parse", "HEAD"]);
     commit("a", "a");
-    const plan = await loadRebasePlan(simpleGit(repo), base);
+    const plan = await loadRebasePlan(createGit(repo, "git"), base);
     await expect(
       run({
         kind: "interactiveRebase",
@@ -366,7 +374,7 @@ describe("interactive rebase", () => {
     commit("f", "first");
     commit("f", "second");
     commit("later", "later");
-    const plan = await loadRebasePlan(simpleGit(repo), base);
+    const plan = await loadRebasePlan(createGit(repo, "git"), base);
     const [a, b, c] = plan.entries;
     plan.entries = [
       { ...a!, action: "drop" },
@@ -374,12 +382,12 @@ describe("interactive rebase", () => {
       { ...c!, action: "reword", message: "after recovery" }
     ];
     await expect(run({ kind: "interactiveRebase", plan })).rejects.toThrow();
-    const operation = (await loadOperation(simpleGit(repo)))!;
+    const operation = (await loadOperation(createGit(repo, "git")))!;
     fs.writeFileSync(path.join(repo, "f"), "second");
     await run({ kind: "conflict", path: "f", operation: "stage" });
     await run({ kind: "recover", operation, resolution: "continue" });
     expect(read(["log", "-1", "--format=%s"])).toBe("after recovery");
-    expect(await loadOperation(simpleGit(repo))).toBeNull();
+    expect(await loadOperation(createGit(repo, "git"))).toBeNull();
   });
 });
 
@@ -396,7 +404,7 @@ describe("worktrees", () => {
       newBranch: true,
       startPoint: "HEAD"
     });
-    const entry = (await loadWorktrees(simpleGit(repo))).find(
+    const entry = (await loadWorktrees(createGit(repo, "git"))).find(
       (item) => item.branch === "feature/worktree"
     )!;
     expect(entry.path).toBe(normalizeRepoPath(folder));
@@ -413,7 +421,8 @@ describe("worktrees", () => {
         newBranch: false,
         startPoint: ""
       })
-    ).rejects.toThrow(/already (checked out|used)/);
+    ).rejects.toThrow();
+    expect(fs.existsSync(second)).toBe(false);
     fs.writeFileSync(path.join(folder, "untracked"), "keep me");
     await expect(
       run({ kind: "removeWorktree", path: folder, expectedHead: entry.head })
@@ -422,7 +431,7 @@ describe("worktrees", () => {
     fs.unlinkSync(path.join(folder, "untracked"));
     await run({ kind: "removeWorktree", path: folder, expectedHead: entry.head });
     expect(fs.existsSync(folder)).toBe(false);
-    expect(read(["branch", "--list", "feature/worktree"])).toBe("feature/worktree");
+    expect(read(["branch", "--no-color", "--list", "feature/worktree"])).toBe("feature/worktree");
   });
 
   it("detects operations inside linked worktrees using their own Git directory", async () => {
@@ -435,15 +444,15 @@ describe("worktrees", () => {
       newBranch: true,
       startPoint: "main"
     });
-    await expect(simpleGit(folder).merge(["other"])).rejects.toThrow();
-    const operation = (await loadOperation(simpleGit(folder)))!;
+    expect(() => read(["merge", "other"], folder)).toThrow();
+    const operation = (await loadOperation(createGit(folder, "git")))!;
     expect(operation.kind).toBe("merge");
-    expect(await loadOperation(simpleGit(repo))).toBeNull();
-    await runRepositoryAction(simpleGit(folder), {
+    expect(await loadOperation(createGit(repo, "git"))).toBeNull();
+    await runRepositoryAction(createGit(folder, "git"), {
       kind: "recover",
       operation,
       resolution: "abort"
     });
-    expect(await loadOperation(simpleGit(folder))).toBeNull();
+    expect(await loadOperation(createGit(folder, "git"))).toBeNull();
   });
 });

@@ -15,10 +15,23 @@ import {
 
 suite("History documents", () => {
   test("round-trips reserved URI characters in repository and file paths", () => {
-    const repo = "/tmp/repo #? with spaces";
-    const file = "folder/odd #?\tname.txt";
-    const uri = vscode.Uri.parse(encodeDiffDocUri(repo, file, "a".repeat(40)).toString());
-    assert.deepStrictEqual(decodeDiffDocUri(uri), { repo, filePath: file, commit: "a".repeat(40) });
+    const repo = "/tmp/repo #?% with spaces 中文";
+    // Windows paths use backslashes as separators, so only other systems keep one in a name.
+    const files = [
+      "folder/odd #?\tname.txt",
+      "percent %41 and %.txt",
+      "目录/café.md",
+      'quote"and\nnewline',
+      ...(process.platform === "win32" ? [] : ["back\\slash"])
+    ];
+    for (const file of files) {
+      const uri = vscode.Uri.parse(encodeDiffDocUri(repo, file, "a".repeat(40)).toString());
+      assert.deepStrictEqual(decodeDiffDocUri(uri), {
+        repo,
+        filePath: file,
+        commit: "a".repeat(40)
+      });
+    }
   });
 
   test("loads simultaneous comparisons from their own repositories", async () => {
@@ -26,10 +39,8 @@ suite("History documents", () => {
     const file = "file # with spaces.txt";
     const repos = [path.join(root, "first"), path.join(root, "second")];
     const provider = new DiffDocProvider(
-      () => {
-        throw new Error("A comparison must use its bound client");
-      },
-      (repo) => gitClientFactory(repo, "git").getInstance()
+      (repo) => gitClientFactory(repo, "git").getInstance(),
+      () => false
     );
     try {
       for (const [index, repo] of repos.entries()) {
@@ -44,9 +55,10 @@ suite("History documents", () => {
         git("commit", "-m", "initial");
       }
       const contents = await Promise.all(
-        repos.map((repo) =>
-          provider.provideTextDocumentContent(encodeDiffDocUri(repo, file, "HEAD"))
-        )
+        repos.map((repo) => {
+          const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
+          return provider.provideTextDocumentContent(encodeDiffDocUri(repo, file, head));
+        })
       );
       assert.deepStrictEqual(contents, ["repository 0", "repository 1"]);
     } finally {

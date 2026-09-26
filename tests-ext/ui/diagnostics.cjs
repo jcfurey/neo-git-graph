@@ -60,15 +60,22 @@ module.exports = function diagnostics({ artifacts, connections, graph, runtime }
             fs.writeFileSync(path.join(directory, "workbench.png"), Buffer.from(data, "base64"));
           })(),
           (async () => {
+            // Stylesheets show whether the page's CSS arrived, which its DOM alone does not.
             const document = await graph()?.evaluate(`({
               text: document.body.innerText,
-              html: document.documentElement.outerHTML
+              html: document.documentElement.outerHTML,
+              styleSheets: [...document.styleSheets].map((sheet) => {
+                let rules = null;
+                try { rules = sheet.cssRules.length; } catch {}
+                return { href: sheet.href, rules, disabled: sheet.disabled };
+              })
             })`);
             if (!document) {
               throw new Error("No graph context for DOM capture");
             }
             fs.writeFileSync(path.join(directory, "webview.txt"), document.text);
             fs.writeFileSync(path.join(directory, "webview.html"), document.html);
+            write(path.join(directory, "webview-styles.json"), document.styleSheets);
           })()
         ]);
         attempts.forEach((result, index) => {

@@ -46,6 +46,7 @@ export function getWebviewLocalizedStrings() {
     showRemoteBranches: vscode.l10n.t("Show Remote Branches"),
     refresh: vscode.l10n.t("Refresh"),
     retry: vscode.l10n.t("Retry"),
+    unableToLoadRepositories: vscode.l10n.t("Unable to load repositories: {0}"),
     close: vscode.l10n.t("Close"),
     loadMore: vscode.l10n.t("Load More Commits"),
     showAll: vscode.l10n.t("Show All"),
@@ -108,6 +109,7 @@ export function getWebviewLocalizedStrings() {
     noRemotesConfigured: vscode.l10n.t(
       "No remotes configured. Add a remote to this repository first."
     ),
+    remoteNotConfigured: vscode.l10n.t("The remote for '{0}' is no longer configured."),
     dialogFetchTitle: vscode.l10n.t("Fetch updates from a remote:"),
     dialogPushBranchTitle: vscode.l10n.t("Push branch {0} to a remote:"),
     dialogPullBranchTitle: vscode.l10n.t("Pull into branch {0} (fast-forward only):"),
@@ -197,6 +199,7 @@ export function getWebviewLocalizedStrings() {
     unstagedChanges: vscode.l10n.t("Unstaged Changes"),
     stagedChanges: vscode.l10n.t("Staged Changes"),
     untrackedFiles: vscode.l10n.t("Untracked Files"),
+    nestedRepository: vscode.l10n.t("nested repository"),
     conflicts: vscode.l10n.t("Conflicts"),
     noWorkingTreeChanges: vscode.l10n.t("No uncommitted changes."),
 

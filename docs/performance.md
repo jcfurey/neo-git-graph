@@ -92,3 +92,51 @@ The graph still renders every loaded row. This batch removes measured repeated w
 changing scrolling, selection, or expanded-details behavior through virtualization. Large page
 updates and occasional long frames remain at 3,000 rows; the reports provide a baseline for
 evaluating virtualization or a correctly invalidated ancestry cache separately.
+
+## Branches pane and branch dropdown, 2026-09-26
+
+Every Branches pane row read the shared "active menu" signal, so opening any menu or dialog
+re-rendered every row, and the pane and the branch dropdown rendered every matching ref. Rows now
+subscribe only to whether their own menu is open, each list renders 200 rows with **Show more**,
+and the dropdown renders the page of 200 matches that holds the active option, paging as the
+arrow keys move.
+
+This comparison renders the components in jsdom, not Chromium, with 3,000 and 10,000 each of
+local branches, remote branches, and tags. Absolute times are far higher than in VS Code, where
+the earlier Chrome measurements at 3,000 refs were 190 ms to open a menu and 956 ms to clear the
+filter; what matters is whether a cost grows with the number of refs. Run it with
+`NGG_BENCH_REFS=1 pnpm exec vitest run --project webview --reporter=verbose tests/webview/components/repository/RefsTiming.test.ts`,
+which prints the medians as a `benchmark-refs` JSON line. Raw medians are in
+[the comparison data](benchmarks/2026-09-26-refs.json).
+
+Medians in milliseconds (before → after):
+
+| Refs of each kind | Open a menu  | Filter keystroke | Clear the filter | Open the dropdown |
+| ----------------- | ------------ | ---------------- | ---------------- | ----------------- |
+| 3,000 each        | 285.9 → 1    | 724.4 → 101.4    | 4339.7 → 92.6    | 88.7 → 10.3       |
+| 10,000 each       | 3033.7 → 0.8 | 9644.7 → 95.1    | 43960.3 → 95.4   | 500.5 → 6.4       |
+
+Opening a menu no longer depends on the number of refs, and `RefsScale.test.ts` asserts that it
+re-renders only the rows whose menu opened or closed, where it previously re-rendered all 9,001.
+A filter keystroke still re-renders up to one page of each list.
+
+## Uncommitted changes list, 2026-09-26
+
+Every refresh, including one caused by auto-save, replaced the uncommitted-changes list with a
+loading indicator and then rebuilt it, which dropped focus and the scroll position, and every
+group rendered all of its files. The previous list now stays on screen, marked busy, until the
+new one arrives, so rows that stay in their group keep their elements, focus, and scroll
+position. When a refresh removes the focused row, focus moves to the same file in its new group
+or to the row that took its place. Each group shows 200 files at a time with **Show more**.
+
+This comparison renders the list in jsdom with 20,000 untracked files. Refresh is the render of
+the refresh request plus the render of its answer. Run it with
+`NGG_BENCH_WORKING_TREE=1 pnpm exec vitest run --project webview --reporter=verbose tests/webview/components/commit/WorkingTreeTiming.test.ts`,
+which prints the medians as a `benchmark-working-tree` JSON line. Raw medians are in
+[the comparison data](benchmarks/2026-09-26-working-tree.json).
+
+Medians in milliseconds (before → after):
+
+| Files  | Show the list | Refresh    |
+| ------ | ------------- | ---------- |
+| 20,000 | 1281.9 → 26.6 | 1386 → 6.4 |

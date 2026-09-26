@@ -1,4 +1,4 @@
-import { useState } from "preact/hooks";
+import { useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import type { HistoryPage, SyncPlan, WorkspaceEntry } from "@/backend/types";
 import { Button } from "@/webview/components/ui/Button";
@@ -333,6 +333,18 @@ function SyncView({
   );
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const review = useRef<HTMLDivElement>(null);
+  const focused = useRef<HTMLElement | null>(null);
+  const plan = query.data?.plan;
+  const planKey = plan ? plan.local + plan.remoteHead : "";
+  // A changed plan is a new review, which replaces the control that had focus; keep focus in it.
+  useLayoutEffect(() => {
+    const lost = focused.current;
+    const active = document.activeElement;
+    if (lost !== null && !lost.isConnected && (active === null || active === document.body)) {
+      review.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
+    }
+  }, [planKey]);
   return (
     <div class="space-y-3">
       <Button
@@ -346,14 +358,19 @@ function SyncView({
       >
         {window.l10n.fetchPreview}
       </Button>
-      <QueryStatus loading={query.loading || fetching} error={error || query.error} />
-      {query.data && !query.loading && !fetching && !error && (
-        <SyncReview
-          key={query.data.plan.local + query.data.plan.remoteHead}
-          plan={query.data.plan}
-          repo={repo}
-          options={options}
-        />
+      <QueryStatus
+        loading={fetching || (query.loading && plan === undefined)}
+        error={error || query.error}
+      />
+      {/* A background refresh keeps the review, and the control with focus, on screen. */}
+      {plan && !fetching && !error && !query.error && (
+        <div
+          ref={review}
+          aria-busy={query.loading}
+          onFocusIn={(event) => (focused.current = event.target as HTMLElement)}
+        >
+          <SyncReview key={planKey} plan={plan} repo={repo} options={options} />
+        </div>
       )}
     </div>
   );

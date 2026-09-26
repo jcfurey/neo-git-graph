@@ -2,7 +2,6 @@ import * as vscode from "vscode";
 
 import { gitClientFactory } from "@/backend/gitClient";
 import { extConfig } from "@/extension/config";
-import { AvatarManager } from "@/old-extension/avatarManager";
 import { DiffDocProvider } from "@/old-extension/diffDocProvider";
 import { ExtensionState } from "@/old-extension/extensionState";
 import { registerMessageHandlers } from "@/old-extension/messageHandler";
@@ -12,18 +11,14 @@ import type { WebviewBridge } from "@/old-extension/webviewBridge";
 
 export function createMessageProtocol(ctx: vscode.ExtensionContext) {
   const extensionState = new ExtensionState(ctx);
-  const avatarManager = new AvatarManager(extConfig.gitPath, extensionState);
-  const gitClient = gitClientFactory(extensionState.getLastActiveRepo() ?? "", extConfig.gitPath());
   const repoManager = createRepoManager(extensionState);
 
   ctx.subscriptions.push(
-    vscode.commands.registerCommand("neo-git-graph.clearAvatarCache", () => {
-      avatarManager.clearCache();
-    }),
     vscode.workspace.registerTextDocumentContentProvider(
       DiffDocProvider.scheme,
-      new DiffDocProvider(gitClient.getInstance, (repo) =>
-        gitClientFactory(repo, extConfig.gitPath()).getInstance()
+      new DiffDocProvider(
+        (repo) => gitClientFactory(repo, extConfig.gitPath()).getInstance(),
+        (repo) => repoManager.getRepos()[repo] !== undefined
       )
     )
   );
@@ -33,14 +28,10 @@ export function createMessageProtocol(ctx: vscode.ExtensionContext) {
       let isPanelVisible = panel.visible;
       let disposed = false;
       const bridge: WebviewBridge = webviewBridgeFactory(panel.webview);
-      avatarManager.registerBridge(bridge.post);
 
       const { onPanelShown, dispose: disposeQueries } = registerMessageHandlers(bridge, {
         config: extConfig,
-        gitClient,
-        repoManager,
-        extensionState,
-        avatarManager
+        repoManager
       });
       const viewStateListener = panel.onDidChangeViewState(() => {
         if (panel.visible === isPanelVisible) {
@@ -62,7 +53,6 @@ export function createMessageProtocol(ctx: vscode.ExtensionContext) {
           disposeQueries();
           bridge.dispose();
           viewStateListener.dispose();
-          avatarManager.deregisterBridge();
         }
       };
     }

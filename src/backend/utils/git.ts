@@ -1,18 +1,28 @@
-import { simpleGit } from "simple-git";
+import { realpath } from "node:fs/promises";
 
+import { createGit } from "@/backend/gitClient";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 
-export async function isGitRepository(repoPath: string, gitPath: string): Promise<boolean> {
+/**
+ * The real path of the work tree that contains `directory`, or null outside a work tree. A
+ * subfolder or a symlink of a repository thus maps to the one entry for that repository.
+ */
+export async function workTreeRoot(directory: string, gitPath: string): Promise<string | null> {
   try {
-    return await simpleGit({ baseDir: repoPath, binary: gitPath }).checkIsRepo();
+    const top = (await createGit(directory, gitPath).raw(["rev-parse", "--show-toplevel"])).replace(
+      /\n$/,
+      ""
+    );
+    return top === "" ? null : normalizeRepoPath(await realpath(top));
   } catch {
-    return false;
+    // Outside a work tree, Git fails, and the client rejects a directory that does not exist.
+    return null;
   }
 }
 
 export async function getSubmodulePaths(repoPath: string, gitPath: string): Promise<string[]> {
   try {
-    const output = await simpleGit({ baseDir: repoPath, binary: gitPath }).raw([
+    const output = await createGit(repoPath, gitPath).raw([
       "submodule",
       "foreach",
       "--quiet",
@@ -31,11 +41,7 @@ export async function getSubmodulePaths(repoPath: string, gitPath: string): Prom
 
 export async function getRemoteUrl(repoPath: string, gitPath: string): Promise<string | null> {
   try {
-    const url = await simpleGit({ baseDir: repoPath, binary: gitPath }).raw([
-      "config",
-      "--get",
-      "remote.origin.url"
-    ]);
+    const url = await createGit(repoPath, gitPath).raw(["config", "--get", "remote.origin.url"]);
     return url.trim() || null;
   } catch {
     return null;

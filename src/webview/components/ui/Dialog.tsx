@@ -10,6 +10,7 @@ import { closeDialog } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/copy";
 import { dialog } from "@/webview/lib/stores";
 import type { DialogInput, DialogState } from "@/webview/types";
+import { formatSeconds } from "@/webview/utils/date";
 import { hasInvalidRefChars } from "@/webview/utils/ref";
 
 const FOCUSABLE = "input:not([disabled]), textarea, select, button:not([disabled])";
@@ -63,14 +64,28 @@ function trapTab(panel: HTMLElement, event: KeyboardEvent) {
   }
 }
 
+/** A held key repeats its keydown. Only a fresh press may activate a control in a dialog. */
+function ignoreKeyRepeat(event: KeyboardEvent) {
+  if (
+    event.repeat &&
+    (event.key === "Enter" || event.key === " ") &&
+    !(event.target instanceof HTMLTextAreaElement)
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+}
+
 function Panel({
   labelledBy,
   children,
-  wide
+  wide,
+  destructive
 }: {
   labelledBy: string;
   children: ComponentChildren;
   wide: boolean;
+  destructive: boolean;
 }) {
   const panel = useRef<HTMLDivElement>(null);
 
@@ -80,7 +95,11 @@ function Panel({
       return;
     }
 
-    (element.querySelector<HTMLElement>('input[type="text"], button') ?? element).focus();
+    (
+      element.querySelector<HTMLElement>(
+        destructive ? "[data-dialog-cancel]" : 'input[type="text"], button'
+      ) ?? element
+    ).focus();
   }, []);
 
   useEffect(() => {
@@ -96,7 +115,15 @@ function Panel({
 
   return (
     <>
-      <div class="fixed inset-0 z-30 bg-black/20" onClick={closeDialog} />
+      <div
+        class="fixed inset-0 z-30 bg-black/20"
+        onClick={(event) => {
+          // The second click of the double-click that opened the dialog lands here.
+          if (event.detail < 2) {
+            closeDialog();
+          }
+        }}
+      />
       <div
         ref={panel}
         role="dialog"
@@ -107,6 +134,7 @@ function Panel({
         style={{
           width: wide ? "min(960px, calc(100vw - 2rem))" : "min(600px, calc(100vw - 2rem))"
         }}
+        onKeyDownCapture={ignoreKeyRepeat}
         onKeyDown={(event) => {
           if (event.key === "Tab" && panel.current !== null) {
             trapTab(panel.current, event);
@@ -254,7 +282,9 @@ function FormBody({
             {state.action}
           </Button>
         </span>
-        <Button onClick={closeDialog}>{window.l10n.dialogCancel}</Button>
+        <Button data-dialog-cancel onClick={closeDialog}>
+          {window.l10n.dialogCancel}
+        </Button>
       </div>
     </form>
   );
@@ -296,10 +326,7 @@ function MessageBody({
       )}
       {state.kind === "running" && state.started !== undefined && (
         <p class="mt-3 text-muted">
-          {window.l10n.elapsedSeconds.replace(
-            "{0}",
-            String(Math.max(0, Math.floor((now - state.started) / 1000)))
-          )}
+          {window.l10n.elapsedSeconds.replace("{0}", formatSeconds(state.started, now))}
           <br />
           {window.l10n.operationKeepsRunning}
         </p>
@@ -312,6 +339,9 @@ function MessageBody({
           <Button onClick={() => copyToClipboard(window.l10n.copyError, state.reason!)}>
             {window.l10n.copyError}
           </Button>
+        )}
+        {state.kind === "running" && state.onCancel && (
+          <Button onClick={state.onCancel}>{window.l10n.cancelOperation}</Button>
         )}
         <Button onClick={closeDialog}>
           {state.kind === "running" ? window.l10n.hideOperation : window.l10n.dialogDismiss}
@@ -334,6 +364,7 @@ export function Dialog() {
       key={state.token}
       labelledBy={labelledBy}
       wide={state.kind === "content" && state.wide === true}
+      destructive={state.kind === "form" && state.destructive === true}
     >
       {state.kind === "content" ? (
         <>

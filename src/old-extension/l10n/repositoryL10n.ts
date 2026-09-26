@@ -77,6 +77,7 @@ export function getRepositoryLocalizedStrings() {
     dropCommit: vscode.l10n.t("Drop"),
     moveEarlier: vscode.l10n.t("Move Earlier"),
     moveLater: vscode.l10n.t("Move Later"),
+    movedEntry: vscode.l10n.t("Moved {0} to position {1} of {2}."),
     startRebase: vscode.l10n.t("Start Rebase"),
     invalidRebasePlan: vscode.l10n.t(
       "Keep at least one commit; the first retained commit cannot be Squash. Reword requires a message."
@@ -90,6 +91,8 @@ export function getRepositoryLocalizedStrings() {
       "{0} the current {1}? Abort restores the pre-operation state; Skip discards the current patch."
     ),
     openConflict: vscode.l10n.t("Open Conflict"),
+    showMoreRefs: vscode.l10n.t("Show {0} more ({1} hidden)"),
+    dropdownPage: vscode.l10n.t("{0}–{1} of {2}. Type to narrow the list, or use the arrow keys."),
     stageResolution: vscode.l10n.t("Stage Resolution"),
     stageResolutionConfirm: vscode.l10n.t("Mark {0} as resolved and stage its current contents?"),
     mergeOperation: vscode.l10n.t("Merge"),

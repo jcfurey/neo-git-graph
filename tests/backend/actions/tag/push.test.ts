@@ -1,45 +1,38 @@
-import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { pushTag } from "@/backend/actions/tag";
+import { createGit } from "@/backend/gitClient";
 
-import { makeRepo } from "@tests/backend/helpers";
+import { freshRepo, git, refNames } from "@tests/backend/helpers";
 
-let repo: string;
 let bare: string;
+const repo = freshRepo();
 
-beforeAll(() => {
-  repo = makeRepo();
-
+beforeEach(() => {
   bare = fs.mkdtempSync(path.join(os.tmpdir(), "ngg-test-bare-"));
-  cp.execFileSync("git", ["init", "--bare", bare]);
-  cp.execFileSync("git", ["remote", "add", "origin", bare], { cwd: repo });
-  cp.execFileSync("git", ["push", "origin", "main"], { cwd: repo });
-
-  cp.execFileSync("git", ["tag", "v1.0"], { cwd: repo });
+  git(["init", "-q", "--bare", bare], repo());
+  git(["remote", "add", "origin", bare], repo());
+  git(["push", "-q", "origin", "main"], repo());
+  git(["tag", "v1.0"], repo());
+  git(["tag", "v2.0"], repo());
 });
 
-afterAll(() => {
-  fs.rmSync(repo, { recursive: true, force: true });
-  fs.rmSync(bare, { recursive: true, force: true });
-});
+afterEach(() => fs.rmSync(bare, { recursive: true, force: true }));
 
 describe("pushTag", () => {
-  it("pushes an existing tag to origin", async () => {
-    await pushTag(simpleGit(repo), { tagName: "v1.0", remote: "origin" });
-
-    const tags = cp.execFileSync("git", ["tag", "-l"], { cwd: bare }).toString().trim();
-    expect(tags).toBe("v1.0");
+  it("pushes only the named tag", async () => {
+    await pushTag(createGit(repo(), "git"), { tagName: "v1.0", remote: "origin" });
+    expect(refNames("refs/tags/", bare)).toEqual(["v1.0"]);
   });
 
   it("throws when the tag does not exist locally", async () => {
     await expect(
-      pushTag(simpleGit(repo), { tagName: "v99.0-nonexistent", remote: "origin" })
+      pushTag(createGit(repo(), "git"), { tagName: "v99.0-nonexistent", remote: "origin" })
     ).rejects.toThrow();
+    expect(refNames("refs/tags/", bare)).toEqual([]);
   });
 });

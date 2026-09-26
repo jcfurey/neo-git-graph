@@ -7,20 +7,34 @@ on:
   push:
     tags:
       - "v*"
+  # A dry run: validate, test and package the manifest's version and check both publishing
+  # tokens, without publishing. Only a pushed tag publishes.
+  workflow_dispatch:
 
 jobs:
   release:
     name: Validate release identity and tag
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/setup@v2
+      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
           runtime: node@24
           install: false
+      - name: Choose the release tag
+        id: tag
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="v$(node -p 'require("./package.json").version')"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - run: node scripts/check-release.cjs "$RELEASE_TAG"
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
 
   validate:
     needs: release
@@ -30,10 +44,12 @@ jobs:
     name: Publish extension
     needs: [release, validate]
     runs-on: ubuntu-latest
+    # Required reviewers and the publishing tokens belong to this environment.
+    environment: release
     steps:
       - uses: actions/checkout@v7
 
-      - uses: pnpm/setup@v2
+      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
           runtime: node@24
           cache: true
@@ -43,7 +59,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Download validated extension
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: neo-git-graph-vsix
           path: release
@@ -53,14 +69,26 @@ jobs:
           unzip -p release/neo-git-graph.vsix extension/package.json > "$RUNNER_TEMP/vsix-manifest.json"
           node scripts/check-release.cjs "$RELEASE_TAG" "$RUNNER_TEMP/vsix-manifest.json"
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
+
+      # Check both tokens first, so an expired one cannot leave the release on one registry only.
+      - name: Verify publishing tokens
+        run: |
+          publisher="$(node -p 'require("./package.json").publisher')"
+          pnpm exec vsce verify-pat "$publisher"
+          pnpm exec ovsx verify-pat "$publisher"
+        env:
+          VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
+          OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
 
       - name: Publish to VS Marketplace
+        if: github.event_name == 'push'
         run: pnpm exec vsce publish --packagePath release/neo-git-graph.vsix --skip-duplicate
         env:
           VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
 
       - name: Publish to Open VSX
+        if: github.event_name == 'push'
         run: pnpm exec ovsx publish release/neo-git-graph.vsix --skip-duplicate
         env:
           OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}

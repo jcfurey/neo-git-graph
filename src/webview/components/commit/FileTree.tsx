@@ -126,7 +126,7 @@ function FileEntry({
             .replace("{0}", file.oldFilePath)
             .replace("{1}", file.newFilePath)}
         >
-          R
+          {file.type}
         </span>
       )}
       {showAddDel && <FileAddDel file={file} />}

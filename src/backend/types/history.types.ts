@@ -46,6 +46,16 @@ export type FileRestorePlan = {
   snapshot: string;
   dirty: boolean;
 };
+/** A file's contents before a restore replaced them, kept as a Git object for Undo. */
+export type RestoreBackup = {
+  /** Repository-relative path of the restored file. */
+  path: string;
+  blob: string;
+  mode: number;
+  symlink: boolean;
+  /** Snapshot right after the restore; Undo refuses to replace later edits. */
+  after: string;
+};
 export type StagedPlan = { head: string; tree: string; files: string[]; target: string };
 export type BatchPlan = { head: string; branch: string; entries: HistoryEntry[] };
 
@@ -83,6 +93,7 @@ export type HistoryAction =
       recorded: string;
     }
   | { kind: "restoreFile"; plan: FileRestorePlan }
+  | { kind: "undoRestore"; backup: RestoreBackup }
   | { kind: "previewFileRestore"; plan: FileRestorePlan }
   | { kind: "fixup"; plan: StagedPlan }
   | { kind: "batch"; operation: "cherry-pick" | "revert"; plan: BatchPlan; mainline: number }

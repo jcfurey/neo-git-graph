@@ -1,41 +1,33 @@
-import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { revertCommit } from "@/backend/actions/commit";
+import { createGit } from "@/backend/gitClient";
 
-import { git, makeRepo } from "@tests/backend/helpers";
+import { freshRepo, git, gitOutput } from "@tests/backend/helpers";
 
-let repo: string;
-let commitHash: string;
-
-beforeAll(() => {
-  repo = makeRepo();
-  fs.writeFileSync(path.join(repo, "g"), "revert-me");
-  git(["add", "."], repo);
-  git(["commit", "-m", "second commit"], repo);
-  commitHash = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
-});
-
-afterAll(() => {
-  fs.rmSync(repo, { recursive: true, force: true });
+const repo = freshRepo((dir) => {
+  fs.writeFileSync(path.join(dir, "g"), "revert-me");
+  git(["add", "g"], dir);
+  git(["commit", "-m", "second commit"], dir);
 });
 
 describe("revertCommit", () => {
-  it("reverts a commit", async () => {
-    await revertCommit(simpleGit(repo), { commitHash, parentIndex: 0 });
-    expect(fs.existsSync(path.join(repo, "g"))).toBe(false);
+  it("adds a commit that undoes the reverted one", async () => {
+    const reverted = gitOutput(["rev-parse", "HEAD"], repo());
+    await revertCommit(createGit(repo(), "git"), { commitHash: reverted, parentIndex: 0 });
+    expect(gitOutput(["rev-parse", "HEAD^"], repo())).toBe(reverted);
+    expect(fs.existsSync(path.join(repo(), "g"))).toBe(false);
+    expect(gitOutput(["status", "--porcelain"], repo())).toBe("");
   });
 
-  it("throws for a nonexistent commit hash", async () => {
+  it("throws for a nonexistent commit and leaves the branch unchanged", async () => {
+    const head = gitOutput(["rev-parse", "HEAD"], repo());
     await expect(
-      revertCommit(simpleGit(repo), {
-        commitHash: "0000000000000000000000000000000000000000",
-        parentIndex: 0
-      })
+      revertCommit(createGit(repo(), "git"), { commitHash: "0".repeat(40), parentIndex: 0 })
     ).rejects.toThrow();
+    expect(gitOutput(["rev-parse", "HEAD"], repo())).toBe(head);
   });
 });

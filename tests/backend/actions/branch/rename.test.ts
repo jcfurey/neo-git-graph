@@ -1,55 +1,33 @@
-import * as cp from "node:child_process";
-import * as fs from "node:fs";
-
-import { simpleGit } from "simple-git";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { renameBranch } from "@/backend/actions/branch";
+import { createGit } from "@/backend/gitClient";
 
-import { git, makeRepo } from "@tests/backend/helpers";
+import { freshRepo, git, gitOutput } from "@tests/backend/helpers";
 
-let repo: string;
-
-beforeAll(() => {
-  repo = makeRepo();
-  git(["branch", "old-name"], repo);
-});
-
-afterAll(() => {
-  fs.rmSync(repo, { recursive: true, force: true });
-});
+const repo = freshRepo((dir) => git(["branch", "old-name"], dir));
+const branches = () =>
+  gitOutput(["for-each-ref", "--format=%(refname:short)", "refs/heads/"], repo()).split("\n");
 
 describe("renameBranch", () => {
-  it("renames an existing branch", async () => {
-    await renameBranch(simpleGit(repo), {
-      oldName: "old-name",
-      newName: "new-name"
-    });
-
-    const listedOld = cp
-      .execFileSync("git", ["branch", "--list", "old-name"], { cwd: repo })
-      .toString()
-      .trim();
-    const listedNew = cp
-      .execFileSync("git", ["branch", "--list", "new-name"], { cwd: repo })
-      .toString()
-      .trim();
-    expect(listedOld).toBe("");
-    expect(listedNew).toBe("new-name");
+  it("renames an existing branch and keeps its commit", async () => {
+    const tip = gitOutput(["rev-parse", "old-name"], repo());
+    await renameBranch(createGit(repo(), "git"), { oldName: "old-name", newName: "new-name" });
+    expect(branches()).toEqual(["main", "new-name"]);
+    expect(gitOutput(["rev-parse", "new-name"], repo())).toBe(tip);
   });
 
   it("throws when the source branch does not exist", async () => {
     await expect(
-      renameBranch(simpleGit(repo), {
-        oldName: "nonexistent-branch",
-        newName: "whatever"
-      })
+      renameBranch(createGit(repo(), "git"), { oldName: "missing", newName: "whatever" })
     ).rejects.toThrow();
+    expect(branches()).toEqual(["main", "old-name"]);
   });
 
   it("throws when the target branch already exists", async () => {
     await expect(
-      renameBranch(simpleGit(repo), { oldName: "new-name", newName: "main" })
+      renameBranch(createGit(repo(), "git"), { oldName: "old-name", newName: "main" })
     ).rejects.toThrow();
+    expect(branches()).toEqual(["main", "old-name"]);
   });
 });

@@ -10,14 +10,20 @@ vi.mock("node:path", async () => {
 vi.mock("vscode", () => ({
   workspace: {
     workspaceFolders: [
-      { uri: { fsPath: "C:\\workspace" } },
-      { uri: { fsPath: "c:\\workspace\\child module" } }
+      { uri: { scheme: "file", fsPath: "C:\\workspace" } },
+      { uri: { scheme: "file", fsPath: "c:\\workspace\\child module" } }
     ],
     getConfiguration: () => ({ get: (_key: string, defaultValue: unknown) => defaultValue })
   }
 }));
-vi.mock("simple-git", () => ({ simpleGit: () => ({ checkIsRepo: async () => true }) }));
+// The Windows folders do not exist on the test machine.
+const directory = vi.hoisted(() => async () => ({ isDirectory: () => true }));
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return { ...actual, stat: directory, default: { ...actual, stat: directory } };
+});
 vi.mock("@/backend/utils/git", () => ({
+  workTreeRoot: async (folder: string) => folder,
   getSubmodulePaths: async (repo: string) =>
     repo === "c:/workspace" ? ["C:/workspace/child module"] : []
 }));

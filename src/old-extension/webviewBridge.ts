@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
 
-import { muteGitRepoWatcher, unmuteGitRepoWatcher } from "@/extension/watchers/git-repo.watcher";
 import type { RequestMessage, ResponseMessage } from "@/types";
 
 export function webviewBridgeFactory(webview: vscode.Webview) {
@@ -11,12 +10,7 @@ export function webviewBridgeFactory(webview: vscode.Webview) {
     if (!handler) {
       return;
     }
-    muteGitRepoWatcher();
-    try {
-      await handler(msg);
-    } finally {
-      unmuteGitRepoWatcher();
-    }
+    await handler(msg);
   });
 
   return {

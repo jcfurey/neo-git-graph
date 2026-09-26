@@ -3,7 +3,7 @@ import type { ComponentChildren } from "preact";
 
 import type { GitFileChange } from "@/backend/types";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
-import type { ResponseMessage } from "@/types";
+import type { ResponseMessage, WebviewConfig } from "@/types";
 import { SHOW_ALL_BRANCHES, UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { captureFocus, restoreFocus } from "@/webview/lib/focus";
 import {
@@ -50,7 +50,7 @@ import {
   uncommittedChanges
 } from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
-import { getWebviewConfig } from "@/webview/lib/webview-config";
+import { getWebviewConfig, updateWebviewConfig } from "@/webview/lib/webview-config";
 import type {
   ActionCommand,
   BranchDisplay,
@@ -376,6 +376,14 @@ export function loadMoreCommits() {
   }
 }
 
+/** Apply settings changed while the graph is open, then load it again with them. */
+export function applyWebviewConfig(config: WebviewConfig) {
+  updateWebviewConfig(config);
+  // A larger first page takes effect now; a smaller one keeps the commits already shown.
+  maxCommits.value = Math.max(maxCommits.peek(), config.initialLoadCommits);
+  refresh();
+}
+
 export function refresh() {
   const repo = selectedRepo.value;
   if (repo === undefined) {
@@ -437,6 +445,16 @@ export function openContextMenu(
   event.preventDefault();
   event.stopPropagation();
   captureFocus(event.target);
+  // Enter or Space on a button clicks it with no pointer position, and the context-menu key
+  // reports none either; open the menu below the control instead of in the window's corner.
+  const keyboard =
+    event.type === "click" ? event.detail === 0 : event.clientX === 0 && event.clientY === 0;
+  const anchor = event.currentTarget instanceof Element ? event.currentTarget : null;
+  if (keyboard && anchor !== null) {
+    const rect = anchor.getBoundingClientRect();
+    contextMenu.value = { x: rect.left, y: rect.bottom, entries, source };
+    return;
+  }
   contextMenu.value = { x: event.clientX, y: event.clientY, entries, source };
 }
 
@@ -472,6 +490,8 @@ type FormDialog<T extends ReadonlyArray<DialogInput>> = {
   /** Context menu key of the element the dialog belongs to. */
   source: string | null;
   onSubmit: (values: DialogValues<T>) => void;
+  /** The dialog opens with focus on Cancel, so a stray Enter cannot confirm it. */
+  destructive?: boolean;
 };
 
 /**
@@ -483,7 +503,8 @@ export function openFormDialog<const T extends ReadonlyArray<DialogInput>>({
   inputs,
   action,
   source,
-  onSubmit
+  onSubmit,
+  destructive
 }: FormDialog<T>) {
   const repo = selectedRepo.value;
   openDialog({
@@ -491,6 +512,7 @@ export function openFormDialog<const T extends ReadonlyArray<DialogInput>>({
     message,
     inputs: [...inputs],
     action,
+    destructive: destructive === true,
     onSubmit: (values) => {
       if (selectedRepo.value === repo) {
         onSubmit(values as DialogValues<T>);
@@ -510,7 +532,7 @@ export function openErrorDialog(message: string, reason: string | null = null) {
 /** Report a command that runs longer than the others. The response replaces it. */
 export function openRunningDialog(
   message: string,
-  context: { detail: string; started: number } | undefined = undefined
+  context: { detail: string; started: number; onCancel?: () => void } | undefined = undefined
 ) {
   openDialog({ kind: "running", message, ...context });
 }

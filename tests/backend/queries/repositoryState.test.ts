@@ -1,9 +1,9 @@
 import * as cp from "node:child_process";
 import * as fs from "node:fs";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
+import { createGit } from "@/backend/gitClient";
 import { loadRepositoryState } from "@/backend/queries/repository";
 
 import { git, makeRepo } from "@tests/backend/helpers";
@@ -25,7 +25,7 @@ afterAll(() => {
 
 it("reports the commit behind every branch, remote branch and tag", async () => {
   const head = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
-  const state = await loadRepositoryState(simpleGit(repo));
+  const state = await loadRepositoryState(createGit(repo, "git"));
   expect(state.branches.map((branch) => [branch.name, branch.hash])).toEqual([
     ["feature", head],
     ["main", head]

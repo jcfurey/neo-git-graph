@@ -13,6 +13,7 @@ import type {
   StagedPlan
 } from "@/backend/types";
 import {
+  differsFromIndex,
   fileSnapshot,
   HISTORY_FORMAT,
   HISTORY_PAGE_SIZE,
@@ -187,23 +188,25 @@ export async function loadRestorePlan(
 ): Promise<FileRestorePlan> {
   const file = await sourceFile(git, source, sourcePath);
   const target = repoFile(destination);
+  const [snapshot, status, differs] = await Promise.all([
+    fileSnapshot(git, target),
+    git.raw([
+      "status",
+      "--porcelain=v1",
+      "--untracked-files=all",
+      "--ignored",
+      "-z",
+      "--",
+      literalPath(target)
+    ]),
+    differsFromIndex(git, target)
+  ]);
   return {
     source: file.hash,
     sourcePath: repoFile(sourcePath),
     destination: target,
-    snapshot: await fileSnapshot(git, target),
-    dirty:
-      (
-        await git.raw([
-          "status",
-          "--porcelain=v1",
-          "--untracked-files=all",
-          "--ignored",
-          "-z",
-          "--",
-          literalPath(target)
-        ])
-      ).length > 0
+    snapshot,
+    dirty: status.length > 0 || differs
   };
 }
 
@@ -225,21 +228,21 @@ export async function loadBatchPlan(git: SimpleGit, hashes: string[]): Promise<B
   if (hashes.length === 0 || hashes.length > 100 || new Set(hashes).size !== hashes.length) {
     throw new Error(l10n.t("Select between 1 and 100 distinct commits."));
   }
-  const entries = await Promise.all(
-    hashes.map(
-      async (hash) =>
-        parseHistory(
-          await git.raw([
-            "log",
-            "-1",
-            "-z",
-            "--format=" + HISTORY_FORMAT,
-            await resolveCommit(git, hash),
-            "--"
-          ])
-        )[0]!
-    )
+  // One process lists every commit in the order given; a missing one fails the whole plan.
+  const entries = parseHistory(
+    await git.raw([
+      "log",
+      "--no-walk=unsorted",
+      "-z",
+      "--format=" + HISTORY_FORMAT,
+      "--end-of-options",
+      ...hashes.map((hash) => `${hash}^{commit}`),
+      "--"
+    ])
   );
+  if (entries.length !== hashes.length) {
+    throw new Error(l10n.t("Select between 1 and 100 distinct commits."));
+  }
   return {
     head: await resolveCommit(git, "HEAD"),
     branch: (await git.raw(["symbolic-ref", "--quiet", "--short", "HEAD"])).trim(),

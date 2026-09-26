@@ -31,26 +31,7 @@ export type GitRepoState = {
   graphPreferences?: GraphPreferences;
 };
 
-export type Avatar = {
-  image: string;
-  timestamp: number;
-  identicon: boolean;
-};
-export type AvatarCache = { [email: string]: Avatar };
-
 /* Infrastructure Request / Response Messages */
-
-export type RequestFetchAvatar = {
-  command: "fetchAvatar";
-  repo: string;
-  email: string;
-  commits: string[];
-};
-export type ResponseFetchAvatar = {
-  command: "fetchAvatar";
-  email: string;
-  image: string;
-};
 
 export type RequestSelectRepo = {
   command: "selectRepo";
@@ -82,11 +63,11 @@ export type ResponseRefresh = {
 };
 
 export type RequestMessage =
+  | { command: "cancelAction"; repo: string; requestId: string }
   | { command: "cancelRepositoryQuery"; repo: string; requestId: string }
   | { command: "viewReady" }
   | ActionRequest
   | QueryRequest
-  | RequestFetchAvatar
   | RequestSelectRepo
   | RequestSaveRepoState
   | RequestViewDiff;
@@ -103,6 +84,5 @@ export type ResponseMessage =
   | { command: "fileHistory"; repo: string; path: string }
   | ActionResponse
   | QueryResponse
-  | ResponseFetchAvatar
   | ResponseViewDiff
   | ResponseRefresh;

@@ -1,7 +1,7 @@
 {
   "name": "neo-git-graph",
   "displayName": "(neo) Git Graph",
-  "version": "0.9.6",
+  "version": "0.9.7",
   "description": "%description%",
   "categories": [
     "SCM Providers",
@@ -44,11 +44,14 @@
     "package": "pnpm run typecheck && pnpm run lint && node esbuild.js --production",
     "package:vsix": "node scripts/check-release.cjs && vsce package --no-dependencies",
     "check:release": "node scripts/check-release.cjs",
-    "test:release": "node --test scripts/check-release.test.cjs",
+    "check:links": "node scripts/markdown-links.cjs",
+    "test:release": "node --test scripts/check-release.test.cjs scripts/markdown-links.test.cjs",
     "test:package": "node scripts/test-package.cjs",
     "clean": "node -e \"require('fs').rmSync('out',{recursive:true,force:true})\"",
+    "clean:all": "node -e \"const fs=require('fs');for(const p of ['out','tests-ext/out','.vscode-test','test-results',...fs.readdirSync('.').filter(f=>f.endsWith('.vsix'))])fs.rmSync(p,{recursive:true,force:true})\"",
     "compile": "pnpm run clean && node esbuild.js",
     "test": "vitest run --project backend && vitest run --project extension && vitest run --project webview",
+    "test:coverage": "vitest run --project webview --coverage",
     "benchmark": "node scripts/benchmark.mjs",
     "benchmark:ui": "node esbuild.js --production && node scripts/benchmark-ui.cjs",
     "test:ext": "pnpm run compile && pnpm run compile-tests && vscode-test",
@@ -59,6 +62,7 @@
     "format": "oxfmt --check",
     "format:fix": "oxfmt .",
     "lint": "oxlint",
+    "test:lint-rules": "node --test oxlint/webview-text.test.cjs",
     "lint:fix": "oxlint --fix",
     "l10n:export": "vscode-l10n-dev export --outDir ./l10n ./src && oxfmt ./l10n/bundle.l10n.json",
     "l10n:check": "pnpm run l10n:export && git diff --exit-code ./l10n/bundle.l10n.json && node scripts/check-l10n.js"
@@ -74,6 +78,7 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "~24.13.3",
     "@types/vscode": "~1.125.0",
+    "@vitest/coverage-v8": "4.1.11",
     "@vscode/l10n-dev": "^0.0.35",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
@@ -101,11 +106,6 @@
           "light": "resources/webview-icon-light.svg",
           "dark": "resources/webview-icon-dark.svg"
         }
-      },
-      {
-        "category": "(neo) Git Graph",
-        "command": "neo-git-graph.clearAvatarCache",
-        "title": "%command.clearAvatarCache%"
       },
       {
         "category": "(neo) Git Graph",
@@ -231,17 +231,20 @@
           "description": "%config.graphStyle%"
         },
         "neo-git-graph.initialLoadCommits": {
-          "type": "number",
+          "type": "integer",
+          "minimum": 1,
           "default": 300,
           "description": "%config.initialLoadCommits%"
         },
         "neo-git-graph.loadMoreCommits": {
-          "type": "number",
+          "type": "integer",
+          "minimum": 1,
           "default": 100,
           "description": "%config.loadMoreCommits%"
         },
         "neo-git-graph.maxDepthOfRepoSearch": {
-          "type": "number",
+          "type": "integer",
+          "minimum": 0,
           "default": 0,
           "description": "%config.maxDepthOfRepoSearch%"
         },
@@ -315,6 +318,14 @@
             ]
           },
           {
+            "id": "focusAndRemotes",
+            "title": "%walkthrough.focusAndRemotes.title%",
+            "description": "%walkthrough.focusAndRemotes.description%",
+            "media": {
+              "markdown": "walkthroughs/focus-and-remotes.md"
+            }
+          },
+          {
             "id": "recover",
             "title": "%walkthrough.recover.title%",
             "description": "%walkthrough.recover.description%",
@@ -336,5 +347,15 @@
   "engines": {
     "vscode": "^1.125.0"
   },
-  "packageManager": "pnpm@11.15.1"
+  "packageManager": "pnpm@11.15.1",
+  "capabilities": {
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "%capabilities.virtualWorkspaces%"
+    },
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "%capabilities.untrustedWorkspaces%"
+    }
+  }
 }

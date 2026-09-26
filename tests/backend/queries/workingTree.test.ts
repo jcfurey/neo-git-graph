@@ -2,10 +2,10 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterEach, beforeEach, expect, it } from "vitest";
 
 import { runRepositoryAction } from "@/backend/actions/repository";
+import { createGit } from "@/backend/gitClient";
 import { loadCommits } from "@/backend/queries/loadCommits";
 import { repositoryQuery } from "@/backend/queries/repository";
 import type { WorkingTreeGroup } from "@/backend/types";
@@ -13,7 +13,7 @@ import type { WorkingTreeGroup } from "@/backend/types";
 import { makeRepo } from "@tests/backend/helpers";
 
 let repo: string;
-const git = () => simpleGit({ baseDir: repo, trimmed: false });
+const git = () => createGit(repo, "git");
 const run = (...args: string[]) =>
   execFileSync("git", args, { cwd: repo, stdio: "pipe" }).toString().trim();
 const write = (file: string, text: string | Buffer) =>
@@ -101,6 +101,26 @@ it("keeps rename paths and special characters intact", async () => {
   });
 });
 
+// Windows does not allow a colon in a file name.
+it.skipIf(process.platform === "win32")(
+  "reads the index entry of a file named like a stage, not the staged file it names",
+  async () => {
+    write("foo", "foo");
+    write("0:foo", "committed");
+    run("add", "--", "foo", "0:foo");
+    run("commit", "-m", "stage-like name");
+    write("0:foo", "staged");
+    run("add", "--", "0:foo");
+    write("0:foo", "working");
+    expect(await view("0:foo", "staged")).toMatchObject({
+      left: run("rev-parse", "HEAD:0:foo"),
+      right: run("rev-parse", ":0:0:foo")
+    });
+    expect(await view("0:foo", "unstaged")).toMatchObject({ left: run("rev-parse", ":0:0:foo") });
+    expect(run("rev-parse", ":0:0:foo")).not.toBe(run("rev-parse", ":0:foo"));
+  }
+);
+
 it("opens additions and deletions against an empty side without changing the index", async () => {
   const original = run("rev-parse", "HEAD:f");
   fs.unlinkSync(path.join(repo, "f"));
@@ -153,7 +173,11 @@ it("reports conflicts once and opens their merge editor", async () => {
     kind: "workingTree",
     files: [{ path: "f", oldPath: "f", status: "UU", group: "conflicts" }]
   });
-  expect(await view("f", "conflicts")).toEqual({ kind: "conflict", path: path.join(repo, "f") });
+  expect(await view("f", "conflicts")).toEqual({
+    kind: "conflict",
+    path: path.join(repo, "f"),
+    status: "UU"
+  });
 });
 
 it("uses a patch for a gitlink whose target object is not in the parent repository", async () => {
@@ -194,4 +218,20 @@ it("rejects files that disappeared from their group and reports a clean reposito
   expect(await query()).toEqual({ kind: "workingTree", files: [] });
   await expect(view("f", "unstaged")).rejects.toThrow("Refresh the graph");
   await expect(view("../outside", "untracked")).rejects.toThrow();
+});
+
+it("marks an untracked nested repository and explains it instead of failing", async () => {
+  const nested = path.join(repo, "nested");
+  fs.mkdirSync(nested);
+  execFileSync("git", ["init", "-q"], { cwd: nested });
+  fs.writeFileSync(path.join(nested, "inner.txt"), "inner");
+  write("plain.txt", "plain");
+  expect(await query()).toEqual({
+    kind: "workingTree",
+    files: [
+      { path: "nested/", oldPath: "nested/", status: "?", group: "untracked", repository: true },
+      { path: "plain.txt", oldPath: "plain.txt", status: "?", group: "untracked" }
+    ]
+  });
+  expect(await view("nested/", "untracked")).toEqual({ kind: "nestedRepository", path: nested });
 });

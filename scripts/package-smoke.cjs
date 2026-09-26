@@ -4,6 +4,8 @@ const path = require("node:path");
 
 const vscode = require("vscode");
 
+const { brokenLinks } = require("./markdown-links.cjs");
+
 exports.run = async () => {
   const extension = vscode.extensions.getExtension(process.env.NGG_EXTENSION_ID);
   assert.ok(extension, "The packaged fork must be installed");
@@ -23,7 +25,6 @@ exports.run = async () => {
     "l10n/bundle.l10n.zh-cn.json",
     "l10n/bundle.l10n.zh-tw.json",
     "docs/git-actions.md",
-    "docs/packaging.md",
     "resources/icon.png",
     ...extension.packageJSON.contributes.walkthroughs.flatMap((walkthrough) =>
       walkthrough.steps.map((step) => step.media.markdown)
@@ -35,7 +36,23 @@ exports.run = async () => {
       `Missing packaged asset: ${file}`
     );
   }
-  for (const excluded of ["node_modules", "src", "tests", "scripts"]) {
+  const packaged = fs
+    .readdirSync(extension.extensionPath, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) =>
+      path
+        .relative(extension.extensionPath, path.join(entry.parentPath, entry.name))
+        .split(path.sep)
+        .join("/")
+    );
+  assert.deepEqual(
+    brokenLinks(packaged, (file) =>
+      fs.readFileSync(path.join(extension.extensionPath, file), "utf8")
+    ),
+    [],
+    "Packaged Markdown links to files the package does not include"
+  );
+  for (const excluded of ["node_modules", "src", "tests", "scripts", "docs/testing.md"]) {
     assert.ok(
       !fs.existsSync(path.join(extension.extensionPath, excluded)),
       `Unexpected packaged directory: ${excluded}`

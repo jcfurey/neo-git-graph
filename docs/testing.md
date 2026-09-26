@@ -1,11 +1,21 @@
 # VS Code UI tests
 
-Use Node.js 24 and the pnpm version pinned in `package.json`:
+Use Node.js 24 and the pnpm version pinned in `package.json`. Corepack, which ships with Node.js,
+provides it; the Nix development shell (`flake.nix`) is an alternative:
 
 ```sh
+corepack enable pnpm
 pnpm install --frozen-lockfile
 pnpm run test:ext
 ```
+
+Scripts and CI-like shells have no terminal to answer prompts. Set
+`COREPACK_ENABLE_DOWNLOAD_PROMPT=0` so Corepack downloads the pinned pnpm without asking. If pnpm
+stops because `node_modules` was installed from another store, for example from the Nix shell,
+reinstall with `pnpm install --frozen-lockfile --config.confirm-modules-purge=false`. After that,
+`pnpm run format`, `pnpm test`, and `pnpm run typecheck` run without a terminal.
+`pnpm run clean:all` removes build output, downloaded VS Code test builds, test results, and
+packaged VSIX files.
 
 The runner downloads stable VS Code and creates a disposable repository, user profile, and
 extensions directory. It does not use your normal VS Code profile. Set `NGG_VSCODE_PATH` to an
@@ -68,3 +78,9 @@ Each verification produces a new `test-results/ui-harness-*/` directory with the
 successful recovery, and minimum run. `compatibility.json` records both actual versions and whether
 the minimum needed a separate run. Local installation overrides are identified in the report;
 without overrides, the test tooling resolves and downloads stable/minimum VS Code.
+
+## Suite overview and performance
+
+`pnpm test:ext` includes the committed end-to-end UI checks and launches an isolated VS Code instance with a disposable workspace. Failed tests save diagnostic text under `test-results/`; successful UI checks capture screenshots there. CI is configured for Linux, Windows, and macOS and produces an installable VSIX artifact. `NGG_VSCODE_PATH` can select a local VS Code executable, and `NGG_HEADLESS=1` enables Linux headless runs.
+
+`pnpm benchmark` measures backend history, focus, remote visibility, workspace scans, graph layout, and cancellation on a disposable large repository. `pnpm benchmark:ui` measures real VS Code graph interactions at several loaded-row counts and saves CPU profiles. See [Graph performance measurements](performance.md) for commands, fixture sizes, reports, and interpretation. CI records these diagnostic timings without enforcing machine-dependent speed thresholds.

@@ -1,6 +1,7 @@
 import type { SimpleGit } from "simple-git";
 
 import type { QueryResult } from "@/backend/types";
+import { currentBranch, refNames } from "@/backend/utils/refs";
 import { remoteVisibility } from "@/backend/utils/remoteVisibility";
 
 type LoadBranchesInput = {
@@ -16,14 +17,16 @@ export async function loadBranches(
   input: LoadBranchesInput
 ): Promise<QueryResult<"loadBranches">> {
   const { showRemoteBranches, hard, repo } = input;
-  const [summary, visibility] = await Promise.all([
-    showRemoteBranches ? git.branch() : git.branchLocal(),
+  const [local, remote, visibility] = await Promise.all([
+    refNames(git, "refs/heads/"),
+    showRemoteBranches ? refNames(git, "refs/remotes/") : [],
     remoteVisibility(git, input)
   ]);
-  const head = summary.detached ? null : summary.current || null;
-  const ordered = head ? [head, ...summary.all.filter((b) => b !== head)] : [...summary.all];
-  const branches = ordered.filter(
-    (branch) => !branch.startsWith("remotes/") || !visibility.excluded.has(branch.slice(8))
-  );
+  const head = await currentBranch(git, local);
+  const branches = [
+    ...(head === null ? [] : [head]),
+    ...local.filter((branch) => branch !== head),
+    ...remote.filter((name) => !visibility.excluded.has(name)).map((name) => "remotes/" + name)
+  ];
   return { repo, branches, head, hard, isRepo: true };
 }

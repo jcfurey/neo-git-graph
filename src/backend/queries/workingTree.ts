@@ -19,7 +19,12 @@ export async function loadWorkingTree(git: SimpleGit): Promise<WorkingTreeFile[]
     if (["DD", "AU", "UD", "UA", "DU", "AA", "UU"].includes(status)) {
       files.push({ path, oldPath, status, group: "conflicts" });
     } else if (status === "??") {
-      files.push({ path, oldPath, status: "?", group: "untracked" });
+      // With every untracked file listed, only a nested repository stays a folder.
+      files.push(
+        path.endsWith("/")
+          ? { path, oldPath, status: "?", group: "untracked", repository: true }
+          : { path, oldPath, status: "?", group: "untracked" }
+      );
     } else {
       if (status[0] !== " ") {
         files.push({ path, oldPath, status: status[0]!, group: "staged" });

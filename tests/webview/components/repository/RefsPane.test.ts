@@ -63,6 +63,14 @@ function hasRow(title: string) {
 
 beforeAll(async () => {
   setupWebviewTest();
+  // Row menus are named from a template; the other strings stay their keys.
+  const keys = window.l10n;
+  Object.defineProperty(window, "l10n", {
+    value: new Proxy(keys, {
+      get: (target, key) => (key === "refActions" ? "Actions for {0}" : Reflect.get(target, key))
+    }),
+    configurable: true
+  });
   ({ RefsPane, groupRemoteBranches } = await import("@/webview/components/repository/RefsPane"));
   actions = await import("@/webview/lib/repository-actions");
   stores = await import("@/webview/lib/stores");
@@ -102,6 +110,37 @@ afterEach(() => {
 });
 
 describe("RefsPane", () => {
+  it("names each row's controls with its full ref, so same-named branches stay distinct", () => {
+    const names = (selector: string) =>
+      [...container.querySelectorAll(selector)].map((button) => button.getAttribute("aria-label"));
+    const menus = names('button[aria-haspopup="menu"]').filter((name) =>
+      name?.startsWith("Actions for ")
+    );
+    expect(menus).toEqual(
+      expect.arrayContaining([
+        "Actions for refs/heads/main",
+        "Actions for refs/remotes/origin/main",
+        "Actions for refs/tags/v1",
+        "Actions for stash@{0}"
+      ])
+    );
+    expect(new Set(menus).size).toBe(menus.length);
+    const rowActions = names("button[aria-label]").filter((name) =>
+      /^(checkout|showInGraph|applyShort|popShort) /.test(name ?? "")
+    );
+    expect(rowActions).toEqual(
+      expect.arrayContaining([
+        "checkout refs/heads/feature",
+        "checkout refs/remotes/origin/feature",
+        "checkout refs/remotes/origin/main",
+        "showInGraph refs/tags/v1",
+        "applyShort stash@{0}",
+        "popShort stash@{0}"
+      ])
+    );
+    expect(new Set(rowActions).size).toBe(rowActions.length);
+  });
+
   it("lists local branches, remotes, tags and stashes", () => {
     const text = container.textContent ?? "";
     expect(row("main").querySelector("span.font-bold")).not.toBeNull();

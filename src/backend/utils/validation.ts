@@ -7,11 +7,41 @@ export async function requireRemote(git: SimpleGit, remote: string) {
   }
 }
 
-export async function requireBranchName(git: SimpleGit, branch: string) {
-  if (!branch || branch.startsWith("-")) {
-    throw new Error(l10n.t("Enter a valid branch name."));
+/**
+ * Whether Git accepts `ref` as a full ref name. `check-ref-format` reports an invalid name only
+ * through its exit status, which simple-git ignores when stderr is empty, so ask for
+ * `--normalize`, which prints the name only when it is valid. A name that Git would rewrite,
+ * such as `a//b`, is refused too.
+ */
+async function isValidRef(git: SimpleGit, ref: string) {
+  const normalized = await git.raw(["check-ref-format", "--normalize", ref]).catch(() => "");
+  return normalized.replace(/\n$/, "") === ref;
+}
+
+/** Throw `message` unless `name` is a valid ref below `namespace`, such as `refs/heads/`. */
+export async function requireRefName(
+  git: SimpleGit,
+  namespace: string,
+  name: string,
+  message: string
+) {
+  if (!name || name.startsWith("-") || !(await isValidRef(git, namespace + name))) {
+    throw new Error(message);
   }
-  await git.raw(["check-ref-format", `refs/heads/${branch}`]);
+}
+
+export async function requireBranchName(git: SimpleGit, branch: string) {
+  // `git branch` also refuses the name HEAD.
+  await requireRefName(
+    git,
+    "refs/heads/",
+    branch === "HEAD" ? "" : branch,
+    l10n.t("Enter a valid branch name.")
+  );
+}
+
+export async function requireTagName(git: SimpleGit, tag: string) {
+  await requireRefName(git, "refs/tags/", tag, l10n.t("Enter a valid tag name."));
 }
 
 export async function resolveCommit(git: SimpleGit, ref: string) {

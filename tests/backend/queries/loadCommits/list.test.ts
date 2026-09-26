@@ -2,9 +2,9 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { createGit } from "@/backend/gitClient";
 import { loadCommits } from "@/backend/queries/loadCommits";
 
 import { git, makeRepo } from "@tests/backend/helpers";
@@ -40,7 +40,7 @@ describe("loadCommits", () => {
         git(["checkout", "--detach", "HEAD"], detachedRepo);
         git(["commit", "--allow-empty", "-m", "detached-only"], detachedRepo);
         fs.writeFileSync(path.join(detachedRepo, "untracked"), "dirty");
-        const client = simpleGit(detachedRepo);
+        const client = createGit(detachedRepo, "git");
         const head = (await client.revparse(["HEAD"])).trim();
         const input = {
           branchName: "",
@@ -69,7 +69,7 @@ describe("loadCommits", () => {
     try {
       git(["checkout", "--detach", "HEAD"], detachedRepo);
       git(["branch", "-D", "main"], detachedRepo);
-      const result = await loadCommits(simpleGit(detachedRepo), {
+      const result = await loadCommits(createGit(detachedRepo, "git"), {
         branchName: "",
         maxCommits: 300,
         showRemoteBranches: true,
@@ -91,7 +91,7 @@ describe("loadCommits", () => {
       git(["checkout", "--detach", "HEAD"], detachedRepo);
       git(["commit", "--allow-empty", "-m", "hidden-remote-tip"], detachedRepo);
       git(["update-ref", "refs/remotes/origin/topic", "HEAD"], detachedRepo);
-      const result = await loadCommits(simpleGit(detachedRepo), {
+      const result = await loadCommits(createGit(detachedRepo, "git"), {
         branchName: "",
         maxCommits: 300,
         showRemoteBranches: true,
@@ -113,7 +113,7 @@ describe("loadCommits", () => {
     const emptyRepo = fs.mkdtempSync(path.join(os.tmpdir(), "ngg-empty-"));
     try {
       git(["init", "-b", "main"], emptyRepo);
-      const result = await loadCommits(simpleGit(emptyRepo), {
+      const result = await loadCommits(createGit(emptyRepo, "git"), {
         branchName: "",
         maxCommits: 300,
         showRemoteBranches: true,
@@ -133,7 +133,7 @@ describe("loadCommits", () => {
   });
 
   it("returns commits with expected fields", async () => {
-    const result = await loadCommits(simpleGit(repo), {
+    const result = await loadCommits(createGit(repo, "git"), {
       branchName: "",
       maxCommits: 300,
       showRemoteBranches: false,
@@ -161,7 +161,7 @@ describe("loadCommits", () => {
   });
 
   it("attaches HEAD ref to the current commit and sets head correctly", async () => {
-    const result = await loadCommits(simpleGit(repo), {
+    const result = await loadCommits(createGit(repo, "git"), {
       branchName: "",
       maxCommits: 300,
       showRemoteBranches: false,
@@ -176,7 +176,7 @@ describe("loadCommits", () => {
   });
 
   it("limits to maxCommits and sets moreCommitsAvailable: true", async () => {
-    const result = await loadCommits(simpleGit(repo), {
+    const result = await loadCommits(createGit(repo, "git"), {
       branchName: "",
       maxCommits: 1,
       showRemoteBranches: false,
@@ -195,7 +195,7 @@ describe("loadCommits", () => {
   });
 
   it("moreCommitsAvailable is false when all commits fit", async () => {
-    const result = await loadCommits(simpleGit(repo), {
+    const result = await loadCommits(createGit(repo, "git"), {
       branchName: "",
       maxCommits: 300,
       showRemoteBranches: false,
@@ -213,7 +213,7 @@ describe("loadCommits", () => {
   });
 
   it("filters commits to the given branch", async () => {
-    const result = await loadCommits(simpleGit(repo), {
+    const result = await loadCommits(createGit(repo, "git"), {
       branchName: "main",
       maxCommits: 300,
       showRemoteBranches: false,
@@ -228,7 +228,7 @@ describe("loadCommits", () => {
     const dirtyRepo = makeRepo();
     try {
       fs.writeFileSync(path.join(dirtyRepo, "untracked"), "z");
-      const result = await loadCommits(simpleGit(dirtyRepo), {
+      const result = await loadCommits(createGit(dirtyRepo, "git"), {
         branchName: "",
         maxCommits: 300,
         showRemoteBranches: false,
@@ -255,7 +255,7 @@ describe("loadCommits", () => {
     const dirtyRepo = makeRepo();
     try {
       fs.writeFileSync(path.join(dirtyRepo, "untracked"), "z");
-      const result = await loadCommits(simpleGit(dirtyRepo), {
+      const result = await loadCommits(createGit(dirtyRepo, "git"), {
         branchName: "",
         maxCommits: 300,
         showRemoteBranches: false,
@@ -272,7 +272,7 @@ describe("loadCommits", () => {
   });
 
   it("does not include remote refs when showRemoteBranches is false", async () => {
-    const result = await loadCommits(simpleGit(repoWithRemote), {
+    const result = await loadCommits(createGit(repoWithRemote, "git"), {
       branchName: "",
       maxCommits: 300,
       showRemoteBranches: false,
@@ -285,7 +285,7 @@ describe("loadCommits", () => {
   });
 
   it("uses commit date when dateType is Commit Date", async () => {
-    const result = await loadCommits(simpleGit(repo), {
+    const result = await loadCommits(createGit(repo, "git"), {
       branchName: "",
       maxCommits: 300,
       showRemoteBranches: false,
@@ -298,7 +298,7 @@ describe("loadCommits", () => {
   });
 
   it("passes hard flag through to the result", async () => {
-    const result = await loadCommits(simpleGit(repo), {
+    const result = await loadCommits(createGit(repo, "git"), {
       branchName: "",
       maxCommits: 300,
       showRemoteBranches: false,

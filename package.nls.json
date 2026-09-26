@@ -1,7 +1,6 @@
 {
   "description": "An MIT-licensed fork of Git Graph with visual history, branch actions, and devcontainer support.",
   "command.view": "View Git Graph (git log)",
-  "command.clearAvatarCache": "Clear Avatar Cache",
   "config.autoCenterCommitDetailsView": "Automatically center the commit details view when it is opened.",
   "config.dateFormat": "Specifies the date format to be used in the date column of Git Graph.",
   "config.dateFormat.dateTime": "Show the date and time, for example \"19 Mar 2019 21:34\"",
@@ -10,7 +9,7 @@
   "config.dateType": "Specifies the date type to be displayed throughout Git Graph.",
   "config.dateType.authorDate": "Use the author date of a commit",
   "config.dateType.commitDate": "Use the committer date of a commit",
-  "config.fetchAvatars": "Deprecated in v0.6.0. Fetch avatars of commit authors and committers. By enabling this setting, you consent to commit author and committer email addresses being sent GitHub, GitLab or Gravatar, depending on the repositories remote origin.",
+  "config.fetchAvatars": "No effect. Earlier versions fetched commit author avatars; that feature has been removed.",
   "config.fetchAvatars.deprecation": "Deprecated in v0.6.0. This setting has no effect and may be removed in a future release.",
   "config.graphColours": "Specifies the colours used on the graph.",
   "config.graphColours.item": "Colour (HEX or RGB)",
@@ -39,6 +38,10 @@
   "walkthrough.actOnCommit.description": "Right-click a commit or click its ⋯ button for checkout, cherry-pick, revert, tag, branch and more. Every change asks for confirmation first.",
   "walkthrough.branchesPane.title": "Use the Branches pane",
   "walkthrough.branchesPane.description": "Browse branches, remotes, tags and stashes beside the graph, with checkout, fetch and apply one click away.\n[Show the Branches pane](command:neo-git-graph.showBranches)",
+  "walkthrough.focusAndRemotes.title": "Focus a branch and hide remotes",
+  "walkthrough.focusAndRemotes.description": "Highlight one branch's history without hiding the others, and keep a noisy remote's branches out of the graph.\n[Show the Branches pane](command:neo-git-graph.showBranches)",
   "walkthrough.recover.title": "Recover from a mistake",
-  "walkthrough.recover.description": "The status strip offers Continue and Abort during merges and rebases, Git Activity keeps every error, and Recover lost commits finds old branch positions.\n[Open the documentation](command:neo-git-graph.openDocumentation)"
+  "walkthrough.recover.description": "The status strip offers Continue and Abort during merges and rebases, Git Activity keeps every error, and Recover lost commits finds old branch positions.\n[Open the documentation](command:neo-git-graph.openDocumentation)",
+  "capabilities.virtualWorkspaces": "Git Graph runs Git on local files, which a virtual workspace does not have.",
+  "capabilities.untrustedWorkspaces": "Git Graph runs Git, which can start programs that the repository's configuration names."
 }

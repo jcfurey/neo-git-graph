@@ -2,9 +2,9 @@ import * as cp from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 
-import { simpleGit } from "simple-git";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { createGit } from "@/backend/gitClient";
 import { loadBranches } from "@/backend/queries/loadBranches";
 
 import { git, makeRepo } from "@tests/backend/helpers";
@@ -12,11 +12,8 @@ import { git, makeRepo } from "@tests/backend/helpers";
 let simpleRepo: string;
 let detachedRepo: string;
 let repoWithRemote: string;
-let originalLang: string | undefined;
 
 beforeAll(() => {
-  originalLang = process.env["LANG"];
-  process.env["LANG"] = "en_US.UTF-8";
   simpleRepo = makeRepo();
   git(["branch", "feature/foo"], simpleRepo);
 
@@ -34,11 +31,6 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  if (originalLang === undefined) {
-    delete process.env["LANG"];
-  } else {
-    process.env["LANG"] = originalLang;
-  }
   fs.rmSync(simpleRepo, { recursive: true, force: true });
   fs.rmSync(detachedRepo, { recursive: true, force: true });
   fs.rmSync(repoWithRemote, { recursive: true, force: true });
@@ -46,7 +38,7 @@ afterAll(() => {
 
 describe("loadBranches", () => {
   it("head branch is first in the returned array", async () => {
-    const result = await loadBranches(simpleGit(simpleRepo), {
+    const result = await loadBranches(createGit(simpleRepo, "git"), {
       showRemoteBranches: false,
       hard: false,
       repo: simpleRepo,
@@ -63,7 +55,7 @@ describe("loadBranches", () => {
   });
 
   it("non-head branches are present", async () => {
-    const result = await loadBranches(simpleGit(simpleRepo), {
+    const result = await loadBranches(createGit(simpleRepo, "git"), {
       showRemoteBranches: false,
       hard: false,
       repo: simpleRepo,
@@ -73,7 +65,7 @@ describe("loadBranches", () => {
   });
 
   it("detached HEAD yields head: null with branches still listed", async () => {
-    const result = await loadBranches(simpleGit(detachedRepo), {
+    const result = await loadBranches(createGit(detachedRepo, "git"), {
       showRemoteBranches: false,
       hard: false,
       repo: detachedRepo,
@@ -86,11 +78,11 @@ describe("loadBranches", () => {
       hard: false,
       isRepo: true
     });
-    expect(result.branches.length).toBeGreaterThan(0);
+    expect(result.branches).toEqual(["main"]);
   });
 
   it("excludes remote-tracking branches when showRemoteBranches is false", async () => {
-    const result = await loadBranches(simpleGit(repoWithRemote), {
+    const result = await loadBranches(createGit(repoWithRemote, "git"), {
       showRemoteBranches: false,
       hard: false,
       repo: repoWithRemote,
@@ -107,7 +99,7 @@ describe("loadBranches", () => {
   });
 
   it("includes remote-tracking branches when showRemoteBranches is true", async () => {
-    const result = await loadBranches(simpleGit(repoWithRemote), {
+    const result = await loadBranches(createGit(repoWithRemote, "git"), {
       showRemoteBranches: true,
       hard: false,
       repo: repoWithRemote,
@@ -120,12 +112,12 @@ describe("loadBranches", () => {
       hard: false,
       isRepo: true
     });
-    expect(result.branches.some((b) => b.startsWith("remotes/origin/"))).toBe(true);
+    expect(result.branches).toEqual(["main", "remotes/origin/main"]);
   });
 
   it("reports a non-git directory instead of returning an empty branch list", async () => {
     await expect(
-      loadBranches(simpleGit(os.tmpdir()), {
+      loadBranches(createGit(os.tmpdir(), "git"), {
         showRemoteBranches: false,
         hard: false,
         repo: os.tmpdir(),
@@ -135,7 +127,7 @@ describe("loadBranches", () => {
   });
 
   it("passes hard flag through to the result", async () => {
-    const result = await loadBranches(simpleGit(simpleRepo), {
+    const result = await loadBranches(createGit(simpleRepo, "git"), {
       showRemoteBranches: false,
       hard: true,
       repo: simpleRepo,
@@ -147,6 +139,79 @@ describe("loadBranches", () => {
       head: expect.any(String),
       hard: true,
       isRepo: true
+    });
+  });
+
+  describe("while HEAD is not on a branch", () => {
+    let repo: string;
+    const branches = (showRemoteBranches = false) =>
+      loadBranches(createGit(repo, "git"), {
+        showRemoteBranches,
+        hard: false,
+        repo,
+        gitPath: "git"
+      });
+
+    beforeAll(() => {
+      repo = makeRepo();
+      // Neither forced color nor a remote HEAD may add entries.
+      git(["config", "color.ui", "always"], repo);
+      git(["config", "color.branch", "always"], repo);
+      git(["branch", "topic"], repo);
+      git(["tag", "v1"], repo);
+      git(["remote", "add", "origin", repo], repo);
+      git(["fetch", "-q", "origin"], repo);
+      git(["remote", "set-head", "origin", "main"], repo);
+    });
+
+    afterAll(() => fs.rmSync(repo, { recursive: true, force: true }));
+
+    it.each([
+      ["a branch tip", ["checkout", "--detach", "main"]],
+      ["a tag", ["checkout", "--detach", "v1"]],
+      ["a hash", ["checkout", "--detach", "HEAD"]]
+    ])("lists only real branches when detached at %s", async (_, checkout) => {
+      git(checkout, repo);
+      try {
+        expect(await branches()).toMatchObject({ head: null, branches: ["main", "topic"] });
+        expect((await branches(true)).branches).toEqual([
+          "main",
+          "topic",
+          "remotes/origin/main",
+          "remotes/origin/topic"
+        ]);
+      } finally {
+        git(["checkout", "main"], repo);
+      }
+    });
+
+    it("lists only real branches during a conflicted rebase", async () => {
+      fs.writeFileSync(`${repo}/f`, "main side");
+      git(["commit", "-am", "main side"], repo);
+      git(["checkout", "topic"], repo);
+      fs.writeFileSync(`${repo}/f`, "topic side");
+      git(["commit", "-am", "topic side"], repo);
+      expect(() => git(["rebase", "main"], repo)).toThrow();
+      try {
+        expect(await branches()).toMatchObject({ head: null, branches: ["main", "topic"] });
+      } finally {
+        git(["rebase", "--abort"], repo);
+        git(["checkout", "main"], repo);
+      }
+    });
+
+    it("lists only real branches during a bisect", async () => {
+      const base = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
+      git(["commit", "--allow-empty", "-m", "middle"], repo);
+      git(["commit", "--allow-empty", "-m", "last"], repo);
+      // Bisect checks out the middle commit, detaching HEAD.
+      git(["bisect", "start", "main", base], repo);
+      try {
+        expect(await branches()).toMatchObject({ head: null, branches: ["main", "topic"] });
+      } finally {
+        git(["bisect", "reset"], repo);
+      }
+      expect(await branches()).toMatchObject({ head: "main", branches: ["main", "topic"] });
     });
   });
 });

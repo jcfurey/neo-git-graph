@@ -2,7 +2,13 @@ import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import type { RepositoryAction } from "@/backend/types";
-import { requireBranchName, requireRemote } from "@/backend/utils/validation";
+import { runGit } from "@/backend/utils/runGit";
+import {
+  requireBranchName,
+  requireRefName,
+  requireRemote,
+  requireTagName
+} from "@/backend/utils/validation";
 
 type RemoteAction = Extract<
   RepositoryAction,
@@ -19,10 +25,12 @@ type RemoteAction = Extract<
 >;
 
 async function requireRemoteName(git: SimpleGit, name: string) {
-  if (!name || name.startsWith("-") || name === ".") {
-    throw new Error(l10n.t("Enter a valid remote name."));
-  }
-  await git.raw(["check-ref-format", `refs/remotes/${name}/branch`]);
+  await requireRefName(
+    git,
+    "refs/remotes/",
+    !name || name === "." ? "" : `${name}/branch`,
+    l10n.t("Enter a valid remote name.")
+  );
 }
 
 function requireUrl(url: string) {
@@ -47,16 +55,32 @@ async function replaceConfig(git: SimpleGit, key: string, values: string[]) {
   }
 }
 
+/** Point the repository's push defaults that name `oldName` at `newName`, or remove them. */
 async function updatePushDefaults(git: SimpleGit, oldName: string, newName: string | null) {
-  const branches = await git.branchLocal();
-  const keys = ["remote.pushDefault", ...branches.all.map((name) => `branch.${name}.pushRemote`)];
-  const settings = await Promise.all(keys.map((key) => git.getConfig(key)));
-  for (const [index, key] of keys.entries()) {
-    if (settings[index]?.value === oldName) {
-      // Serialize writes to the repository's config.lock.
-      // eslint-disable-next-line no-await-in-loop
-      await replaceConfig(git, key, newName === null ? [] : [newName]);
-    }
+  // One read for every branch; Git prints each key and value, then NUL.
+  const settings = await git
+    .raw([
+      "config",
+      "--local",
+      "-z",
+      "--get-regexp",
+      "^(remote\\.pushdefault|branch\\..+\\.pushremote)$"
+    ])
+    .catch(() => "");
+  const keys = settings
+    .split("\0")
+    .filter(Boolean)
+    .map((entry) => {
+      // A key without a value has no newline.
+      const [key = "", value = null] = entry.split(/\n(.*)/s);
+      return { key, value };
+    })
+    .filter((entry) => entry.value === oldName)
+    .map((entry) => entry.key);
+  for (const key of new Set(keys)) {
+    // Serialize writes to the repository's config.lock.
+    // eslint-disable-next-line no-await-in-loop
+    await replaceConfig(git, key, newName === null ? [] : [newName]);
   }
 }
 
@@ -67,7 +91,7 @@ export async function manageRemote(git: SimpleGit, action: RemoteAction) {
       requireUrl(action.url);
       await git.raw(["remote", "add", "--", action.name, action.url]);
       if (action.fetch) {
-        await git.raw(["fetch", "--", action.name]);
+        await runGit(git, ["fetch", "--", action.name]);
       }
       return;
     case "editRemote":
@@ -106,9 +130,9 @@ export async function manageRemote(git: SimpleGit, action: RemoteAction) {
       return;
     case "deleteRemoteRef": {
       await requireRemote(git, action.remote);
+      await (action.refType === "tag" ? requireTagName : requireBranchName)(git, action.name);
       const ref = `refs/${action.refType === "tag" ? "tags" : "heads"}/${action.name}`;
-      await git.raw(["check-ref-format", ref]);
-      await git.raw(["push", "--", action.remote, `:${ref}`]);
+      await runGit(git, ["push", "--", action.remote, `:${ref}`]);
       return;
     }
   }

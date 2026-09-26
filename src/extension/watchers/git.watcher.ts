@@ -1,13 +1,15 @@
-import path from "node:path";
-
 import * as vscode from "vscode";
 
-import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { rpcNotify } from "@/extension/rpc/rpc-notify";
 import { createDebouncer, type FsWatcherEvent } from "@/extension/util/debounce";
 import { logger } from "@/extension/util/logger";
 import { invalidateWorkspaceScan } from "@/extension/workspace-scan";
 
+/**
+ * Rescan when a repository appears or vanishes, or the workspace folders change. The scan, not
+ * the event, decides what the picker lists, so a `.git` below the search depth or inside a
+ * listed repository adds nothing.
+ */
 export function watchGitDir(): vscode.Disposable {
   const debouncer = createDebouncer();
   const watcher = vscode.workspace.createFileSystemWatcher("**/.git", false, true, false);
@@ -17,24 +19,25 @@ export function watchGitDir(): vscode.Disposable {
   const deleteListener = watcher.onDidDelete((uri) =>
     debouncer.debounce("deleted", uri, processGitDir)
   );
-  return vscode.Disposable.from(watcher, createListener, deleteListener, debouncer);
+  const foldersListener = vscode.workspace.onDidChangeWorkspaceFolders(() => {
+    logger.info("Workspace folders changed");
+    rescan();
+  });
+  return vscode.Disposable.from(
+    watcher,
+    createListener,
+    deleteListener,
+    foldersListener,
+    debouncer
+  );
+}
+
+function rescan() {
+  invalidateWorkspaceScan();
+  void rpcNotify.notify("repo.rescan", null);
 }
 
 async function processGitDir(type: FsWatcherEvent, uri: vscode.Uri) {
   logger.info(`Git directory ${type}: ${uri.fsPath}`);
-  invalidateWorkspaceScan();
-  const repoPath = normalizeRepoPath(path.dirname(uri.fsPath));
-
-  if (type === "created") {
-    await rpcNotify.notify("repo.changed", {
-      type,
-      repo: {
-        name: path.basename(repoPath),
-        path: repoPath
-      }
-    });
-    return;
-  }
-
-  await rpcNotify.notify("repo.changed", { type, path: repoPath });
+  rescan();
 }

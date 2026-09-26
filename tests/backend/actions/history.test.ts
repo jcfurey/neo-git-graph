@@ -2,10 +2,10 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { runRepositoryAction } from "@/backend/actions/repository";
+import { createGit } from "@/backend/gitClient";
 import {
   loadBatchPlan,
   loadComparison,
@@ -24,9 +24,8 @@ let repo: string;
 let dirs: string[];
 const read = (args: string[], cwd = repo) =>
   execFileSync("git", args, { cwd, stdio: "pipe" }).toString().trim();
-const run = (action: RepositoryAction) =>
-  runRepositoryAction(simpleGit({ baseDir: repo, trimmed: false }), action);
-const git = () => simpleGit({ baseDir: repo, trimmed: false });
+const run = (action: RepositoryAction) => runRepositoryAction(createGit(repo, "git"), action);
+const git = () => createGit(repo, "git");
 const filter = (patch: Partial<HistoryFilter> = {}): HistoryFilter => ({
   text: "",
   author: "",
@@ -150,6 +149,61 @@ describe("file restoration", () => {
     expect(fs.existsSync(path.join(repo, "before.bin"))).toBe(false);
   });
 
+  it("keeps replaced contents as a Git object and undoes the restore byte for byte", async () => {
+    const historical = commit("data.bin", Buffer.from([1, 2, 3]), "historical");
+    // Bytes a line-ending or text filter would change, with a CR and invalid UTF-8.
+    const local = Buffer.from([0, 13, 10, 255, 254, 0x0d, 0x0a, 97]);
+    fs.writeFileSync(path.join(repo, "data.bin"), local);
+    if (process.platform !== "win32") {
+      fs.chmodSync(path.join(repo, "data.bin"), 0o755);
+    }
+    const plan = await loadRestorePlan(git(), historical, "data.bin", "data.bin");
+    const effect = await run({ kind: "restoreFile", plan });
+    expect(fs.readFileSync(path.join(repo, "data.bin"))).toEqual(Buffer.from([1, 2, 3]));
+    if (effect?.kind !== "restored" || effect.backup === null) {
+      throw new Error("no backup");
+    }
+    expect(effect.backup).toMatchObject({ path: "data.bin", symlink: false });
+    expect(execFileSync("git", ["cat-file", "blob", effect.backup.blob], { cwd: repo })).toEqual(
+      local
+    );
+
+    await run({ kind: "undoRestore", backup: effect.backup });
+    expect(fs.readFileSync(path.join(repo, "data.bin"))).toEqual(local);
+    if (process.platform !== "win32") {
+      expect(fs.statSync(path.join(repo, "data.bin")).mode & 0o777).toBe(0o755);
+    }
+  });
+
+  it("offers no undo when the file was missing or already matched", async () => {
+    const historical = commit("same", "same", "same");
+    const unchanged = await loadRestorePlan(git(), historical, "same", "same");
+    expect(await run({ kind: "restoreFile", plan: unchanged })).toEqual({
+      kind: "restored",
+      backup: null
+    });
+    const created = await loadRestorePlan(git(), historical, "same", "new-copy");
+    expect(await run({ kind: "restoreFile", plan: created })).toEqual({
+      kind: "restored",
+      backup: null
+    });
+  });
+
+  it("refuses to undo over edits made after the restore", async () => {
+    const historical = commit("f", "historical", "historical");
+    fs.writeFileSync(path.join(repo, "f"), "local");
+    const plan = await loadRestorePlan(git(), historical, "f", "f");
+    const effect = await run({ kind: "restoreFile", plan });
+    fs.writeFileSync(path.join(repo, "f"), "edited after the restore");
+    if (effect?.kind !== "restored" || effect.backup === null) {
+      throw new Error("no backup");
+    }
+    await expect(run({ kind: "undoRestore", backup: effect.backup })).rejects.toThrow(
+      effect.backup.blob
+    );
+    expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe("edited after the restore");
+  });
+
   it("refuses stale previews and paths through a symlink or outside the repository", async () => {
     const plan = await loadRestorePlan(git(), "HEAD", "f", "f");
     fs.writeFileSync(path.join(repo, "f"), "new local edits");
@@ -166,6 +220,93 @@ describe("file restoration", () => {
     );
     expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe("new local edits");
   });
+
+  it.each(["--skip-worktree", "--assume-unchanged"])(
+    "warns about local edits that %s hides from status",
+    async (flag) => {
+      commit("config", "committed", "configuration");
+      expect((await loadRestorePlan(git(), "HEAD", "config", "config")).dirty).toBe(false);
+      read(["update-index", flag, "--", "config"]);
+      fs.writeFileSync(path.join(repo, "config"), "local only");
+      expect(read(["status", "--porcelain"])).toBe("");
+      expect((await loadRestorePlan(git(), "HEAD", "config", "config")).dirty).toBe(true);
+    }
+  );
+
+  it("compares contents after line-ending conversion and symlink targets", async () => {
+    commit(".gitattributes", "*.txt text eol=crlf\n", "attributes");
+    commit("crlf.txt", "a\r\nb\r\n", "converted");
+    expect((await loadRestorePlan(git(), "HEAD", "crlf.txt", "crlf.txt")).dirty).toBe(false);
+    if (process.platform !== "win32") {
+      fs.symlinkSync("crlf.txt", path.join(repo, "link"));
+      read(["add", "link"]);
+      read(["commit", "-m", "link"]);
+      read(["update-index", "--assume-unchanged", "link"]);
+      expect((await loadRestorePlan(git(), "HEAD", "link", "link")).dirty).toBe(false);
+      fs.unlinkSync(path.join(repo, "link"));
+      fs.symlinkSync("elsewhere", path.join(repo, "link"));
+      expect((await loadRestorePlan(git(), "HEAD", "link", "link")).dirty).toBe(true);
+    }
+  });
+
+  it.each([
+    ["letter case", "Docs/ReadMe.md", "docs/readme.md"],
+    ["Unicode form", "café.md", "café.md"]
+  ])("warns when the filesystem matches a name with a different %s", async (_, stored, asked) => {
+    fs.mkdirSync(path.join(repo, path.dirname(stored)), { recursive: true });
+    const historical = commit(stored, "committed", "stored name");
+    // Only case-insensitive or normalizing filesystems, such as those on macOS and Windows,
+    // resolve the requested name to the stored file.
+    const aliased = fs.existsSync(path.join(repo, asked));
+    read(["update-index", "--skip-worktree", "--", stored]);
+    const plan = await loadRestorePlan(git(), historical, stored, asked);
+    expect(plan.dirty).toBe(aliased);
+  });
+
+  it.each(["a submodule", "an uninitialized submodule", "an untracked clone", "an ignored clone"])(
+    "refuses to restore through %s and leaves its file unchanged",
+    async (kind) => {
+      fs.mkdirSync(path.join(repo, "vendor"));
+      const vendored = commit("vendor/x", "superproject history", "vendor a file");
+      read(["rm", "-r", "-q", "--", "vendor"]);
+      read(["commit", "-m", "unvendor"]);
+      const nested = makeRepo();
+      dirs.push(nested);
+      commit("x", "nested history", "nested file", nested);
+      if (kind.endsWith("submodule")) {
+        read(["-c", "protocol.file.allow=always", "submodule", "add", "-q", nested, "vendor"]);
+        read(["commit", "-m", "add submodule"]);
+        if (kind === "an uninitialized submodule") {
+          read(["submodule", "deinit", "-q", "-f", "--", "vendor"]);
+        }
+      } else {
+        read(["clone", "-q", nested, "vendor"]);
+        if (kind === "an ignored clone") {
+          commit(".gitignore", "vendor/\n", "ignore vendor");
+        }
+      }
+      const local = path.join(repo, "vendor", "x");
+      if (kind !== "an uninitialized submodule") {
+        fs.writeFileSync(local, "uncommitted nested edits");
+      }
+      const plan = {
+        source: vendored,
+        sourcePath: "vendor/x",
+        destination: "vendor/x",
+        snapshot: "",
+        dirty: false
+      };
+
+      await expect(loadRestorePlan(git(), vendored, "vendor/x", "vendor/x")).rejects.toThrow(
+        "nested repository"
+      );
+      await expect(run({ kind: "previewFileRestore", plan })).rejects.toThrow("nested repository");
+      await expect(run({ kind: "restoreFile", plan })).rejects.toThrow("nested repository");
+      expect(fs.existsSync(local) && fs.readFileSync(local, "utf8")).toBe(
+        kind === "an uninitialized submodule" ? false : "uncommitted nested edits"
+      );
+    }
+  );
 });
 
 describe("ordered actions and fixup", () => {

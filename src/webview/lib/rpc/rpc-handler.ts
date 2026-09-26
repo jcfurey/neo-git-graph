@@ -1,5 +1,5 @@
 import type { RpcNotification, RpcResponse } from "@/types";
-import { refresh, selectRepo } from "@/webview/lib/actions";
+import { applyWebviewConfig, refresh, selectRepo } from "@/webview/lib/actions";
 import { loadRepoList } from "@/webview/lib/load-repos";
 import { showPane } from "@/webview/lib/navigation";
 import { selectedRepo } from "@/webview/lib/stores";
@@ -45,14 +45,14 @@ function handleRpcNotification(message: RpcNotification): void {
       showPane(message.message.pane);
       return;
     case "repo.select":
-      repoListStore.apply({ type: "created", repo: message.message });
+      repoListStore.add(message.message);
       selectRepo(message.message.path);
-      return;
-    case "repo.changed":
-      repoListStore.apply(message.message);
       return;
     case "repo.rescan":
       void loadRepoList();
+      return;
+    case "config.changed":
+      applyWebviewConfig(message.message);
       return;
     case "repo.updated":
       if (message.message.path === selectedRepo.value) {

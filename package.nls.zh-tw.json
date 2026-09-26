@@ -1,7 +1,6 @@
 {
   "description": "Git Graph 的 MIT 授權分支，提供視覺化歷史記錄、分支操作和開發容器支援。",
   "command.view": "檢視 Git Graph (git log)",
-  "command.clearAvatarCache": "清除頭像快取",
   "config.autoCenterCommitDetailsView": "開啟提交詳情檢視時自動置中顯示。",
   "config.dateFormat": "指定 Git 圖形日期欄中使用的日期格式。",
   "config.dateFormat.dateTime": "顯示日期和時間，例如 \"2019年3月19日 21:34\"",
@@ -10,7 +9,7 @@
   "config.dateType": "指定在 Git 圖形中顯示的日期類型。",
   "config.dateType.authorDate": "使用提交的作者日期",
   "config.dateType.commitDate": "使用提交的提交者日期",
-  "config.fetchAvatars": "自 v0.6.0 起已棄用。取得提交作者和提交者的頭像。啟用此設定即表示您同意將提交作者和提交者的電子郵件地址傳送到 GitHub、GitLab 或 Gravatar（取決於存放庫的遠端來源）。",
+  "config.fetchAvatars": "無效。早期版本會擷取提交作者頭像；此功能已移除。",
   "config.fetchAvatars.deprecation": "自 v0.6.0 起已棄用。此設定無效，且可能在未來版本中移除。",
   "config.graphColours": "指定圖形上使用的顏色。",
   "config.graphColours.item": "顏色（HEX 或 RGB）",
@@ -39,6 +38,10 @@
   "walkthrough.actOnCommit.description": "在提交上按右鍵或點選其 ⋯ 按鈕，即可簽出、揀選、還原、加標籤、建立分支等。每次變更都會先要求確認。",
   "walkthrough.branchesPane.title": "使用分支面板",
   "walkthrough.branchesPane.description": "在分支圖旁瀏覽分支、遠端儲存庫、標籤和暫存紀錄，簽出、擷取和套用只需一次點選。\n[顯示分支面板](command:neo-git-graph.showBranches)",
+  "walkthrough.focusAndRemotes.title": "聚焦分支並隱藏遠端儲存庫",
+  "walkthrough.focusAndRemotes.description": "醒目顯示一個分支的歷史而不隱藏其他分支，並將嘈雜的遠端儲存庫分支排除在圖表之外。\n[顯示分支窗格](command:neo-git-graph.showBranches)",
   "walkthrough.recover.title": "從錯誤中復原",
-  "walkthrough.recover.description": "合併和重定基底期間，狀態列提供「繼續」和「中止」；Git 活動會保留每個錯誤；「找回遺失的提交」可找到分支的舊位置。\n[開啟文件](command:neo-git-graph.openDocumentation)"
+  "walkthrough.recover.description": "合併和重定基底期間，狀態列提供「繼續」和「中止」；Git 活動會保留每個錯誤；「找回遺失的提交」可找到分支的舊位置。\n[開啟文件](command:neo-git-graph.openDocumentation)",
+  "capabilities.virtualWorkspaces": "Git Graph 在本機檔案上執行 Git，而虛擬工作區沒有本機檔案。",
+  "capabilities.untrustedWorkspaces": "Git Graph 會執行 Git，而 Git 可能啟動儲存庫設定中指定的程式。"
 }

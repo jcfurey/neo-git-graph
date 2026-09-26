@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join, resolve as resolvePath } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "@vscode/test-cli";
 
@@ -45,6 +46,9 @@ export default defineConfig({
     ? { useInstallation: { fromPath: process.env.NGG_VSCODE_PATH } }
     : {}),
   env: {
+    // Git reads only the fixture global configuration, never the developer's own settings.
+    GIT_CONFIG_GLOBAL: fileURLToPath(new URL("./tests/fixtures/gitconfig", import.meta.url)),
+    GIT_CONFIG_NOSYSTEM: "1",
     NGG_CDP_PORT: String(port),
     NGG_ARTIFACTS: artifacts,
     NGG_VSCODE_LOGS: logs,

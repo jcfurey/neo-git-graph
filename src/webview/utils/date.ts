@@ -33,6 +33,21 @@ const getRelativeFormatter = memoizeByLocale(
   (locale) => new Intl.RelativeTimeFormat(locale, { numeric: "always" })
 );
 
+const getSecondsFormatter = memoizeByLocale(
+  (locale) =>
+    new Intl.NumberFormat(locale, { style: "unit", unit: "second", unitDisplay: "narrow" })
+);
+
+/**
+ * The whole seconds between two times in milliseconds, in the display language's own units,
+ * such as "5s" or "5秒". A later start than end counts as no time.
+ */
+export function formatSeconds(started: number, finished: number): string {
+  return getSecondsFormatter(getWebviewConfig().locale).format(
+    Math.max(0, Math.floor((finished - started) / 1000))
+  );
+}
+
 /** Largest unit that fits, paired with the number of seconds in it. */
 const RELATIVE_UNITS: [threshold: number, unit: Intl.RelativeTimeFormatUnit, seconds: number][] = [
   [60, "second", 1],
@@ -68,14 +83,30 @@ export type CommitDate = {
   value: string;
 };
 
+/**
+ * The date of a Git timestamp, or null when JavaScript cannot represent it. Git accepts
+ * timestamps such as `@99999999999999`, far past the largest JavaScript date, on which every
+ * Intl formatter throws.
+ */
+function toDate(seconds: number): Date | null {
+  const date = new Date(seconds * 1000);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
 /** Full date and time, as shown in the commit details view. */
 export function getFullDate(seconds: number): string {
-  return getFullDateFormatter(getWebviewConfig().locale).format(new Date(seconds * 1000));
+  const date = toDate(seconds);
+  return date === null
+    ? window.l10n.unknownDate
+    : getFullDateFormatter(getWebviewConfig().locale).format(date);
 }
 
 export function getCommitDate(seconds: number): CommitDate {
   const { dateFormat, locale } = getWebviewConfig();
-  const date = new Date(seconds * 1000);
+  const date = toDate(seconds);
+  if (date === null) {
+    return { title: window.l10n.unknownDate, value: window.l10n.unknownDate };
+  }
   const dateStr = getDateFormatter(locale).format(date);
   const title = `${dateStr} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 

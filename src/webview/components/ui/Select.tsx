@@ -4,17 +4,27 @@ type SelectProps = {
   onChange: (value: string) => void;
   id?: string;
   "aria-label"?: string;
+  /** The element that names an unlabelled choice, such as the dialog's question. */
+  "aria-labelledby"?: string | undefined;
 };
 
 /**
  * A short list of options, for a dialog form. `Dropdown` carries a filter,
  * keyboard search and scroll logic that two or three options do not want.
  */
-export function Select({ options, value, onChange, id, "aria-label": label }: SelectProps) {
+export function Select({
+  options,
+  value,
+  onChange,
+  id,
+  "aria-label": label,
+  "aria-labelledby": labelledBy
+}: SelectProps) {
   return (
     <select
       id={id}
       aria-label={label}
+      aria-labelledby={labelledBy}
       class="w-full cursor-pointer rounded-sm border border-input-border bg-dropdown px-2 py-1 text-dropdown-fg focus:outline-1 focus:outline-offset-0 focus:outline-focus"
       value={value}
       onChange={(event) => onChange(event.currentTarget.value)}

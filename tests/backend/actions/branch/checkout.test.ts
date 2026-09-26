@@ -3,10 +3,10 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { simpleGit } from "simple-git";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { checkoutBranch } from "@/backend/actions/branch";
+import { createGit } from "@/backend/gitClient";
 
 import { git, makeRepo } from "@tests/backend/helpers";
 
@@ -44,7 +44,7 @@ afterEach(() => {
 
 describe("checkoutBranch", () => {
   it("checks out an existing local branch", async () => {
-    await checkoutBranch(simpleGit(repo), { branchName: "other", remoteBranch: null });
+    await checkoutBranch(createGit(repo, "git"), { branchName: "other", remoteBranch: null });
     expect(readGit(["branch", "--show-current"])).toBe("other");
   });
 
@@ -52,14 +52,14 @@ describe("checkoutBranch", () => {
     const original = readGit(["rev-parse", "HEAD"]);
     advanceRemote();
     git(["checkout", "other"], repo);
-    await checkoutBranch(simpleGit(repo), { branchName: "main", remoteBranch: null });
+    await checkoutBranch(createGit(repo, "git"), { branchName: "main", remoteBranch: null });
     expect(readGit(["branch", "--show-current"])).toBe("main");
     expect(readGit(["rev-parse", "HEAD"])).toBe(original);
   });
 
   it("creates a new tracking branch at the selected remote revision", async () => {
     const latest = advanceRemote();
-    await checkoutBranch(simpleGit(repo), {
+    await checkoutBranch(createGit(repo, "git"), {
       branchName: "from-remote",
       remoteBranch: "origin/main"
     });
@@ -70,12 +70,15 @@ describe("checkoutBranch", () => {
 
   it("throws when checking out a nonexistent local branch", async () => {
     await expect(
-      checkoutBranch(simpleGit(repo), { branchName: "nonexistent", remoteBranch: null })
+      checkoutBranch(createGit(repo, "git"), { branchName: "nonexistent", remoteBranch: null })
     ).rejects.toThrow();
   });
 
   it("reuses an existing branch when it is already at the remote revision", async () => {
-    await checkoutBranch(simpleGit(repo), { branchName: "other", remoteBranch: "origin/main" });
+    await checkoutBranch(createGit(repo, "git"), {
+      branchName: "other",
+      remoteBranch: "origin/main"
+    });
     expect(readGit(["branch", "--show-current"])).toBe("other");
     expect(readGit(["rev-parse", "HEAD"])).toBe(readGit(["rev-parse", "origin/main"]));
   });
@@ -83,7 +86,10 @@ describe("checkoutBranch", () => {
   it("switches to a stale local branch and fast-forwards it to the selected remote", async () => {
     const latest = advanceRemote();
     git(["checkout", "other"], repo);
-    await checkoutBranch(simpleGit(repo), { branchName: "main", remoteBranch: "origin/main" });
+    await checkoutBranch(createGit(repo, "git"), {
+      branchName: "main",
+      remoteBranch: "origin/main"
+    });
     expect(readGit(["branch", "--show-current"])).toBe("main");
     expect(readGit(["rev-parse", "HEAD"])).toBe(latest);
     expect(readGit(["rev-parse", "--abbrev-ref", "@{upstream}"])).toBe("origin/main");
@@ -93,7 +99,10 @@ describe("checkoutBranch", () => {
   it("fast-forwards the current branch even when merge.ff is false", async () => {
     const latest = advanceRemote();
     git(["config", "merge.ff", "false"], repo);
-    await checkoutBranch(simpleGit(repo), { branchName: "main", remoteBranch: "origin/main" });
+    await checkoutBranch(createGit(repo, "git"), {
+      branchName: "main",
+      remoteBranch: "origin/main"
+    });
     expect(readGit(["rev-parse", "HEAD"])).toBe(latest);
     expect(readGit(["status", "--porcelain"])).toBe("");
   });
@@ -102,7 +111,10 @@ describe("checkoutBranch", () => {
     git(["commit", "--allow-empty", "-m", "local work"], repo);
     const local = readGit(["rev-parse", "HEAD"]);
     git(["checkout", "other"], repo);
-    await checkoutBranch(simpleGit(repo), { branchName: "main", remoteBranch: "origin/main" });
+    await checkoutBranch(createGit(repo, "git"), {
+      branchName: "main",
+      remoteBranch: "origin/main"
+    });
     expect(readGit(["branch", "--show-current"])).toBe("main");
     expect(readGit(["rev-parse", "HEAD"])).toBe(local);
   });
@@ -112,8 +124,8 @@ describe("checkoutBranch", () => {
     const local = readGit(["rev-parse", "HEAD"]);
     advanceRemote();
     await expect(
-      checkoutBranch(simpleGit(repo), { branchName: "main", remoteBranch: "origin/main" })
-    ).rejects.toThrow(/fast-forward/i);
+      checkoutBranch(createGit(repo, "git"), { branchName: "main", remoteBranch: "origin/main" })
+    ).rejects.toThrow();
     expect(readGit(["rev-parse", "HEAD"])).toBe(local);
     expect(readGit(["status", "--porcelain"])).toBe("");
     expect(fs.existsSync(path.join(repo, ".git", "MERGE_HEAD"))).toBe(false);
@@ -124,10 +136,42 @@ describe("checkoutBranch", () => {
     advanceRemote();
     fs.writeFileSync(path.join(repo, "f"), "unfinished local work");
     await expect(
-      checkoutBranch(simpleGit(repo), { branchName: "main", remoteBranch: "origin/main" })
-    ).rejects.toThrow(/would be overwritten/i);
+      checkoutBranch(createGit(repo, "git"), { branchName: "main", remoteBranch: "origin/main" })
+    ).rejects.toThrow();
     expect(readGit(["rev-parse", "HEAD"])).toBe(original);
     expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe("unfinished local work");
     expect(fs.existsSync(path.join(repo, ".git", "MERGE_HEAD"))).toBe(false);
+  });
+
+  it("checks out a ref left by a removed remote without tracking or fetching it", async () => {
+    const tip = readGit(["rev-parse", "HEAD"]);
+    git(["update-ref", "refs/remotes/team/mirror/topic", tip], repo);
+    await expect(
+      checkoutBranch(createGit(repo, "git"), {
+        branchName: "mirror/topic",
+        remoteBranch: "team/mirror/topic",
+        fetch: true
+      })
+    ).rejects.toThrow(/no longer configured/);
+    await checkoutBranch(createGit(repo, "git"), {
+      branchName: "mirror/topic",
+      remoteBranch: "team/mirror/topic",
+      fetch: false
+    });
+    expect(readGit(["branch", "--show-current"])).toBe("mirror/topic");
+    expect(readGit(["rev-parse", "HEAD"])).toBe(tip);
+    expect(() => readGit(["config", "branch.mirror/topic.remote"])).toThrow();
+  });
+
+  it("fast-forwards an existing branch from its remote despite colored branch output", async () => {
+    git(["config", "color.branch", "always"], repo);
+    const updated = advanceRemote();
+    git(["checkout", "other"], repo);
+    await checkoutBranch(createGit(repo, "git"), {
+      branchName: "main",
+      remoteBranch: "origin/main"
+    });
+    expect(readGit(["branch", "--show-current"])).toBe("main");
+    expect(readGit(["rev-parse", "HEAD"])).toBe(updated);
   });
 });

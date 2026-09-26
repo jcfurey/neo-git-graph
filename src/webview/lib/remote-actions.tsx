@@ -1,4 +1,5 @@
 import type { ActionResponse, QueryResult } from "@/backend/types";
+import { remoteForRef } from "@/backend/utils/remoteVisibility";
 import { openSync } from "@/webview/components/history/WorkflowTools";
 import {
   closeDialog,
@@ -6,7 +7,7 @@ import {
   openFormDialog,
   openRunningDialog
 } from "@/webview/lib/actions";
-import { beginActivity, finishActivity } from "@/webview/lib/activity";
+import { beginActivity, finishActivity, reportUnseenFailure } from "@/webview/lib/activity";
 import { sendRepositoryAction } from "@/webview/lib/repository-actions";
 import { dialog, selectedRepo } from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
@@ -55,6 +56,30 @@ export function openRemoteAction(action: RemoteAction, branchName = "", remoteRe
   });
 }
 
+/** Whether the action talks to a remote, which can stall; local actions always finish. */
+function usesNetwork(command: RemoteCommand) {
+  switch (command.command) {
+    case "pushBranch":
+    case "pullBranch":
+    case "fetchRemote":
+    case "pushTag":
+      return true;
+    case "checkoutBranch":
+      return command.remoteBranch !== null && command.fetch === true;
+    case "repositoryAction": {
+      const { action } = command;
+      return (
+        action.kind === "fetch" ||
+        action.kind === "deleteRemoteRef" ||
+        (action.kind === "addRemote" && action.fetch) ||
+        (action.kind === "sync" && action.operation === "push")
+      );
+    }
+    default:
+      return false;
+  }
+}
+
 export function sendRemoteAction(
   command: RemoteCommand,
   repo: string,
@@ -75,7 +100,13 @@ export function sendRemoteAction(
   if (!options.background) {
     openRunningDialog(entry.title, {
       detail: [repo, entry.detail].filter(Boolean).join("\n"),
-      started: entry.started
+      started: entry.started,
+      ...(usesNetwork(command)
+        ? {
+            onCancel: () =>
+              vscode.postMessage({ command: "cancelAction", repo, requestId: command.requestId })
+          }
+        : {})
     });
   }
   pendingActions.set(command.requestId, {
@@ -113,22 +144,25 @@ export function acceptRemoteActionResult(message: ActionResponse): boolean {
   finishActivity(message);
   pending?.onComplete?.(message.status);
   if (pending?.background) {
-    if (
-      pending.repo === message.repo &&
-      selectedRepo.value === pending.viewRepo &&
-      dialog.value === pending.dialog &&
-      message.status !== null &&
-      !pending.onComplete
-    ) {
-      openErrorDialog(window.l10n.unableToRunGitAction, message.status);
+    // A caller with its own completion handler shows the result itself.
+    if (message.status !== null && !pending.onComplete) {
+      if (selectedRepo.value === pending.viewRepo && dialog.value === pending.dialog) {
+        openErrorDialog(window.l10n.unableToRunGitAction, message.status);
+      } else {
+        reportUnseenFailure(message);
+      }
     }
     return false;
   }
-  if (pending === undefined || pending.repo !== message.repo || dialog.value !== pending.dialog) {
+  // The running dialog was hidden or replaced: a newer dialog stays, and a failure waits in
+  // Git Activity.
+  if (pending === undefined || dialog.value !== pending.dialog) {
+    reportUnseenFailure(message);
     return false;
   }
   if (selectedRepo.value !== (pending.viewRepo ?? pending.repo)) {
     closeDialog();
+    reportUnseenFailure(message);
     return false;
   }
   return true;
@@ -155,34 +189,47 @@ export function handleLoadRemotes(message: QueryResult<"loadRemotes">) {
     openErrorDialog(window.l10n.unableToLoadRemotes, message.status);
     return;
   }
-  if (message.remotes.length === 0) {
+  const { repo, branchName, requestId, action } = pending;
+  // Checking out a remote-tracking ref needs no remote, even one that was removed.
+  if (message.remotes.length === 0 && action !== "checkout") {
     openErrorDialog(window.l10n.noRemotesConfigured);
     return;
   }
 
-  const { repo, branchName, requestId, action } = pending;
   const upstream = message.upstream;
   const preferred =
     action === "push" || action === "tagPush" ? message.pushRemote : upstream?.remote;
   const refRemote = message.remotes
     .filter((remote) => pending.remoteRef?.startsWith(remote + "/"))
     .toSorted((a, b) => b.length - a.length)[0];
+  // Another remote's name would cut the wrong prefix from the ref.
+  if (action === "branchDelete" && refRemote === undefined) {
+    openErrorDialog(window.l10n.remoteNotConfigured.replace("{0}", pending.remoteRef ?? ""));
+    return;
+  }
   const remote =
     refRemote ??
     message.remotes.find((name) => name === preferred) ??
     message.remotes.find((name) => name === "origin") ??
-    message.remotes[0]!;
+    message.remotes[0] ??
+    "";
   const remoteBranch = upstream?.remote === remote ? upstream.branchName : branchName;
   const options = message.remotes.map((name) => ({ label: name, value: name }));
   const source = branchName === "" ? null : `ref:head:${branchName}`;
 
   if (action === "checkout") {
     const remoteRef = pending.remoteRef!;
+    // The part after the ref's own remote; for a removed remote, after its first segment.
+    const suggestion = remoteRef.slice(remoteForRef(remoteRef, message.remotes).length + 1);
     openFormDialog({
       message: format(window.l10n.dialogCheckoutRemoteTitle, <b>{remoteRef}</b>),
       inputs: [
-        { kind: "ref", value: remoteRef.slice(remote.length + 1) },
-        { kind: "checkbox", label: window.l10n.fetchBeforeCheckout, value: true }
+        { kind: "ref", value: suggestion },
+        {
+          kind: "checkbox",
+          label: window.l10n.fetchBeforeCheckout,
+          value: refRemote !== undefined
+        }
       ],
       action: window.l10n.checkoutBranch,
       source: `ref:remote:${remoteRef}`,
@@ -234,6 +281,7 @@ export function handleLoadRemotes(message: QueryResult<"loadRemotes">) {
             inputs: [],
             action: label,
             source: null,
+            destructive: true,
             onSubmit: () =>
               sendRepositoryAction(
                 {

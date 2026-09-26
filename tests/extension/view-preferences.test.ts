@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync } from "node:fs";
+import { rmSync } from "node:fs";
 
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ExtensionContext } from "vscode";
@@ -28,7 +28,6 @@ it("merges preference patches in workspace storage and restores them after exten
     })
   };
   const globalState = { get: vi.fn(), update: vi.fn() };
-  mkdirSync(repo + "/storage/avatars", { recursive: true });
   const context = {
     workspaceState,
     globalState,
@@ -70,7 +69,6 @@ it("merges preference patches in workspace storage and restores them after exten
   };
   let extension = activate();
   try {
-    extension.manager.addRepo(repo);
     await extension.send({ command: "saveRepoState", repo, state: { hiddenRemotes: ["origin"] } });
     await extension.send({ command: "saveRepoState", repo, state: { graphPreferences } });
     await extension.send({
@@ -80,7 +78,6 @@ it("merges preference patches in workspace storage and restores them after exten
     });
     extension.lifetime.dispose();
     extension = activate();
-    extension.manager.setRepos([repo]);
     await extension.send({ command: "selectRepo", repo });
     expect(extension.post).toHaveBeenCalledWith({
       command: "repoState",

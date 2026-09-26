@@ -31,6 +31,6 @@ Hiding the focused remote clears its target. Selecting a hidden remote branch re
 and enables **Show Remote Branches**; those updated choices are saved. Turning all remotes off and
 back on preserves each remote's individual eye setting.
 
-Removing a repository from the workspace's discovered repositories removes its saved preferences.
+Deleting a repository's folder removes its saved preferences the next time the Workspace pane loads.
 Existing focus choices in an open panel migrate to workspace storage the next time that repository
 loads; previously saved column widths and remote visibility are retained.

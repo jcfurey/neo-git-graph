@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import type { SimpleGit } from "simple-git";
 import * as vscode from "vscode";
 
@@ -12,7 +14,7 @@ import { mergeBranch, mergeCommit } from "@/backend/actions/merge";
 import { fetchRemote, pullBranch, pushBranch } from "@/backend/actions/remote";
 import { runRepositoryAction } from "@/backend/actions/repository";
 import { addTag, deleteTag, pushTag } from "@/backend/actions/tag";
-import { gitClientFactory, type GitClient } from "@/backend/gitClient";
+import { gitClientFactory } from "@/backend/gitClient";
 import { commitDetails } from "@/backend/queries/commitDetails";
 import { loadBranches } from "@/backend/queries/loadBranches";
 import { loadCommits } from "@/backend/queries/loadCommits";
@@ -22,19 +24,22 @@ import type {
   ActionRequest,
   GitFileChangeType,
   GraphQueryCommand,
-  QueryResult
+  QueryResult,
+  RestoreBackup
 } from "@/backend/types";
-import { getSubmodulePaths } from "@/backend/utils/git";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
 import { isRepoWithinPath, normalizeRepoPath } from "@/backend/utils/repoPath";
 import { abbrevCommit } from "@/backend/utils/string";
 import type { Config } from "@/extension/config";
+import { openConflict } from "@/extension/conflicts";
 import { logger } from "@/extension/util/logger";
-import { selectWatchedRepo } from "@/extension/watchers/git-repo.watcher";
-import { invalidateWorkspaceScan, scanWorkspaceRepos } from "@/extension/workspace-scan";
-import { AvatarManager } from "@/old-extension/avatarManager";
+import {
+  muteGitRepoWatcher,
+  selectWatchedRepo,
+  unmuteGitRepoWatcher
+} from "@/extension/watchers/git-repo.watcher";
+import { invalidateWorkspaceScan, listRepos } from "@/extension/workspace-scan";
 import { encodeDiffBlobUri, encodeDiffDocUri } from "@/old-extension/diffDocProvider";
-import { ExtensionState } from "@/old-extension/extensionState";
 import type { RequestMessage, ResponseMessage } from "@/types";
 
 import type { RepoManager } from "./repoManager";
@@ -75,21 +80,40 @@ function viewDiff(
   );
 }
 
+/** Actions that only open an editor, so file events during them come from the user. */
+/** Whether an editor holds unsaved changes to a repository file, which saving would write back. */
+function hasUnsavedChanges(repo: string, file: string) {
+  const target = normalizeRepoPath(path.join(repo, file));
+  return vscode.workspace.textDocuments.some(
+    (document) =>
+      document.isDirty &&
+      document.uri.scheme === "file" &&
+      normalizeRepoPath(document.uri.fsPath) === target
+  );
+}
+
+function viewOnly(request: ActionRequest) {
+  return (
+    request.command === "repositoryAction" &&
+    (request.action.kind === "viewWorkingTreeFile" ||
+      request.action.kind === "viewRangeFile" ||
+      request.action.kind === "viewHistoricalFile" ||
+      request.action.kind === "previewFileRestore")
+  );
+}
+
 export function registerMessageHandlers(
   bridge: WebviewBridge,
   deps: {
     config: Config;
-    gitClient: GitClient;
     repoManager: RepoManager;
-    extensionState: ExtensionState;
-    avatarManager: AvatarManager;
   }
 ) {
-  const { config, gitClient, repoManager, extensionState, avatarManager } = deps;
+  const { config, repoManager } = deps;
 
   let currentRepo: string | null = null;
   const busyRepos = new Map<string, boolean>();
-  const viewedRepos = new Set<string>();
+  const actionControllers = new Map<string, { repo: string; controller: AbortController }>();
   const graphControllers = new Map<GraphQueryCommand, AbortController>();
 
   function cancelGraphQueries() {
@@ -104,27 +128,42 @@ export function registerMessageHandlers(
       return;
     }
     cancelGraphQueries();
-    gitClient.setRepo(repo);
     currentRepo = repo;
-    viewedRepos.add(repo);
-    extensionState.setLastActiveRepo(repo);
-    selectWatchedRepo(repo);
+    selectWatchedRepo(repo, config.gitPath());
   }
 
+  async function workspaceRepos(selected: string) {
+    await repoManager.pruneMissing();
+    const repos = await listRepos(config.gitPath(), config.maxDepthOfRepoSearch());
+    return repos.includes(selected) ? repos : [selected, ...repos];
+  }
+
+  /**
+   * Run requests for `command` under the repository lock, and return the runner. A handler can
+   * return a follow-up, which runs once the lock is released.
+   */
   function registerAction<T extends ActionRequest["command"]>(
     command: T,
-    handler: (git: SimpleGit, msg: Extract<ActionRequest, { command: T }>) => Promise<void>
+    handler: (
+      git: SimpleGit,
+      msg: Extract<ActionRequest, { command: T }>
+    ) => Promise<void | (() => void)>
   ) {
-    bridge.onMessage(command, async (message) => {
+    const run = async (message: unknown) => {
       const msg = message as Extract<ActionRequest, { command: T }>;
       let status: string | null = null;
       let acquired = false;
+      let followUp: void | (() => void) = undefined;
       try {
         const request: ActionRequest = msg;
+        // Opening a diff or preview reads the repository, so it neither waits for nor blocks
+        // other actions.
+        const exclusive = !viewOnly(request);
         const recursive =
           request.command === "repositoryAction" &&
           (request.action.kind === "submodule" || request.action.kind === "submodulePointer");
         if (
+          exclusive &&
           [...busyRepos].some(
             ([repo, descendants]) =>
               repo === msg.repo ||
@@ -138,14 +177,32 @@ export function registerMessageHandlers(
             )
           );
         }
-        busyRepos.set(msg.repo, recursive);
-        acquired = true;
-        await handler(gitClientFactory(msg.repo, config.gitPath()).getInstance(), msg);
+        if (exclusive) {
+          busyRepos.set(msg.repo, recursive);
+          acquired = true;
+          muteGitRepoWatcher(msg.repo);
+        }
+        const controller = new AbortController();
+        if ("requestId" in msg) {
+          actionControllers.set(msg.requestId, { repo: msg.repo, controller });
+        }
+        followUp = await handler(
+          gitClientFactory(msg.repo, config.gitPath(), controller.signal).getInstance(),
+          msg
+        ).catch((error: unknown) => {
+          throw controller.signal.aborted
+            ? new Error(vscode.l10n.t("The Git operation was cancelled."))
+            : error;
+        });
       } catch (e: unknown) {
         status = e instanceof Error ? e.message : String(e);
       } finally {
+        if ("requestId" in msg) {
+          actionControllers.delete(msg.requestId);
+        }
         if (acquired) {
           busyRepos.delete(msg.repo);
+          unmuteGitRepoWatcher(msg.repo);
         }
       }
       bridge.post({
@@ -153,12 +210,67 @@ export function registerMessageHandlers(
         status,
         ...("requestId" in msg ? { requestId: msg.requestId, repo: msg.repo } : {})
       } as ResponseMessage);
+      followUp?.();
+      return status;
+    };
+    bridge.onMessage(command, async (message) => {
+      await run(message);
     });
+    return run;
   }
 
   // --- Action handlers ---
 
-  registerAction("repositoryAction", async (git, msg) => {
+  let undoRequests = 0;
+  /** Offer to put back what a restore replaced, through the lock like any other action. */
+  async function offerUndo(repo: string, backup: RestoreBackup) {
+    const undo = vscode.l10n.t("Undo Restore");
+    const choice = await vscode.window.showInformationMessage(
+      vscode.l10n.t(
+        "Restored {0}. Its previous contents are kept in Git until its next garbage collection.",
+        backup.path
+      ),
+      undo
+    );
+    if (choice !== undo) {
+      return;
+    }
+    const status = await runRepositoryActionRequest({
+      command: "repositoryAction",
+      repo,
+      requestId: `undo-restore-${++undoRequests}`,
+      action: { kind: "undoRestore", backup }
+    });
+    bridge.post({ command: "refresh" });
+    if (status !== null) {
+      void vscode.window.showErrorMessage(status);
+    }
+  }
+
+  const runRepositoryActionRequest = registerAction("repositoryAction", async (git, msg) => {
+    if (msg.action.kind === "restoreFile" || msg.action.kind === "undoRestore") {
+      const file =
+        msg.action.kind === "restoreFile" ? msg.action.plan.destination : msg.action.backup.path;
+      if (hasUnsavedChanges(msg.repo, file)) {
+        throw new Error(
+          vscode.l10n.t(
+            "Save or revert the unsaved changes to {0} in the editor first; saving them later would undo the restore.",
+            file
+          )
+        );
+      }
+    }
+    if (
+      msg.action.kind === "previewFileRestore" &&
+      hasUnsavedChanges(msg.repo, msg.action.plan.destination)
+    ) {
+      void vscode.window.showWarningMessage(
+        vscode.l10n.t(
+          "The preview shows unsaved changes to {0}. Save or revert them before restoring.",
+          msg.action.plan.destination
+        )
+      );
+    }
     const effect = await runRepositoryAction(git, msg.action, config.gitPath());
     if (msg.action.kind === "renameRemote" || msg.action.kind === "removeRemote") {
       const action = msg.action;
@@ -176,12 +288,25 @@ export function registerMessageHandlers(
     if (effect?.kind === "worktree") {
       await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(effect.path), true);
     } else if (effect?.kind === "conflict") {
-      const uri = vscode.Uri.file(effect.path);
-      try {
-        await vscode.commands.executeCommand("git.openMergeEditor", uri);
-      } catch {
-        await vscode.commands.executeCommand("vscode.open", uri);
-      }
+      await openConflict(effect.path, effect.status);
+    } else if (effect?.kind === "nestedRepository") {
+      const { path: nested } = effect;
+      const open = vscode.l10n.t("Open Its Graph");
+      void vscode.window
+        .showInformationMessage(
+          vscode.l10n.t(
+            "{0} is a separate Git repository inside this one, so its files are not changes of this repository.",
+            nested
+          ),
+          open
+        )
+        .then((choice) => {
+          if (choice === open) {
+            void vscode.commands.executeCommand("neo-git-graph.view", {
+              rootUri: vscode.Uri.file(nested)
+            });
+          }
+        });
     } else if (effect?.kind === "document") {
       const document = await vscode.workspace.openTextDocument({
         language: "diff",
@@ -236,9 +361,10 @@ export function registerMessageHandlers(
     }
     if (msg.action.kind === "submodule") {
       invalidateWorkspaceScan();
-      for (const repo of await getSubmodulePaths(msg.repo, config.gitPath())) {
-        repoManager.addRepo(normalizeRepoPath(repo));
-      }
+    }
+    if (effect?.kind === "restored" && effect.backup !== null) {
+      const { backup } = effect;
+      return () => void offerUndo(msg.repo, backup);
     }
   });
 
@@ -253,8 +379,8 @@ export function registerMessageHandlers(
   registerAction("cherrypickCommit", (git, msg) => cherrypickCommit(git, msg));
   registerAction("revertCommit", (git, msg) => revertCommit(git, msg));
   registerAction("resetToCommit", (git, msg) => resetToCommit(git, msg));
-  registerAction("mergeBranch", (git, msg) => mergeBranch(git, msg));
-  registerAction("mergeCommit", (git, msg) => mergeCommit(git, msg));
+  registerAction("mergeBranch", (git, msg) => mergeBranch(git, msg, config.gitPath()));
+  registerAction("mergeCommit", (git, msg) => mergeCommit(git, msg, config.gitPath()));
 
   registerAction("pushBranch", (git, msg) => pushBranch(git, msg));
   registerAction("pullBranch", (git, msg) => pullBranch(git, msg));
@@ -263,6 +389,13 @@ export function registerMessageHandlers(
   // --- Query handlers ---
 
   const queryControllers = new Map<string, { repo: string; controller: AbortController }>();
+  // Stops the action's Git processes, such as a push waiting on an unresponsive server.
+  bridge.onMessage("cancelAction", (msg) => {
+    const pending = actionControllers.get(msg.requestId);
+    if (pending?.repo === msg.repo) {
+      pending.controller.abort();
+    }
+  });
   bridge.onMessage("cancelRepositoryQuery", (msg) => {
     const pending = queryControllers.get(msg.requestId);
     if (pending?.repo === msg.repo) {
@@ -280,17 +413,8 @@ export function registerMessageHandlers(
         gitClientFactory(msg.repo, config.gitPath(), controller.signal).getInstance(),
         msg.query,
         {
-          repos:
-            msg.query.kind === "workspace"
-              ? [
-                  ...new Set([
-                    msg.repo,
-                    ...viewedRepos,
-                    ...Object.keys(repoManager.getRepos()),
-                    ...(await scanWorkspaceRepos(config.gitPath(), config.maxDepthOfRepoSearch()))
-                  ])
-                ]
-              : [],
+          // The rows the picker offers, not every repository whose state was ever saved.
+          repos: msg.query.kind === "workspace" ? await workspaceRepos(msg.repo) : [],
           binary: config.gitPath(),
           signal: controller.signal
         }
@@ -452,10 +576,6 @@ export function registerMessageHandlers(
     } catch (error: unknown) {
       logger.debug(`Unable to select repository: ${msg.repo}`, error);
     }
-  });
-
-  bridge.onMessage("fetchAvatar", (msg) => {
-    avatarManager.fetchAvatarImage(msg.email, msg.repo, msg.commits);
   });
 
   bridge.onMessage("saveRepoState", (msg) => {

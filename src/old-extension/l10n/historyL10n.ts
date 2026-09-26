@@ -41,6 +41,7 @@ export function getHistoryLocalizedStrings() {
     onlyOnRight: vscode.l10n.t("Commits only on the right"),
     identicalFiles: vscode.l10n.t("No file differences between these revisions."),
     openHistoricalFile: vscode.l10n.t("Open File at This Revision"),
+    openFileChanges: vscode.l10n.t("Open File Changes"),
     restoreHistoricalFile: vscode.l10n.t("Restore File Contents"),
     restoreDestination: vscode.l10n.t("Restore to path"),
     restorePreview: vscode.l10n.t("Preview Restore"),
@@ -99,14 +100,22 @@ export function getHistoryLocalizedStrings() {
     activityRunning: vscode.l10n.t("Running"),
     activitySucceeded: vscode.l10n.t("Completed"),
     activityFailed: vscode.l10n.t("Failed"),
-    elapsedSeconds: vscode.l10n.t("{0}s elapsed"),
+    elapsedSeconds: vscode.l10n.t("{0} elapsed"),
     copyError: vscode.l10n.t("Copy Error Details"),
     clearActivity: vscode.l10n.t("Clear Completed Activity"),
+    unseenFailures: vscode.l10n.t("Failed Git operations: {0}"),
     hideOperation: vscode.l10n.t("Hide"),
+    cancelOperation: vscode.l10n.t("Stop Git"),
     operationKeepsRunning: vscode.l10n.t("Git continues running when this dialog is hidden."),
     graphKeyboardHint: vscode.l10n.t(
       "Arrow keys move between commits. Enter opens details. Shift+F10 opens actions."
     ),
-    returnToGraph: vscode.l10n.t("Return to Graph")
+    returnToGraph: vscode.l10n.t("Return to Graph"),
+    unknownDate: vscode.l10n.t("Unknown date"),
+    restorePlanChanged: vscode.l10n.t(
+      "The file changed since this preview. Review it again before restoring."
+    ),
+    viewFailed: vscode.l10n.t("This view could not be shown: {0}"),
+    retryView: vscode.l10n.t("Try Again")
   };
 }

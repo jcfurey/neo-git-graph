@@ -10,7 +10,12 @@ import type {
 import { Button } from "@/webview/components/ui/Button";
 import { Checkbox } from "@/webview/components/ui/Checkbox";
 import { Select } from "@/webview/components/ui/Select";
-import { closeDialog, openContentDialog, openFormDialog } from "@/webview/lib/actions";
+import {
+  closeDialog,
+  openContentDialog,
+  openErrorDialog,
+  openFormDialog
+} from "@/webview/lib/actions";
 import { activity } from "@/webview/lib/activity";
 import {
   emptyFilter,
@@ -19,9 +24,15 @@ import {
   selectionInGraphOrder,
   setHistoryFilter
 } from "@/webview/lib/navigation";
-import { requestRepositoryQuery, sendRepositoryAction } from "@/webview/lib/repository-actions";
-import { selectedRepo } from "@/webview/lib/stores";
+import {
+  requestPanelQuery,
+  requestRepositoryQuery,
+  sendRepositoryAction
+} from "@/webview/lib/repository-actions";
+import { dialog, selectedRepo } from "@/webview/lib/stores";
+import { moveButton, useListMove } from "@/webview/lib/use-list-move";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
+import { getFullDate } from "@/webview/utils/date";
 import { format } from "@/webview/utils/format";
 
 import { PageControls, QueryStatus, TextField } from "./QueryControls";
@@ -206,9 +217,7 @@ function ReflogView() {
               <li key={entry.selector + index} class="space-y-2 py-3">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                   <code>{entry.hash.slice(0, 12)}</code>
-                  <time class="text-xs text-muted">
-                    {new Date(entry.date * 1000).toLocaleString()}
-                  </time>
+                  <time class="text-xs text-muted">{getFullDate(entry.date)}</time>
                 </div>
                 <p class="break-words">{entry.message}</p>
                 <p class="break-all text-xs text-muted">{entry.selector}</p>
@@ -271,9 +280,48 @@ export function openFileHistory(file: string, revision = "") {
   setHistoryFilter({ ...emptyFilter(), path: file, follow: true, revision });
 }
 
-function RestorePreview({ plan, repo }: { plan: FileRestorePlan; repo: string }) {
+function RestorePreview({ plan: initial, repo }: { plan: FileRestorePlan; repo: string }) {
+  const [plan, setPlan] = useState(initial);
+  const [changed, setChanged] = useState(false);
+  const [checking, setChecking] = useState(false);
   // The native diff can become visible before the extension finishes opening it.
-  const busy = activity.value.some((entry) => entry.repo === repo && entry.finished === null);
+  const busy =
+    checking || activity.value.some((entry) => entry.repo === repo && entry.finished === null);
+
+  /**
+   * Plan again with the same source and destination, since the file can change after planning,
+   * even in the preview itself. `next` learns whether the file still matches what was shown.
+   */
+  function replan(next: (fresh: FileRestorePlan, unchanged: boolean) => void) {
+    const owner = dialog.value;
+    setChecking(true);
+    requestPanelQuery(
+      {
+        kind: "restorePlan",
+        source: plan.source,
+        sourcePath: plan.sourcePath,
+        destination: plan.destination
+      },
+      (data, error) => {
+        if (dialog.value !== owner) {
+          return;
+        }
+        setChecking(false);
+        if (data?.kind !== "restorePlan") {
+          openErrorDialog(window.l10n.unableToLoadRepository, error);
+          return;
+        }
+        const unchanged = data.plan.snapshot === plan.snapshot;
+        if (!unchanged) {
+          setPlan(data.plan);
+          setChanged(true);
+        }
+        next(data.plan, unchanged);
+      },
+      repo
+    );
+  }
+
   return (
     <div class="space-y-3 text-left">
       <p>
@@ -286,6 +334,11 @@ function RestorePreview({ plan, repo }: { plan: FileRestorePlan; repo: string })
       <p class="break-all text-muted">
         {window.l10n.restoreSource}: {plan.sourcePath}
       </p>
+      {changed && (
+        <p class="rounded border border-line p-2" role="status">
+          {window.l10n.restorePlanChanged}
+        </p>
+      )}
       {plan.dirty && (
         <p class="rounded border border-line p-2" role="alert">
           {window.l10n.restoreDirty}
@@ -294,14 +347,25 @@ function RestorePreview({ plan, repo }: { plan: FileRestorePlan; repo: string })
       <div class="flex flex-wrap gap-2">
         <Button
           disabled={busy}
-          onClick={() => sendRepositoryAction({ kind: "previewFileRestore", plan }, repo)}
+          onClick={() =>
+            replan((fresh) =>
+              sendRepositoryAction({ kind: "previewFileRestore", plan: fresh }, repo)
+            )
+          }
         >
           {window.l10n.restorePreview}
         </Button>
         <Button
           variant="primary"
           disabled={busy}
-          onClick={() => sendRepositoryAction({ kind: "restoreFile", plan }, repo)}
+          onClick={() =>
+            // A changed file is shown again for review instead of being restored.
+            replan((fresh, unchanged) => {
+              if (unchanged) {
+                sendRepositoryAction({ kind: "restoreFile", plan: fresh }, repo);
+              }
+            })
+          }
         >
           {window.l10n.restoreHistoricalFile}
         </Button>
@@ -336,7 +400,7 @@ export function openRestoreFile(source: string, sourcePath: string, destination 
   });
 }
 
-function BatchEditor({
+export function BatchEditor({
   plan,
   operation,
   repo
@@ -350,21 +414,17 @@ function BatchEditor({
   const merges = entries.filter((entry) => entry.parentHashes.length > 1);
   const parentCount =
     merges.length > 0 ? Math.min(...merges.map((entry) => entry.parentHashes.length)) : 0;
-  function move(index: number, delta: number) {
-    const next = [...entries];
-    [next[index], next[index + delta]] = [next[index + delta]!, next[index]!];
-    setEntries(next);
-  }
+  const { root, move, status } = useListMove(entries, setEntries);
   const title = operation === "revert" ? window.l10n.batchRevert : window.l10n.batchCherryPick;
   return (
-    <div class="space-y-3 text-left">
+    <div ref={root} class="space-y-3 text-left">
       <p>
         <b>{plan.branch}</b> · <code>{plan.head.slice(0, 12)}</code>
       </p>
       <p class="text-muted">{window.l10n.batchOrderHint}</p>
       <ol class="divide-y divide-line-soft">
         {entries.map((entry, index) => (
-          <li key={entry.hash} class="space-y-2 py-2">
+          <li key={entry.hash} data-entry={entry.hash} class="space-y-2 py-2">
             <div class="flex gap-2">
               <span class="text-muted">{index + 1}.</span>
               <code>{entry.hash.slice(0, 8)}</code>
@@ -376,16 +436,25 @@ function BatchEditor({
               </p>
             )}
             <div class="flex gap-2">
-              <Button disabled={index === 0} onClick={() => move(index, -1)}>
+              <Button
+                {...moveButton(entry.hash, "earlier")}
+                disabled={index === 0}
+                onClick={() => move(index, -1)}
+              >
                 {window.l10n.moveEarlier}
               </Button>
-              <Button disabled={index === entries.length - 1} onClick={() => move(index, 1)}>
+              <Button
+                {...moveButton(entry.hash, "later")}
+                disabled={index === entries.length - 1}
+                onClick={() => move(index, 1)}
+              >
                 {window.l10n.moveLater}
               </Button>
             </div>
           </li>
         ))}
       </ol>
+      {status}
       {parentCount > 0 && (
         <label class="grid gap-2">
           {window.l10n.batchMainline}

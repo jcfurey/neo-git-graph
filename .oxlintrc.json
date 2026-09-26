@@ -6,7 +6,10 @@
     "oxlint/restriction.config.json",
     "oxlint/style.config.json"
   ],
-  "jsPlugins": [{ "name": "import-js", "specifier": "eslint-plugin-import" }],
+  "jsPlugins": [
+    { "name": "import-js", "specifier": "eslint-plugin-import" },
+    "./oxlint/webview-text.cjs"
+  ],
   "ignorePatterns": [".pnpm-store/**", ".idea/**", "out/**", "node_modules/**", "*.config.js"],
   "env": {
     "node": true
@@ -81,6 +84,13 @@
       "env": {
         "node": false,
         "browser": true
+      }
+    },
+    {
+      // Every word the webview shows comes from window.l10n.
+      "files": ["src/webview/**/*.tsx"],
+      "rules": {
+        "webview/no-hard-coded-text": "error"
       }
     },
     {

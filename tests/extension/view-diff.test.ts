@@ -8,7 +8,11 @@ vi.mock("vscode", () => ({
   l10n: { t: (message: string) => message },
   Uri: { from: (parts: unknown) => parts }
 }));
-vi.mock("@/extension/watchers/git-repo.watcher", () => ({ selectWatchedRepo: vi.fn() }));
+vi.mock("@/extension/watchers/git-repo.watcher", () => ({
+  selectWatchedRepo: vi.fn(),
+  muteGitRepoWatcher: vi.fn(),
+  unmuteGitRepoWatcher: vi.fn()
+}));
 
 const request = {
   command: "viewDiff",

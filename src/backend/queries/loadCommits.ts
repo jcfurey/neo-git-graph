@@ -1,3 +1,4 @@
+import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import type {
@@ -7,10 +8,11 @@ import type {
   GitRefData,
   QueryResult
 } from "@/backend/types";
+import { branchListRef } from "@/backend/utils/refs";
 import { remoteVisibility } from "@/backend/utils/remoteVisibility";
 
 const eolRegex = /\r\n|\r|\n/g;
-const gitLogSeparator = "XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb";
+const LOG_FIELDS = 6;
 
 type LoadCommitsInput = {
   branchName: string;
@@ -68,10 +70,12 @@ async function getLog(
   dateType: DateType
 ): Promise<GitLogEntry[]> {
   const dateField = dateType === "Author Date" ? "%at" : "%ct";
-  const format = ["%H", "%P", "%an", "%ae", dateField, "%s"].join(gitLogSeparator);
-  const args = ["log", `--max-count=${maxCommits}`, `--format=${format}`, "--date-order"];
+  // With -z, fields and records both end in NUL, so no character in a name or subject can
+  // split a record.
+  const format = ["%H", "%P", "%an", "%ae", dateField, "%s"].join("%x00");
+  const args = ["log", "-z", `--max-count=${maxCommits}`, `--format=${format}`, "--date-order"];
   if (branch !== "") {
-    args.push(branch);
+    args.push(branchListRef(branch));
   } else {
     args.push("--branches", "--tags");
     args.push(...remoteArgs);
@@ -81,30 +85,33 @@ async function getLog(
       args.push(head);
     }
   }
-  const stdout = await git.raw(args);
-  const lines = stdout.split(eolRegex);
+  args.push("--");
+  return parseLog(await git.raw(args));
+}
+
+/** Parse NUL-separated log records, refusing output that is not whole records. */
+export function parseLog(stdout: string): GitLogEntry[] {
+  if (stdout === "") {
+    return [];
+  }
+  const fields = stdout.split("\0");
+  // Each record ends in NUL, so a complete output leaves one empty string after the split.
+  if (fields.pop() !== "" || fields.length % LOG_FIELDS !== 0) {
+    throw new Error(l10n.t("Git returned an incomplete graph record."));
+  }
   const commits: GitLogEntry[] = [];
-  for (const line of lines.slice(0, -1)) {
-    const [hash, parents, author, email, date, message, ...extraFields] =
-      line.split(gitLogSeparator);
-    if (
-      hash === undefined ||
-      parents === undefined ||
-      author === undefined ||
-      email === undefined ||
-      date === undefined ||
-      message === undefined ||
-      extraFields.length > 0
-    ) {
-      break;
+  for (let index = 0; index < fields.length; index += LOG_FIELDS) {
+    const [hash, parents, author, email, date, message] = fields.slice(index, index + LOG_FIELDS);
+    if (!/^[0-9a-f]{40,64}$/.test(hash!) || !/^\d+$/.test(date!)) {
+      throw new Error(l10n.t("Git returned an incomplete graph record."));
     }
     commits.push({
-      hash,
-      parentHashes: parents.split(" "),
-      author,
-      email,
-      date: parseInt(date),
-      message
+      hash: hash!,
+      parentHashes: parents === "" ? [] : parents!.split(" "),
+      author: author!,
+      email: email!,
+      date: Number(date),
+      message: message!
     });
   }
   return commits;

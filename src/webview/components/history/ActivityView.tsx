@@ -2,8 +2,9 @@ import { useEffect, useState } from "preact/hooks";
 
 import { Button } from "@/webview/components/ui/Button";
 import { openContentDialog } from "@/webview/lib/actions";
-import { activity } from "@/webview/lib/activity";
+import { activity, markFailuresSeen } from "@/webview/lib/activity";
 import { copyToClipboard } from "@/webview/lib/copy";
+import { formatSeconds } from "@/webview/utils/date";
 
 function ActivityView() {
   const [now, setNow] = useState(Date.now());
@@ -36,7 +37,7 @@ function ActivityView() {
                   : entry.error
                     ? window.l10n.activityFailed
                     : window.l10n.activitySucceeded}{" "}
-                · {Math.max(0, Math.floor(((entry.finished ?? now) - entry.started) / 1000))}s
+                · {formatSeconds(entry.started, entry.finished ?? now)}
               </span>
             </div>
             <p class="break-all text-xs text-muted">{entry.repo}</p>
@@ -66,23 +67,41 @@ function ActivityView() {
 }
 
 export function openActivity() {
+  markFailuresSeen();
   openContentDialog(window.l10n.operationActivity, <ActivityView />, true);
 }
 
+/** Running operations, and failures that no dialog showed, beside the header's tools. */
 export function ActivityIndicator() {
   const active = activity.value.filter((entry) => entry.finished === null);
-  if (active.length === 0) {
+  const unseen = activity.value.filter((entry) => entry.unseen).length;
+  if (active.length === 0 && unseen === 0) {
     return null;
   }
   return (
-    <button
-      class="flex cursor-pointer items-center gap-2 text-xs text-muted hover:text-fg"
-      onClick={openActivity}
-      role="status"
-    >
-      <span class="size-2 animate-pulse rounded-full bg-action" />
-      {active[0]!.title}
-      {active.length > 1 ? ` (+${active.length - 1})` : ""}
-    </button>
+    <>
+      {active.length > 0 && (
+        <button
+          class="flex cursor-pointer items-center gap-2 text-xs text-muted hover:text-fg"
+          onClick={openActivity}
+          role="status"
+        >
+          <span class="size-2 animate-pulse rounded-full bg-action" />
+          {active[0]!.title}
+          {active.length > 1 ? ` (+${active.length - 1})` : ""}
+        </button>
+      )}
+      {unseen > 0 && (
+        <button
+          data-unseen-failures
+          class="flex cursor-pointer items-center gap-2 text-xs text-git-deleted hover:text-fg"
+          onClick={openActivity}
+          role="alert"
+        >
+          <span class="size-2 rounded-full bg-git-deleted" />
+          {window.l10n.unseenFailures.replace("{0}", String(unseen))}
+        </button>
+      )}
+    </>
   );
 }
