@@ -286,16 +286,17 @@ improvements rather than confirmed defects.
       Each of these tests fails against the previous code. The unused repository-manager add,
       remove, and replace functions and the `repo.changed` notification are removed.
 
-- [ ] **Keep hidden-remote exclusions within Windows command-line limits.** Hiding a remote adds
-      one `--exclude` argument per branch to `git log`. At about 800 refs, the command line exceeds
-      Windows' 32,767-character limit, so the graph fails to load for forks that hide a large
-      upstream. **Code review.**
-      **Accept:** exclusions use per-remote globs that re-include visible nested remotes. A
-      2,000-ref test asserts that the argument length stays bounded and results are unchanged, and
-      Windows CI loads such a graph.
-      Sources: [remote visibility](src/backend/utils/remoteVisibility.ts),
-      [commit loader](src/backend/queries/loadCommits.ts),
-      [history query](src/backend/queries/history.ts).
+- [x] **Keep hidden-remote exclusions within Windows command-line limits.** Completed
+      2026-09-26. `git log` now gets one `--exclude=<remote>/*` per hidden remote before
+      `--remotes`. Git has no re-include, so a visible remote named below a hidden one is added
+      back with `--glob=refs/remotes/<remote>/*`, after excluding hidden remotes named below it.
+      Remote names are escaped as literal patterns. The per-ref set still filters labels.
+      **Verified:** a test builds 2,000 branches of a hidden `upstream` remote plus a visible
+      `upstream/mirror` and a hidden `upstream/mirror/private` below it. The graph matches
+      `git rev-list` of the local refs and visible tips exactly, shows only the visible remote
+      labels, and its `log` command line is under 500 characters, where the previous exclusions
+      took 61,084 and the test fails. The test runs in Windows CI too, and the existing nested and
+      orphan remote tests pass unchanged.
 
 - [ ] **Let long network actions time out or be cancelled.** **Investigate.** Push, pull, fetch,
       and fetch-before-checkout run with no timeout, no cancellation, and no

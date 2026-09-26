@@ -43,6 +43,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Fixed
 
+- Load the graph on Windows when a hidden remote has hundreds of branches, which exceeded the command-line limit.
 - Refresh the graph after commits and other changes in linked worktrees and submodules, whose Git data lives outside their folder, and when a merge, cherry-pick, revert, rebase, or bisect starts or stops.
 - List a repository once under its real path when a workspace folder is a subfolder of it or a symlink to it, and match Source Control and File History selections to that entry.
 - Show the same repositories in the picker and the Workspace pane, follow added or removed workspace folders, respect the search depth for newly created repositories, and stop listing every repository ever viewed.
