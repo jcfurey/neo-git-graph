@@ -2,47 +2,20 @@
 
 ## [Unreleased]
 
-Current fork build: **`jcfurey.neo-git-graph@0.9.6`**. The manifest now carries the fork identity
-directly, continuing the locally installed 0.9.x builds. Historical upstream releases remain below.
+The manifest carries the fork identity, `jcfurey.neo-git-graph`, continuing the locally installed
+0.9.x builds. Historical upstream releases remain below.
+
+## [0.9.7] - 2026-09-26
 
 ### Added
 
-- Click the Uncommitted Changes row to browse staged, unstaged, untracked, and conflicted files and open their native diff or merge editor.
-
 - Tests that submit each classic action dialog and check the request, the action dispatch table, and the repository lock, with CI keeping `menus.tsx` function coverage at 80% or more.
-- Failure-time UI screenshots, DOM snapshots, browser errors, and extension logs, with an automated failure/recovery check and a minimum-version VS Code smoke test in CI.
-- Repeatable backend focus and VS Code interaction benchmarks for large histories, with timing reports and hover CPU profiles in Linux CI.
-- Graph topology and rendering regression coverage for complex merges, partial history, both graph styles, zoom, resizing, and expanded details.
-- Keyboard and contrast checks for graph focus and remote visibility in built-in light, dark, and high-contrast themes.
-- Per-remote graph visibility controls with saved choices, consistent history searches, and automatic reveal when selecting a hidden remote branch.
-- Horizontal scrolling within the Graph column for wide histories, using a scrollbar, trackpad or Shift+mouse wheel.
-- Sticky column headings keep graph scrolling accessible deep in history; selecting a commit reveals its lane, with a **Reveal selected lane** button to return after panning.
-
-- Selectable branch focus with full-colour direct history, muted merged history and gray unrelated commits, plus an option to keep all ancestors bright.
-- Focus branches from their context menus, identify the target with a Focus badge, choose subtle or strong graph dimming, and pause/resume focus without losing the target.
-- Submodule commit comparisons and parent pointer staging/unstaging.
-- Workspace fetch with individual results and reviewed fast-forward updates.
-- Push/pull commit previews, selected merged-branch cleanup, and guided Git bisect.
-- Portable workflow UI checks, three-platform CI, and a large-history benchmark.
-- Branches pane beside the graph listing local branches, remotes, tags and stashes with inline actions and a toggle that hides remote branches.
-- Settings cog in the header that gathers the repository tools and opens the extension's settings.
-- Getting Started walkthrough, a Learn more entry that opens the shipped guide, a first-use hint above the graph, and a menu button on every commit row.
 
 ### Changed
 
 - Name the fork's maintainer in CODEOWNERS and override development dependencies with high-severity advisories (js-yaml, vite, serialize-javascript) and a moderate one (qs).
 - Publish from a protected `release` environment after checking both registry tokens, pin third-party actions to commit SHAs, update the artifact actions, and allow a manual dry run of the release workflow.
 - Remove the unused avatar code, its storage, and the Clear Avatar Cache command; activation deletes the old avatar cache once, and the deprecated `fetchAvatars` setting has no effect.
-- Save focus mode, target, dimming, pause state, and Show Remote Branches per repository across graph reopening and VS Code restarts; document temporary search and scrolling state.
-- Make fork VSIX packaging repeatable with `pnpm run package:vsix`, and verify upgrades and activation in an isolated VS Code profile.
-- Gate tag publishing on matching fork identity/version and the full validation workflow; publish the same VSIX that passed package checks.
-- Refresh fork installation instructions, shipped features, and remaining work in the README.
-- Cancel superseded repository queries, restore focus after dialogs, and adapt controls to narrow windows.
-- Localize the backend's error messages through `@vscode/l10n`, with Simplified and Traditional Chinese translations.
-- Reuse the workspace repository scan between refreshes until a repository appears or vanishes.
-- Remove the unused pre-RPC activation path and its duplicate configuration module.
-- Share one field style between dialogs and pages, and replace the header's text glyphs with icons.
-- Open the search row on demand from the header or with `/`, give advanced menu items plain-language names, and explain how to undo in the reset, checkout, delete, drop, rebase and force-push dialogs.
 
 ### Fixed
 
@@ -74,6 +47,47 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 - Refuse to restore a file into a submodule or nested repository, where the superproject cannot see or warn about local edits.
 - Pass existing branch and tag names to Git so that names such as `-d` or `--output=x`, which fetches can create, are never read as options, and filter or merge a branch rather than a tag with the same name.
 - Open `neo-git-graph:` documents only for full object IDs in repositories the extension has opened, so links and other extensions cannot pass options such as `--output` to `git show`.
+- Disable the restore preview and restore buttons while a Git operation in that repository is still running, such as the preview's own diff still opening.
+
+## [0.9.6] - 2026-09-23
+
+### Added
+
+- Click the Uncommitted Changes row to browse staged, unstaged, untracked, and conflicted files and open their native diff or merge editor.
+
+- Failure-time UI screenshots, DOM snapshots, browser errors, and extension logs, with an automated failure/recovery check and a minimum-version VS Code smoke test in CI.
+- Repeatable backend focus and VS Code interaction benchmarks for large histories, with timing reports and hover CPU profiles in Linux CI.
+- Graph topology and rendering regression coverage for complex merges, partial history, both graph styles, zoom, resizing, and expanded details.
+- Keyboard and contrast checks for graph focus and remote visibility in built-in light, dark, and high-contrast themes.
+- Per-remote graph visibility controls with saved choices, consistent history searches, and automatic reveal when selecting a hidden remote branch.
+- Horizontal scrolling within the Graph column for wide histories, using a scrollbar, trackpad or Shift+mouse wheel.
+- Sticky column headings keep graph scrolling accessible deep in history; selecting a commit reveals its lane, with a **Reveal selected lane** button to return after panning.
+
+- Selectable branch focus with full-colour direct history, muted merged history and gray unrelated commits, plus an option to keep all ancestors bright.
+- Focus branches from their context menus, identify the target with a Focus badge, choose subtle or strong graph dimming, and pause/resume focus without losing the target.
+- Submodule commit comparisons and parent pointer staging/unstaging.
+- Workspace fetch with individual results and reviewed fast-forward updates.
+- Push/pull commit previews, selected merged-branch cleanup, and guided Git bisect.
+- Portable workflow UI checks, three-platform CI, and a large-history benchmark.
+- Branches pane beside the graph listing local branches, remotes, tags and stashes with inline actions and a toggle that hides remote branches.
+- Settings cog in the header that gathers the repository tools and opens the extension's settings.
+- Getting Started walkthrough, a Learn more entry that opens the shipped guide, a first-use hint above the graph, and a menu button on every commit row.
+
+### Changed
+
+- Save focus mode, target, dimming, pause state, and Show Remote Branches per repository across graph reopening and VS Code restarts; document temporary search and scrolling state.
+- Make fork VSIX packaging repeatable with `pnpm run package:vsix`, and verify upgrades and activation in an isolated VS Code profile.
+- Gate tag publishing on matching fork identity/version and the full validation workflow; publish the same VSIX that passed package checks.
+- Refresh fork installation instructions, shipped features, and remaining work in the README.
+- Cancel superseded repository queries, restore focus after dialogs, and adapt controls to narrow windows.
+- Localize the backend's error messages through `@vscode/l10n`, with Simplified and Traditional Chinese translations.
+- Reuse the workspace repository scan between refreshes until a repository appears or vanishes.
+- Remove the unused pre-RPC activation path and its duplicate configuration module.
+- Share one field style between dialogs and pages, and replace the header's text glyphs with icons.
+- Open the search row on demand from the header or with `/`, give advanced menu items plain-language names, and explain how to undo in the reset, checkout, delete, drop, rebase and force-push dialogs.
+
+### Fixed
+
 - Make uncommitted changes keyboard accessible, restore focus when closing details, count individual untracked files, and remove placeholder commit metadata from the changes row.
 - Resolve staged diff contents to immutable blobs so reopening a file after staging shows the current changes.
 

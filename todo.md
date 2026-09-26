@@ -442,16 +442,16 @@ improvements rather than confirmed defects.
       **Remaining (settings):** enable Issues, which the manifest, README, and issue templates
       link to, and enable Dependabot alerts and security updates so `dependabot.yml` takes effect.
 
-- [ ] **Version the changelog and keep release bookkeeping consistent.** The changelog is headed
-      Unreleased, although the manifest and docs say 0.9.6, so the installed extension's changelog
-      shows Unreleased. e96e630's restore-preview fix is missing from it. The local 0.9.6 VSIX
-      predates e96e630, so two different builds carry the same version, and the version is copied
-      by hand into the README, the packaging guide, and the changelog.
-      **Accept:** a dated version heading exists, with Unreleased above it. e96e630 is listed, and
-      post-0.9.6 changes get a version bump. Optionally, `check:release` fails when the changelog
-      has no heading for the manifest version.
-      Sources: [changelog](CHANGELOG.md), [packaging guide](docs/packaging.md),
-      [release check](scripts/check-release.cjs).
+- [x] **Version the changelog and keep release bookkeeping consistent.** Completed 2026-09-26.
+      The changelog has an Unreleased heading above dated `0.9.7` (2026-09-26) and `0.9.6`
+      (2026-09-23) sections. 0.9.6 holds what the 2026-09-23 build contained, and 0.9.7 lists
+      e96e630's restore-preview fix and every later change. The manifest, README, and packaging
+      guide say 0.9.7.
+      **Verified:** `check:release` now fails when the changelog has no dated heading for the
+      manifest version, or when the README or packaging guide installs a different VSIX version;
+      it fails against the previous changelog. New `test:release` cases cover a missing, undated,
+      or different heading, a version that only resembles the manifest's, and stale install
+      instructions.
 
 - [ ] **Ship every document the in-product guide links to.** The guide that Learn more opens links
       to `performance.md` from a contributor-only validation section, but the VSIX excludes that

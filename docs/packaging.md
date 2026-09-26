@@ -1,6 +1,6 @@
 # Packaging and releases
 
-The checked-in manifest is the source of truth: `jcfurey.neo-git-graph@0.9.6`.
+The checked-in manifest is the source of truth: `jcfurey.neo-git-graph@0.9.7`.
 Keep `publisher` and `name` stable so local VSIX installations upgrade the existing fork.
 Retain the upstream author credits and license when changing metadata.
 
@@ -11,7 +11,7 @@ Use Node.js 24 and the pnpm version pinned in `package.json`:
 ```sh
 pnpm install --frozen-lockfile
 pnpm run package:vsix
-code --install-extension ./neo-git-graph-0.9.6.vsix --force
+code --install-extension ./neo-git-graph-0.9.7.vsix --force
 ```
 
 `package:vsix` validates the fork identity, then invokes VSCE. Its prepublish hook cleans the output,
@@ -49,7 +49,7 @@ Electron's headless platform. The test never publishes an extension.
 Update the manifest version and documentation together, then validate locally with:
 
 ```sh
-pnpm run check:release v0.9.6
+pnpm run check:release v0.9.7
 ```
 
 Pushing a matching `v<version>` tag triggers publishing. The workflow first rejects an unexpected

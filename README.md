@@ -27,7 +27,7 @@
 
 This repository maintains **`jcfurey.neo-git-graph`**, based on
 [asispts/neo-git-graph](https://github.com/asispts/neo-git-graph). Its current build version is
-**0.9.6**. The upstream authors and MIT license are retained.
+**0.9.7**. The upstream authors and MIT license are retained.
 
 The original [Git Graph](https://github.com/mhutchie/vscode-git-graph) by mhutchie changed its license in May 2019.
 This fork is based on the last MIT-licensed commit, [`4af8583`](https://github.com/mhutchie/vscode-git-graph/commit/4af8583a42082b2c230d2c0187d4eaff4b69c665).
@@ -83,7 +83,7 @@ git clone https://github.com/jcfurey/neo-git-graph.git
 cd neo-git-graph
 pnpm install --frozen-lockfile
 pnpm run package:vsix
-code --install-extension ./neo-git-graph-0.9.6.vsix --force
+code --install-extension ./neo-git-graph-0.9.7.vsix --force
 ```
 
 Alternatively, use **Extensions → … → Install from VSIX…** and select the generated file.
