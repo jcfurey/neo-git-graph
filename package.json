@@ -106,11 +106,6 @@
       },
       {
         "category": "(neo) Git Graph",
-        "command": "neo-git-graph.clearAvatarCache",
-        "title": "%command.clearAvatarCache%"
-      },
-      {
-        "category": "(neo) Git Graph",
         "command": "neo-git-graph.fileHistory",
         "title": "%command.fileHistory%"
       },

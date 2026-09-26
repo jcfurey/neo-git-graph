@@ -61,7 +61,6 @@ export const extConfig = {
   autoCenterCommitDetailsView: (): boolean => getConfig("autoCenterCommitDetailsView", true),
   dateFormat: (): DateFormat => getConfig("dateFormat", "Date & Time"),
   dateType: (): DateType => getConfig("dateType", "Author Date"),
-  fetchAvatars: (): boolean => getConfig("fetchAvatars", false),
   gitPath: (): string =>
     builtInGitPath ?? configuredGitPath(vscode.workspace.getConfiguration("git").get("path")),
   graphColours: (): string[] =>

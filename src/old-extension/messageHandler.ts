@@ -39,7 +39,6 @@ import {
   unmuteGitRepoWatcher
 } from "@/extension/watchers/git-repo.watcher";
 import { invalidateWorkspaceScan, listRepos } from "@/extension/workspace-scan";
-import { AvatarManager } from "@/old-extension/avatarManager";
 import { encodeDiffBlobUri, encodeDiffDocUri } from "@/old-extension/diffDocProvider";
 import type { RequestMessage, ResponseMessage } from "@/types";
 
@@ -108,10 +107,9 @@ export function registerMessageHandlers(
   deps: {
     config: Config;
     repoManager: RepoManager;
-    avatarManager: AvatarManager;
   }
 ) {
-  const { config, repoManager, avatarManager } = deps;
+  const { config, repoManager } = deps;
 
   let currentRepo: string | null = null;
   const busyRepos = new Map<string, boolean>();
@@ -560,10 +558,6 @@ export function registerMessageHandlers(
     } catch (error: unknown) {
       logger.debug(`Unable to select repository: ${msg.repo}`, error);
     }
-  });
-
-  bridge.onMessage("fetchAvatar", (msg) => {
-    avatarManager.fetchAvatarImage(msg.email, msg.repo, msg.commits);
   });
 
   bridge.onMessage("saveRepoState", (msg) => {

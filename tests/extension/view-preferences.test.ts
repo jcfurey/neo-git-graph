@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync } from "node:fs";
+import { rmSync } from "node:fs";
 
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ExtensionContext } from "vscode";
@@ -28,7 +28,6 @@ it("merges preference patches in workspace storage and restores them after exten
     })
   };
   const globalState = { get: vi.fn(), update: vi.fn() };
-  mkdirSync(repo + "/storage/avatars", { recursive: true });
   const context = {
     workspaceState,
     globalState,

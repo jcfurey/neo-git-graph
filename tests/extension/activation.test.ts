@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -73,7 +73,6 @@ function context(saved: Record<string, unknown>) {
 
 const COMMANDS = [
   "neo-git-graph.view",
-  "neo-git-graph.clearAvatarCache",
   "neo-git-graph.fileHistory",
   "neo-git-graph.showBranches",
   "neo-git-graph.openDocumentation",
@@ -101,6 +100,18 @@ it("activates without running Git when the saved last repository was deleted", a
   });
   expect(commands).toEqual(COMMANDS.toSorted());
   expect(mocks.simpleGit).not.toHaveBeenCalled();
+});
+
+it("removes the avatar cache that earlier versions kept", async () => {
+  mocks.folders = undefined;
+  const avatars = path.join(storage, "avatars");
+  mkdirSync(avatars);
+  writeFileSync(path.join(avatars, "author.png"), "");
+  const globalState = memento({ avatarCache: { "a@example.com": {} } });
+  const { activate: run } = await import("@/main");
+  run({ ...context({}), globalState } as unknown as import("vscode").ExtensionContext);
+  await vi.waitFor(() => expect(existsSync(avatars)).toBe(false));
+  expect(globalState.update).toHaveBeenCalledWith("avatarCache", undefined);
 });
 
 it("declares that virtual and untrusted workspaces are unsupported", () => {

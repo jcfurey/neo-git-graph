@@ -44,7 +44,6 @@ function register() {
     config: { gitPath: () => "git" },
     gitClient: { getInstance: () => ({ repo: "/another-repo" }), setRepo: vi.fn() },
     repoManager: { getRepos: () => ({}) },
-    avatarManager: {},
     extensionState: { setLastActiveRepo: vi.fn() },
     repoFileWatcher: { start: vi.fn() }
   };

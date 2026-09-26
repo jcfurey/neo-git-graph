@@ -67,7 +67,6 @@ This fork:
 - **Branch actions**: Create, checkout, rename, delete, and merge
 - **Tag actions**: Create, delete, and push tags
 - **Commit actions**: Checkout, cherry-pick, revert, and reset
-- **Avatar support (deprecated in v0.6.0)**: Optional avatars from GitHub, GitLab, or Gravatar
 - **Multi-repo**: Work with multiple repositories in one workspace, including initialized submodules and their nested submodules
 - **Repository selection**: Click a repository's Git Graph button in Source Control to open its graph or switch the existing graph to that repository
 - **Devcontainer support**: Works in remote and container environments
@@ -119,20 +118,20 @@ criteria are in [todo.md](todo.md).
 
 All settings use the `neo-git-graph` prefix.
 
-| Setting                       | Default         | Description                                                            |
-| ----------------------------- | --------------- | ---------------------------------------------------------------------- |
-| `autoCenterCommitDetailsView` | `true`          | Center commit details when opened                                      |
-| `dateFormat`                  | `"Date & Time"` | `"Date & Time"`, `"Date Only"`, or `"Relative"`                        |
-| `dateType`                    | `"Author Date"` | `"Author Date"` or `"Commit Date"`                                     |
-| `fetchAvatars`                | `false`         | Fetch avatars (sends email to external services); deprecated in v0.6.0 |
-| `graphColours`                | 12 defaults     | Colors for graph lines                                                 |
-| `graphStyle`                  | `"rounded"`     | `"rounded"` or `"angular"`                                             |
-| `initialLoadCommits`          | `300`           | Commits to load on open                                                |
-| `loadMoreCommits`             | `100`           | Commits to load on demand                                              |
-| `maxDepthOfRepoSearch`        | `0`             | Folder depth for repo search                                           |
-| `showCurrentBranchByDefault`  | `false`         | Show only current branch on open                                       |
-| `showUncommittedChanges`      | `true`          | Show uncommitted changes node                                          |
-| `tabIconColourTheme`          | `"colour"`      | `"colour"` or `"grey"`                                                 |
+| Setting                       | Default         | Description                                     |
+| ----------------------------- | --------------- | ----------------------------------------------- |
+| `autoCenterCommitDetailsView` | `true`          | Center commit details when opened               |
+| `dateFormat`                  | `"Date & Time"` | `"Date & Time"`, `"Date Only"`, or `"Relative"` |
+| `dateType`                    | `"Author Date"` | `"Author Date"` or `"Commit Date"`              |
+| `fetchAvatars`                | `false`         | No effect; avatars were removed                 |
+| `graphColours`                | 12 defaults     | Colors for graph lines                          |
+| `graphStyle`                  | `"rounded"`     | `"rounded"` or `"angular"`                      |
+| `initialLoadCommits`          | `300`           | Commits to load on open                         |
+| `loadMoreCommits`             | `100`           | Commits to load on demand                       |
+| `maxDepthOfRepoSearch`        | `0`             | Folder depth for repo search                    |
+| `showCurrentBranchByDefault`  | `false`         | Show only current branch on open                |
+| `showUncommittedChanges`      | `true`          | Show uncommitted changes node                   |
+| `tabIconColourTheme`          | `"colour"`      | `"colour"` or `"grey"`                          |
 
 ## Contributing
 

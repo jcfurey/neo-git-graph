@@ -398,17 +398,17 @@ improvements rather than confirmed defects.
 
 ### Maintenance and project health
 
-- [ ] **Remove the unreachable avatar pipeline.** The webview never requests avatars, yet the
-      extension handles `fetchAvatar` messages regardless of the setting, creates an avatar folder
-      on every activation, contributes a Clear Avatar Cache command, and ships 472 untested lines
-      containing a hard-coded GitLab token. The README still advertises avatars. **Code review.**
-      **Accept:** the avatar code, messages, storage, and command are removed, optionally with a
-      one-time cache cleanup. The deprecated setting is described as having no effect, and the
-      README no longer lists the feature. Optionally, rename `src/old-extension`, which is the live
-      command protocol rather than legacy code, and test the RPC server's unknown-method and error
-      paths.
-      Sources: [avatar manager](src/old-extension/avatarManager.ts),
-      [activation](src/extension/legacy.ts), [README](README.md).
+- [x] **Remove the unreachable avatar pipeline.** Completed 2026-09-26. The avatar manager
+      (with its hard-coded token), the `fetchAvatar` messages and types, the avatar storage, the
+      Clear Avatar Cache command, and the unused `fetchAvatars` webview option are removed.
+      Activation deletes the old `avatars` folder and cache once. The deprecated setting stays so
+      existing settings are not flagged, described as having no effect, and the README no longer
+      lists avatars. `src/old-extension` keeps its name, since renaming it would touch every
+      import for no behavior change.
+      **Verified:** an activation test registers every command without Clear Avatar Cache and
+      removes an existing avatar folder and cache entry. New RPC server tests cover a known
+      method, unknown methods including `toString` and `__proto__`, handlers that throw an Error
+      or another value, and non-RPC messages.
 
 - [ ] **Keep `main` green and require CI before checking off work.** `main` failed CI on five
       consecutive pushes (2026-09-16 to 2026-09-23), including the push that recorded the full suite

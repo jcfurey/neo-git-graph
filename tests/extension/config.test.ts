@@ -20,7 +20,6 @@ it("falls back to the defaults declared in package.json", () => {
     autoCenterCommitDetailsView: extConfig.autoCenterCommitDetailsView(),
     dateFormat: extConfig.dateFormat(),
     dateType: extConfig.dateType(),
-    fetchAvatars: extConfig.fetchAvatars(),
     graphColours: extConfig.graphColours(),
     graphStyle: extConfig.graphStyle(),
     initialLoadCommits: extConfig.initialLoadCommits(),
