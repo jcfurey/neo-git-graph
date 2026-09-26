@@ -543,17 +543,23 @@ improvements rather than confirmed defects.
       at 822 px, where the header wraps to 84 px, that the sidebar sticks at 84 px (48 px before)
       with the remaining height.
 
-- [ ] **Keep keyboard focus in list editors and give each row's controls a distinct name.**
-      **Reproduced:** moving an entry in the interactive rebase or batch editors sends focus to the
-      page body and announces nothing, and a background refresh drops focus from the sync preview.
-      The Branches pane's ⋯ and Checkout buttons do not say which row they belong to, and the ⋯
-      buttons of a local and a remote branch with the same name are identical.
-      **Accept:** focus follows the moved entry, and a live region announces its new position.
-      Controls are named with their commit or full ref. Consider roving focus for Branches pane
-      rows.
-      Sources: [rebase editor](src/webview/components/repository/RebaseEditor.tsx),
-      [Branches pane](src/webview/components/repository/RefsPane.tsx),
-      [workflow tools](src/webview/components/history/WorkflowTools.tsx).
+- [x] **Keep keyboard focus in list editors and give each row's controls a distinct name.**
+      Completed 2026-09-26. The interactive rebase and batch cherry-pick or revert editors share a
+      move hook: after an entry moves, focus returns to the button pressed on that entry, or to
+      its other move button at the first or last place, and a status region announces "Moved
+      {hash} to position {n} of {total}." The move buttons are named with their commit. The sync
+      preview keeps its review, marked busy, while a background refresh reloads the plan, so the
+      focused control stays; a changed plan is a new review, and focus moves into it instead of
+      to the page. Branches pane controls are named with the full ref (`refs/heads/main`,
+      `refs/remotes/origin/main`, `refs/tags/v1`) or the stash ref: ⋯, Checkout, Show in Graph,
+      Apply, and Pop. Roving focus for Branches pane rows was not added; each row's controls stay
+      separate Tab stops.
+      **Verified:** webview tests move entries in both editors and check focus and the
+      announcement after each move, including at the first place; without the focus step, focus
+      falls to the page body as reported. A sync test refreshes the open preview twice and keeps
+      the focused Push button, then moves focus into a changed plan's review. A Branches pane test
+      finds distinct names for every row control, including local `main` and remote `origin/main`.
+      All fail against the previous code.
 
 - [ ] **Localize the remaining hard-coded webview text.** Still hard-coded: "Loading ...", the
       repository-load failure and its Retry button, reflog dates (which use the browser locale),

@@ -249,6 +249,7 @@
   "Drop": "捨棄",
   "Move Earlier": "向前移動",
   "Move Later": "向後移動",
+  "Moved {0} to position {1} of {2}.": "已將 {0} 移到第 {1} 位，共 {2} 位。",
   "Start Rebase": "開始重定基底",
   "Keep at least one commit; the first retained commit cannot be Squash. Reword requires a message.": "至少保留一個提交；第一個保留的提交不能選擇壓縮。改寫需要填寫說明。",
   "{0} in progress": "正在進行{0}",

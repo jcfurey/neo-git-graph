@@ -110,10 +110,13 @@ function TrackingBadge({ branch }: { branch: BranchDetails }) {
 /**
  * One ref, stash or remote. The label selects it; the trailing controls and
  * the context menu carry its actions. `depth` indents rows under a remote.
+ * `name` identifies the row in its controls' names, such as `refs/remotes/origin/main` for a
+ * row labelled `main`, so rows with the same label stay distinct.
  */
 function Row({
   source,
   label,
+  name = label,
   icon,
   title,
   active = false,
@@ -127,6 +130,7 @@ function Row({
 }: {
   source: string;
   label: string;
+  name?: string;
   icon: ComponentChildren;
   title?: string;
   active?: boolean;
@@ -169,7 +173,7 @@ function Row({
           <button
             type="button"
             class={ACTION_CLASS}
-            aria-label={window.l10n.refActions.replace("{0}", label)}
+            aria-label={window.l10n.refActions.replace("{0}", name)}
             aria-haspopup="menu"
             onClick={(event) => openContextMenu(event, source, menu())}
           >
@@ -243,6 +247,7 @@ function RemoteBranches({
             depth={2}
             source={refMenuSource(gitRef)}
             label={ref.name.slice(group.remote.length + 1)}
+            name={`refs/remotes/${ref.name}`}
             title={ref.name}
             icon={<BranchIcon class={ROW_ICON} />}
             dimmed={!shown}
@@ -254,6 +259,7 @@ function RemoteBranches({
               <button
                 type="button"
                 class={ACTION_CLASS}
+                aria-label={`${window.l10n.checkout} refs/remotes/${ref.name}`}
                 onClick={() => checkoutBranchAction(gitRef)}
               >
                 {window.l10n.checkout}
@@ -364,6 +370,7 @@ export function RefsPane() {
                   key={branch.name}
                   source={refMenuSource(gitRef)}
                   label={branch.name}
+                  name={`refs/heads/${branch.name}`}
                   bold={isHead}
                   icon={<BranchIcon class={ROW_ICON} />}
                   active={selectedBranch.value === branch.name}
@@ -390,6 +397,7 @@ export function RefsPane() {
                       <button
                         type="button"
                         class={ACTION_CLASS}
+                        aria-label={`${window.l10n.checkout} refs/heads/${branch.name}`}
                         onClick={() => checkoutBranchAction(gitRef)}
                       >
                         {window.l10n.checkout}
@@ -506,6 +514,7 @@ export function RefsPane() {
                   key={tag.name}
                   source={refMenuSource(gitRef)}
                   label={tag.name}
+                  name={`refs/tags/${tag.name}`}
                   title={`${tag.name}\n${tag.hash}`}
                   icon={<TagIcon class={ROW_ICON} />}
                   onSelect={() => focusHistory(tag.hash)}
@@ -514,6 +523,7 @@ export function RefsPane() {
                     <button
                       type="button"
                       class={ACTION_CLASS}
+                      aria-label={`${window.l10n.showInGraph} refs/tags/${tag.name}`}
                       onClick={() => focusHistory(tag.hash)}
                     >
                       {window.l10n.showInGraph}
@@ -552,6 +562,7 @@ export function RefsPane() {
                   key={stash.hash}
                   source={`stash:${stash.hash}`}
                   label={stash.message}
+                  name={stash.ref}
                   title={`${stash.ref}\n${stash.message}`}
                   icon={<StashIcon class={ROW_ICON} />}
                   badge={<span class="shrink-0 text-xs text-muted">{stash.ref}</span>}
@@ -563,6 +574,7 @@ export function RefsPane() {
                         type="button"
                         class={ACTION_CLASS}
                         title={window.l10n.applyStash}
+                        aria-label={`${window.l10n.applyShort} ${stash.ref}`}
                         onClick={() => applyStash("apply", stash, repo)}
                       >
                         {window.l10n.applyShort}
@@ -571,6 +583,7 @@ export function RefsPane() {
                         type="button"
                         class={ACTION_CLASS}
                         title={window.l10n.popStash}
+                        aria-label={`${window.l10n.popShort} ${stash.ref}`}
                         onClick={() => applyStash("pop", stash, repo)}
                       >
                         {window.l10n.popShort}

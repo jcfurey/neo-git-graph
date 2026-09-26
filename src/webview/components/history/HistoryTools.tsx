@@ -30,6 +30,7 @@ import {
   sendRepositoryAction
 } from "@/webview/lib/repository-actions";
 import { dialog, selectedRepo } from "@/webview/lib/stores";
+import { moveButton, useListMove } from "@/webview/lib/use-list-move";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 import { format } from "@/webview/utils/format";
 
@@ -400,7 +401,7 @@ export function openRestoreFile(source: string, sourcePath: string, destination 
   });
 }
 
-function BatchEditor({
+export function BatchEditor({
   plan,
   operation,
   repo
@@ -414,21 +415,17 @@ function BatchEditor({
   const merges = entries.filter((entry) => entry.parentHashes.length > 1);
   const parentCount =
     merges.length > 0 ? Math.min(...merges.map((entry) => entry.parentHashes.length)) : 0;
-  function move(index: number, delta: number) {
-    const next = [...entries];
-    [next[index], next[index + delta]] = [next[index + delta]!, next[index]!];
-    setEntries(next);
-  }
+  const { root, move, status } = useListMove(entries, setEntries);
   const title = operation === "revert" ? window.l10n.batchRevert : window.l10n.batchCherryPick;
   return (
-    <div class="space-y-3 text-left">
+    <div ref={root} class="space-y-3 text-left">
       <p>
         <b>{plan.branch}</b> · <code>{plan.head.slice(0, 12)}</code>
       </p>
       <p class="text-muted">{window.l10n.batchOrderHint}</p>
       <ol class="divide-y divide-line-soft">
         {entries.map((entry, index) => (
-          <li key={entry.hash} class="space-y-2 py-2">
+          <li key={entry.hash} data-entry={entry.hash} class="space-y-2 py-2">
             <div class="flex gap-2">
               <span class="text-muted">{index + 1}.</span>
               <code>{entry.hash.slice(0, 8)}</code>
@@ -440,16 +437,25 @@ function BatchEditor({
               </p>
             )}
             <div class="flex gap-2">
-              <Button disabled={index === 0} onClick={() => move(index, -1)}>
+              <Button
+                {...moveButton(entry.hash, "earlier")}
+                disabled={index === 0}
+                onClick={() => move(index, -1)}
+              >
                 {window.l10n.moveEarlier}
               </Button>
-              <Button disabled={index === entries.length - 1} onClick={() => move(index, 1)}>
+              <Button
+                {...moveButton(entry.hash, "later")}
+                disabled={index === entries.length - 1}
+                onClick={() => move(index, 1)}
+              >
                 {window.l10n.moveLater}
               </Button>
             </div>
           </li>
         ))}
       </ol>
+      {status}
       {parentCount > 0 && (
         <label class="grid gap-2">
           {window.l10n.batchMainline}

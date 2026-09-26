@@ -77,6 +77,7 @@ export function getRepositoryLocalizedStrings() {
     dropCommit: vscode.l10n.t("Drop"),
     moveEarlier: vscode.l10n.t("Move Earlier"),
     moveLater: vscode.l10n.t("Move Later"),
+    movedEntry: vscode.l10n.t("Moved {0} to position {1} of {2}."),
     startRebase: vscode.l10n.t("Start Rebase"),
     invalidRebasePlan: vscode.l10n.t(
       "Keep at least one commit; the first retained commit cannot be Squash. Reword requires a message."

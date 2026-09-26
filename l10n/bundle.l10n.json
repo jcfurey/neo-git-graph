@@ -281,6 +281,7 @@
   "Drop": "Drop",
   "Move Earlier": "Move Earlier",
   "Move Later": "Move Later",
+  "Moved {0} to position {1} of {2}.": "Moved {0} to position {1} of {2}.",
   "Start Rebase": "Start Rebase",
   "Keep at least one commit; the first retained commit cannot be Squash. Reword requires a message.": "Keep at least one commit; the first retained commit cannot be Squash. Reword requires a message.",
   "{0} in progress": "{0} in progress",
