@@ -2,3 +2,10 @@ allowBuilds:
   "@vscode/vsce-sign": true
   esbuild: true
   keytar: false
+
+# Development-only advisories: keep patched versions until the tools that pull these in update.
+overrides:
+  js-yaml@>=4.0.0 <4.3.2: ^4.3.2
+  qs@<6.16.0: ^6.16.0
+  serialize-javascript@<7.0.5: ^7.1.1
+  vite@>=8.0.0 <8.0.16: ^8.0.16

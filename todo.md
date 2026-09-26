@@ -432,15 +432,15 @@ improvements rather than confirmed defects.
       **Remaining (settings):** create the `release` environment with a required reviewer, and
       move `VS_MARKETPLACE_TOKEN` and `OPEN_VSX_TOKEN` into it as environment secrets.
 
-- [ ] **Align the fork's GitHub settings with its documentation.** Issues are disabled, although
-      the manifest, README, and issue templates link to them. Dependabot alerts and security updates
-      are disabled, so `dependabot.yml` has no effect, and CODEOWNERS names the upstream owner.
-      `pnpm audit` reports 3 high and 5 lower advisories, all in development dependencies (vite via
-      vitest, serialize-javascript via the VS Code test CLI, and js-yaml via vsce and ovsx).
-      **Accept:** Issues are enabled or the links point to a working channel. Dependabot is enabled
-      or its configuration is removed. CODEOWNERS is updated or removed. No high advisories remain.
-      Sources: [manifest](package.json), [Dependabot configuration](.github/dependabot.yml),
-      [CODEOWNERS](.github/CODEOWNERS).
+- [x] **Align the fork's GitHub settings with its documentation.** Completed 2026-09-26 in code;
+      Issues and Dependabot are repository settings (see the hand-off notes). CODEOWNERS now names
+      `@jcfurey`. `pnpm-workspace.yaml` overrides the vulnerable development dependencies with
+      patched releases: js-yaml 4.3.2+, qs 6.16+, vite 8.0.16+, and serialize-javascript 7.1+,
+      the version mocha 12 itself requires. `pnpm audit` now reports one low advisory, `diff`
+      under mocha 11, whose fix needs a mocha major version that `@vscode/test-cli` does not
+      accept yet. Tests, type checks, and both builds pass with the new versions.
+      **Remaining (settings):** enable Issues, which the manifest, README, and issue templates
+      link to, and enable Dependabot alerts and security updates so `dependabot.yml` takes effect.
 
 - [ ] **Version the changelog and keep release bookkeeping consistent.** The changelog is headed
       Unreleased, although the manifest and docs say 0.9.6, so the installed extension's changelog
