@@ -519,12 +519,14 @@ improvements rather than confirmed defects.
       before); a 500-commit rebase plan used 505 and now fewer than 10, keeping multi-line
       messages; and a 13-commit batch plan used 28 and now fewer than 10, in the requested order.
 
-- [ ] **Open keyboard-activated menus next to their button.** Menus opened with Enter from the
-      Branches pane, the settings cog, and the Workspace pane use zero mouse coordinates, so they
-      appear in the window's corner. **Reproduced.** Commit rows and file trees already anchor
-      their menus to the button.
-      **Accept:** keyboard activation anchors the menu to the button's rectangle, with a test.
-      Sources: [context menu actions](src/webview/lib/actions.ts).
+- [x] **Open keyboard-activated menus next to their button.** Completed 2026-09-26.
+      `openContextMenu` recognizes a click without a pointer (click count 0, as Enter and Space
+      produce) and a context-menu event without a position, and opens the menu at the bottom-left
+      of the element that handled the event. This covers the Branches pane, settings cog, and
+      Workspace pane buttons at once; pointer clicks still open at the pointer.
+      **Verified:** a webview test anchors a keyboard click and a context-menu key press below the
+      button and keeps pointer clicks and right-clicks at the pointer; the keyboard cases fail
+      against the previous code.
 
 - [ ] **Keep dropdowns and the sidebar inside narrow windows.** **Reproduced:** at 400 px wide, the
       Branch dropdown list extends 157 px past the left edge. When the header wraps (at 800–1000

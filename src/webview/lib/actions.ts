@@ -437,6 +437,16 @@ export function openContextMenu(
   event.preventDefault();
   event.stopPropagation();
   captureFocus(event.target);
+  // Enter or Space on a button clicks it with no pointer position, and the context-menu key
+  // reports none either; open the menu below the control instead of in the window's corner.
+  const keyboard =
+    event.type === "click" ? event.detail === 0 : event.clientX === 0 && event.clientY === 0;
+  const anchor = event.currentTarget instanceof Element ? event.currentTarget : null;
+  if (keyboard && anchor !== null) {
+    const rect = anchor.getBoundingClientRect();
+    contextMenu.value = { x: rect.left, y: rect.bottom, entries, source };
+    return;
+  }
   contextMenu.value = { x: event.clientX, y: event.clientY, entries, source };
 }
 
