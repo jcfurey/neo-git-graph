@@ -22,7 +22,10 @@ const backend = vi.hoisted(() => ({
   runRepositoryAction: vi.fn()
 }));
 
-vi.mock("vscode", () => ({ l10n: { t: (message: string) => message } }));
+vi.mock("vscode", () => ({
+  l10n: { t: (message: string) => message },
+  workspace: { textDocuments: [] }
+}));
 vi.mock("@/backend/gitClient", () => ({
   gitClientFactory: (repo: string) => ({ getInstance: () => ({ repo }) })
 }));
@@ -188,7 +191,8 @@ describe("repository lock", () => {
     // Overlapping views, all while the reset and the first view run.
     await Promise.all(
       ["viewWorkingTreeFile", "viewRangeFile", "viewHistoricalFile", "previewFileRestore"].map(
-        (kind) => send("repositoryAction", "/repo", { action: { kind } })
+        (kind) =>
+          send("repositoryAction", "/repo", { action: { kind, plan: { destination: "a" } } })
       )
     );
     expect(backend.runRepositoryAction).toHaveBeenCalledTimes(5);

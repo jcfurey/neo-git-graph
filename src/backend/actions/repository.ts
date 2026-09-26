@@ -15,7 +15,7 @@ import { runWorkflowAction } from "@/backend/actions/workflows";
 import { viewWorkingTreeFile } from "@/backend/actions/workingTree";
 import { loadOperation, loadStashes, loadWorktrees } from "@/backend/queries/repository";
 import { loadWorkingTree } from "@/backend/queries/workingTree";
-import type { RepositoryAction, StashDetails } from "@/backend/types";
+import type { RepositoryAction, RestoreBackup, StashDetails } from "@/backend/types";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { runGit } from "@/backend/utils/runGit";
 import { requireBranchName, resolveCommit } from "@/backend/utils/validation";
@@ -37,6 +37,7 @@ export type RepositoryEffect =
       staged: boolean;
     }
   | { kind: "restoreDiff"; hash: string; sourcePath: string; destination: string; exists: boolean }
+  | { kind: "restored"; backup: RestoreBackup | null }
   | void;
 
 async function findStash(git: SimpleGit, stash: StashDetails) {
@@ -69,6 +70,7 @@ export async function runRepositoryAction(
       return runWorkflowAction(git, action, binary);
     case "submodule":
     case "restoreFile":
+    case "undoRestore":
     case "previewFileRestore":
     case "fixup":
     case "batch":

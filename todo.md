@@ -325,15 +325,21 @@ improvements rather than confirmed defects.
       the view is still pending; it fails against the previous lock. A webview test checks the
       activity title of each view kind.
 
-- [ ] **Make a file restore recoverable and account for unsaved editors.** **Proposed;** the
-      unsaved-editor behavior is **Code review.** Local content that a restore replaces is lost
-      permanently. The preview's left side shows the unsaved editor buffer instead of the file on
-      disk, and saving a dirty editor after a restore undoes the restore.
-      **Accept:** before overwriting a file with different contents, the backend stores it as a Git
-      object and offers Undo restore, tested byte for byte. The extension warns or blocks when the
-      destination has unsaved changes.
-      Sources: [restore action](src/backend/actions/history.ts),
-      [restore dialog](src/webview/components/history/HistoryTools.tsx).
+- [x] **Make a file restore recoverable and account for unsaved editors.** Completed 2026-09-26.
+      Before a restore replaces different contents, the backend stores them with
+      `hash-object -w --no-filters --stdin`, so the Git object holds the exact bytes, with the
+      mode and whether the file was a symlink. Once the restore has released the repository lock,
+      a notification offers Undo Restore, which runs through the lock, puts the bytes and mode
+      back, and refuses when the file changed after the restore, naming the object. A restore or
+      undo is refused while an editor has unsaved changes to the file, and the preview warns
+      that it shows them.
+      **Verified:** backend tests restore over bytes with CR, LF, NUL, and invalid UTF-8 in an
+      executable file, check the stored object byte for byte, and undo to the same bytes and
+      mode; no backup is made for a missing or identical file; and undo refuses after later edits
+      and leaves them. Extension tests refuse a restore over a dirty editor, warn on its preview,
+      undo from the notification, and leave the restore when it is dismissed. The notification
+      test caught Undo running while the restore still held the lock, which the follow-up now
+      avoids.
 
 - [x] **Open conflicted files when VS Code's Git extension does not track the repository.**
       Completed 2026-09-26. The conflict effect now carries Git's two-letter status. The extension

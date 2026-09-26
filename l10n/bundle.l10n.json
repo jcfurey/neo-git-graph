@@ -4,6 +4,10 @@
   "Deleted in {0}": "Deleted in {0}",
   "Another Git operation is running in this repository. Wait for it to finish.": "Another Git operation is running in this repository. Wait for it to finish.",
   "The Git operation was cancelled.": "The Git operation was cancelled.",
+  "Undo Restore": "Undo Restore",
+  "Restored {0}. Its previous contents are kept in Git until its next garbage collection.": "Restored {0}. Its previous contents are kept in Git until its next garbage collection.",
+  "Save or revert the unsaved changes to {0} in the editor first; saving them later would undo the restore.": "Save or revert the unsaved changes to {0} in the editor first; saving them later would undo the restore.",
+  "The preview shows unsaved changes to {0}. Save or revert them before restoring.": "The preview shows unsaved changes to {0}. Save or revert them before restoring.",
   "Staged Changes": "Staged Changes",
   "Working Tree Changes": "Working Tree Changes",
   "Select a workspace file to view its history.": "Select a workspace file to view its history.",
@@ -472,6 +476,7 @@
   "The file changed. Preview the restore again.": "The file changed. Preview the restore again.",
   "The recorded submodule revision changed. Refresh the workspace overview.": "The recorded submodule revision changed. Refresh the workspace overview.",
   "The file or its staged version changed. Preview the restore again.": "The file or its staged version changed. Preview the restore again.",
+  "The file changed after the restore, so Undo would lose those changes. Its previous contents are Git object {0}.": "The file changed after the restore, so Undo would lose those changes. Its previous contents are Git object {0}.",
   "HEAD or the staged changes changed. Preview the fixup commit again.": "HEAD or the staged changes changed. Preview the fixup commit again.",
   "Commit or stash your changes before applying commits.": "Commit or stash your changes before applying commits.",
   "Choose a valid mainline parent for the selected merge commits.": "Choose a valid mainline parent for the selected merge commits."

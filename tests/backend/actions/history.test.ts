@@ -149,6 +149,61 @@ describe("file restoration", () => {
     expect(fs.existsSync(path.join(repo, "before.bin"))).toBe(false);
   });
 
+  it("keeps replaced contents as a Git object and undoes the restore byte for byte", async () => {
+    const historical = commit("data.bin", Buffer.from([1, 2, 3]), "historical");
+    // Bytes a line-ending or text filter would change, with a CR and invalid UTF-8.
+    const local = Buffer.from([0, 13, 10, 255, 254, 0x0d, 0x0a, 97]);
+    fs.writeFileSync(path.join(repo, "data.bin"), local);
+    if (process.platform !== "win32") {
+      fs.chmodSync(path.join(repo, "data.bin"), 0o755);
+    }
+    const plan = await loadRestorePlan(git(), historical, "data.bin", "data.bin");
+    const effect = await run({ kind: "restoreFile", plan });
+    expect(fs.readFileSync(path.join(repo, "data.bin"))).toEqual(Buffer.from([1, 2, 3]));
+    if (effect?.kind !== "restored" || effect.backup === null) {
+      throw new Error("no backup");
+    }
+    expect(effect.backup).toMatchObject({ path: "data.bin", symlink: false });
+    expect(execFileSync("git", ["cat-file", "blob", effect.backup.blob], { cwd: repo })).toEqual(
+      local
+    );
+
+    await run({ kind: "undoRestore", backup: effect.backup });
+    expect(fs.readFileSync(path.join(repo, "data.bin"))).toEqual(local);
+    if (process.platform !== "win32") {
+      expect(fs.statSync(path.join(repo, "data.bin")).mode & 0o777).toBe(0o755);
+    }
+  });
+
+  it("offers no undo when the file was missing or already matched", async () => {
+    const historical = commit("same", "same", "same");
+    const unchanged = await loadRestorePlan(git(), historical, "same", "same");
+    expect(await run({ kind: "restoreFile", plan: unchanged })).toEqual({
+      kind: "restored",
+      backup: null
+    });
+    const created = await loadRestorePlan(git(), historical, "same", "new-copy");
+    expect(await run({ kind: "restoreFile", plan: created })).toEqual({
+      kind: "restored",
+      backup: null
+    });
+  });
+
+  it("refuses to undo over edits made after the restore", async () => {
+    const historical = commit("f", "historical", "historical");
+    fs.writeFileSync(path.join(repo, "f"), "local");
+    const plan = await loadRestorePlan(git(), historical, "f", "f");
+    const effect = await run({ kind: "restoreFile", plan });
+    fs.writeFileSync(path.join(repo, "f"), "edited after the restore");
+    if (effect?.kind !== "restored" || effect.backup === null) {
+      throw new Error("no backup");
+    }
+    await expect(run({ kind: "undoRestore", backup: effect.backup })).rejects.toThrow(
+      effect.backup.blob
+    );
+    expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe("edited after the restore");
+  });
+
   it("refuses stale previews and paths through a symlink or outside the repository", async () => {
     const plan = await loadRestorePlan(git(), "HEAD", "f", "f");
     fs.writeFileSync(path.join(repo, "f"), "new local edits");

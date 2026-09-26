@@ -1,4 +1,13 @@
-import { lstat, mkdtemp, rm } from "node:fs/promises";
+import {
+  chmod,
+  lstat,
+  mkdtemp,
+  readFile,
+  readlink,
+  rm,
+  symlink,
+  writeFile
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -10,10 +19,35 @@ import type { RepositoryEffect } from "@/backend/actions/repository";
 import { gitClientFactory } from "@/backend/gitClient";
 import { loadBatchPlan, loadStagedPlan, sourceFile } from "@/backend/queries/history";
 import { loadWorkspace, submoduleLinks } from "@/backend/queries/workspace";
-import type { HistoryAction } from "@/backend/types";
+import type { HistoryAction, RestoreBackup } from "@/backend/types";
 import { checkedWorktreePath, fileSnapshot, repoFile } from "@/backend/utils/history";
-import { runGit } from "@/backend/utils/runGit";
+import { readBlob, runGit, writeBlob } from "@/backend/utils/runGit";
 import { requireBranchName, requireCurrentBranch, resolveCommit } from "@/backend/utils/validation";
+
+/**
+ * Keep the destination's current contents as a Git object before a restore replaces them, byte
+ * for byte and without filters, unless the file is missing or already holds the source.
+ */
+async function backupFile(
+  git: SimpleGit,
+  file: string,
+  source: { mode: string; blob: string }
+): Promise<Omit<RestoreBackup, "path" | "after"> | null> {
+  const destination = await checkedWorktreePath(git, file);
+  const stat = await lstat(destination).catch(() => null);
+  if (stat === null) {
+    return null;
+  }
+  const symlinked = stat.isSymbolicLink();
+  const content = symlinked
+    ? Buffer.from(await readlink(destination))
+    : await readFile(destination);
+  const blob = await writeBlob(git, content);
+  const mode = symlinked ? "120000" : stat.mode & 0o111 ? "100755" : "100644";
+  return blob === source.blob && mode === source.mode
+    ? null
+    : { blob, mode: stat.mode, symlink: symlinked };
+}
 
 export async function runHistoryAction(
   git: SimpleGit,
@@ -91,6 +125,7 @@ export async function runHistoryAction(
           l10n.t("The file or its staged version changed. Preview the restore again.")
         );
       }
+      const backup = await backupFile(git, plan.destination, file);
       const directory = await mkdtemp(path.join(os.tmpdir(), "neo-git-graph-restore-"));
       const env = { ...process.env, GIT_INDEX_FILE: path.join(directory, "index") };
       try {
@@ -118,6 +153,35 @@ export async function runHistoryAction(
         );
       } finally {
         await rm(directory, { recursive: true, force: true });
+      }
+      return {
+        kind: "restored",
+        backup: backup && {
+          ...backup,
+          path: repoFile(plan.destination),
+          after: await fileSnapshot(git, plan.destination)
+        }
+      };
+    }
+    case "undoRestore": {
+      await requireIdle(git);
+      const { backup } = action;
+      if ((await fileSnapshot(git, backup.path)) !== backup.after) {
+        throw new Error(
+          l10n.t(
+            "The file changed after the restore, so Undo would lose those changes. Its previous contents are Git object {0}.",
+            backup.blob
+          )
+        );
+      }
+      const destination = await checkedWorktreePath(git, backup.path);
+      const content = await readBlob(git, backup.blob);
+      await rm(destination, { force: true });
+      if (backup.symlink) {
+        await symlink(content.toString(), destination);
+      } else {
+        await writeFile(destination, content, { mode: backup.mode & 0o777 });
+        await chmod(destination, backup.mode & 0o777);
       }
       return;
     }

@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import type { SimpleGit } from "simple-git";
 import * as vscode from "vscode";
 
@@ -22,10 +24,11 @@ import type {
   ActionRequest,
   GitFileChangeType,
   GraphQueryCommand,
-  QueryResult
+  QueryResult,
+  RestoreBackup
 } from "@/backend/types";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
-import { isRepoWithinPath } from "@/backend/utils/repoPath";
+import { isRepoWithinPath, normalizeRepoPath } from "@/backend/utils/repoPath";
 import { abbrevCommit } from "@/backend/utils/string";
 import type { Config } from "@/extension/config";
 import { openConflict } from "@/extension/conflicts";
@@ -79,6 +82,17 @@ function viewDiff(
 }
 
 /** Actions that only open an editor, so file events during them come from the user. */
+/** Whether an editor holds unsaved changes to a repository file, which saving would write back. */
+function hasUnsavedChanges(repo: string, file: string) {
+  const target = normalizeRepoPath(path.join(repo, file));
+  return vscode.workspace.textDocuments.some(
+    (document) =>
+      document.isDirty &&
+      document.uri.scheme === "file" &&
+      normalizeRepoPath(document.uri.fsPath) === target
+  );
+}
+
 function viewOnly(request: ActionRequest) {
   return (
     request.command === "repositoryAction" &&
@@ -126,14 +140,22 @@ export function registerMessageHandlers(
     return repos.includes(selected) ? repos : [selected, ...repos];
   }
 
+  /**
+   * Run requests for `command` under the repository lock, and return the runner. A handler can
+   * return a follow-up, which runs once the lock is released.
+   */
   function registerAction<T extends ActionRequest["command"]>(
     command: T,
-    handler: (git: SimpleGit, msg: Extract<ActionRequest, { command: T }>) => Promise<void>
+    handler: (
+      git: SimpleGit,
+      msg: Extract<ActionRequest, { command: T }>
+    ) => Promise<void | (() => void)>
   ) {
-    bridge.onMessage(command, async (message) => {
+    const run = async (message: unknown) => {
       const msg = message as Extract<ActionRequest, { command: T }>;
       let status: string | null = null;
       let acquired = false;
+      let followUp: void | (() => void) = undefined;
       try {
         const request: ActionRequest = msg;
         // Opening a diff or preview reads the repository, so it neither waits for nor blocks
@@ -166,7 +188,7 @@ export function registerMessageHandlers(
         if ("requestId" in msg) {
           actionControllers.set(msg.requestId, { repo: msg.repo, controller });
         }
-        await handler(
+        followUp = await handler(
           gitClientFactory(msg.repo, config.gitPath(), controller.signal).getInstance(),
           msg
         ).catch((error: unknown) => {
@@ -190,12 +212,67 @@ export function registerMessageHandlers(
         status,
         ...("requestId" in msg ? { requestId: msg.requestId, repo: msg.repo } : {})
       } as ResponseMessage);
+      followUp?.();
+      return status;
+    };
+    bridge.onMessage(command, async (message) => {
+      await run(message);
     });
+    return run;
   }
 
   // --- Action handlers ---
 
-  registerAction("repositoryAction", async (git, msg) => {
+  let undoRequests = 0;
+  /** Offer to put back what a restore replaced, through the lock like any other action. */
+  async function offerUndo(repo: string, backup: RestoreBackup) {
+    const undo = vscode.l10n.t("Undo Restore");
+    const choice = await vscode.window.showInformationMessage(
+      vscode.l10n.t(
+        "Restored {0}. Its previous contents are kept in Git until its next garbage collection.",
+        backup.path
+      ),
+      undo
+    );
+    if (choice !== undo) {
+      return;
+    }
+    const status = await runRepositoryActionRequest({
+      command: "repositoryAction",
+      repo,
+      requestId: `undo-restore-${++undoRequests}`,
+      action: { kind: "undoRestore", backup }
+    });
+    bridge.post({ command: "refresh" });
+    if (status !== null) {
+      void vscode.window.showErrorMessage(status);
+    }
+  }
+
+  const runRepositoryActionRequest = registerAction("repositoryAction", async (git, msg) => {
+    if (msg.action.kind === "restoreFile" || msg.action.kind === "undoRestore") {
+      const file =
+        msg.action.kind === "restoreFile" ? msg.action.plan.destination : msg.action.backup.path;
+      if (hasUnsavedChanges(msg.repo, file)) {
+        throw new Error(
+          vscode.l10n.t(
+            "Save or revert the unsaved changes to {0} in the editor first; saving them later would undo the restore.",
+            file
+          )
+        );
+      }
+    }
+    if (
+      msg.action.kind === "previewFileRestore" &&
+      hasUnsavedChanges(msg.repo, msg.action.plan.destination)
+    ) {
+      void vscode.window.showWarningMessage(
+        vscode.l10n.t(
+          "The preview shows unsaved changes to {0}. Save or revert them before restoring.",
+          msg.action.plan.destination
+        )
+      );
+    }
     const effect = await runRepositoryAction(git, msg.action, config.gitPath());
     if (msg.action.kind === "renameRemote" || msg.action.kind === "removeRemote") {
       const action = msg.action;
@@ -268,6 +345,10 @@ export function registerMessageHandlers(
     }
     if (msg.action.kind === "submodule") {
       invalidateWorkspaceScan();
+    }
+    if (effect?.kind === "restored" && effect.backup !== null) {
+      const { backup } = effect;
+      return () => void offerUndo(msg.repo, backup);
     }
   });
 

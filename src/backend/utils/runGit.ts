@@ -37,3 +37,26 @@ export async function runGit(
     });
   }
 }
+
+/** Store `content` byte for byte as a Git blob, without filters, and return its object ID. */
+export async function writeBlob(git: SimpleGit, content: Buffer) {
+  const cwd = (await git.raw(["rev-parse", "--show-toplevel"])).replace(/\n$/, "");
+  const run = execute(
+    gitProcessOf(git)?.gitPath ?? "git",
+    [...PARSED_OUTPUT_ARGS, "hash-object", "-w", "--no-filters", "--stdin"],
+    { cwd, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }, windowsHide: true }
+  );
+  run.child.stdin?.end(content);
+  return (await run).stdout.trim();
+}
+
+/** A blob's exact bytes, which a string result would corrupt for binary files. */
+export async function readBlob(git: SimpleGit, blob: string): Promise<Buffer> {
+  const cwd = (await git.raw(["rev-parse", "--show-toplevel"])).replace(/\n$/, "");
+  const { stdout } = await execute(
+    gitProcessOf(git)?.gitPath ?? "git",
+    [...PARSED_OUTPUT_ARGS, "cat-file", "blob", blob],
+    { cwd, encoding: "buffer", windowsHide: true, maxBuffer: 1024 * 1024 * 1024 }
+  );
+  return stdout;
+}
