@@ -25,7 +25,7 @@ vi.mock("vscode", () => ({
   }
 }));
 vi.mock("@/extension/rpc/rpc-notify", () => ({ rpcNotify: { notify: mocks.notify } }));
-vi.mock("@/extension/util/logger", () => ({ logger: { debug: vi.fn() } }));
+vi.mock("@/extension/util/logger", () => ({ logger: { debug: vi.fn(), warn: vi.fn() } }));
 
 let watcher: ReturnType<typeof watchGitRepo>;
 let changeFile: () => void;
@@ -41,7 +41,7 @@ beforeEach(() => {
     dispose: vi.fn()
   });
   watcher = watchGitRepo();
-  selectWatchedRepo("/repo");
+  selectWatchedRepo("/repo", "git");
 });
 afterEach(() => {
   watcher.dispose();

@@ -115,7 +115,7 @@ export function registerMessageHandlers(
     }
     cancelGraphQueries();
     currentRepo = repo;
-    selectWatchedRepo(repo);
+    selectWatchedRepo(repo, config.gitPath());
   }
 
   async function workspaceRepos(selected: string) {

@@ -261,15 +261,17 @@ improvements rather than confirmed defects.
       `sub dir/file #1.txt` in the real repository. The subfolder, symlink, and File History tests
       fail against the previous discovery.
 
-- [ ] **Watch the real Git directories of worktrees and submodules.** The watcher only looks for
-      `.git/` below the repository folder, but linked worktrees and submodules keep their HEAD,
-      index, and refs elsewhere. The watcher also ignores `MERGE_HEAD`, `CHERRY_PICK_HEAD`,
-      `REVERT_HEAD`, `BISECT_*`, `rebase-merge/`, and `sequencer/`. **Reproduced** at the Git level
-      (a commit in a worktree changed nothing below the worktree); **Code review** for the watcher.
-      **Accept:** on selection, the extension resolves `--absolute-git-dir` and `--git-common-dir`
-      and watches HEAD, the index, operation-state files, `packed-refs`, and `refs/**`. A commit in
-      a worktree and a commit in a submodule each produce exactly one refresh.
-      Sources: [repository watcher](src/extension/watchers/git-repo.watcher.ts).
+- [x] **Watch the real Git directories of worktrees and submodules.** Completed 2026-09-26. On
+      selection, the watcher resolves `--absolute-git-dir` and `--git-common-dir` and watches
+      HEAD, the index, `MERGE_HEAD`, `CHERRY_PICK_HEAD`, `REVERT_HEAD`, `BISECT_*`,
+      `rebase-merge/`, `rebase-apply/`, and `sequencer/` in the Git directory, and `config`,
+      `packed-refs`, and `refs/**` in the common directory, besides the work tree. A slow lookup
+      for a repository that is no longer selected adds no watchers.
+      **Verified:** tests commit in a real linked worktree and a real submodule, check that none of
+      the Git files the commit touched is below the work tree, and report those files to the
+      watchers: each commit produces exactly one refresh. A `MERGE_HEAD` refreshes, while new
+      objects, another worktree's HEAD, and the main worktree's HEAD do not. All four tests fail
+      against the previous watcher.
 
 - [x] **Follow workspace-folder changes and stop listing every repository ever viewed.**
       Completed 2026-09-26. Workspace-folder changes and `.git` creations or deletions invalidate
