@@ -373,6 +373,7 @@
   "The branch changed. Refresh the graph and try again.": "分支已變更。請重新整理分支圖後再試一次。",
   "The remote for '{0}' is no longer configured.": "「{0}」對應的遠端儲存庫已不再設定。",
   "Invalid history page.": "無效的歷史頁碼。",
+  "Git returned an incomplete graph record.": "Git 傳回了不完整的提交圖紀錄。",
   "Git returned an incomplete history record.": "Git 傳回了不完整的歷史紀錄。",
   "Git returned an unexpected history record.": "Git 傳回了非預期的歷史紀錄。",
   "Choose a file path inside the repository.": "請選擇儲存庫內的檔案路徑。",

@@ -419,6 +419,7 @@
   "Choose an ancestor of the current branch for interactive rebase.": "Choose an ancestor of the current branch for interactive rebase.",
   "There are no commits after this commit on the current branch.": "There are no commits after this commit on the current branch.",
   "This range contains merge commits. Choose a linear range for interactive rebase, or use Rebase onto this branch to preserve merges.": "This range contains merge commits. Choose a linear range for interactive rebase, or use Rebase onto this branch to preserve merges.",
+  "Git returned an incomplete graph record.": "Git returned an incomplete graph record.",
   "Enter dates as YYYY-MM-DD.": "Enter dates as YYYY-MM-DD.",
   "The start date must come before the end date.": "The start date must come before the end date.",
   "These revisions do not have a common ancestor.": "These revisions do not have a common ancestor.",

@@ -239,14 +239,15 @@ improvements rather than confirmed defects.
       tests fail against the previous validation, and the remote push test now expects the
       validation message rather than Git's later rejection.
 
-- [ ] **Parse graph log records with NUL delimiters and report malformed records.** The commit
-      loader splits its output on any line ending and stops at the first unexpected line.
-      **Reproduced:** a carriage return inside a subject truncated a four-commit graph to two
-      commits, with no Load more.
-      **Accept:** the loader uses `-z` with NUL-separated fields, as the history query does, and
-      malformed records show the graph error view instead of truncating the graph. Tests cover
-      carriage returns in a subject and in an author name.
-      Sources: [commit loader](src/backend/queries/loadCommits.ts).
+- [x] **Parse graph log records with NUL delimiters and report malformed records.** Completed
+      2026-09-26. The commit loader runs `git log -z` with NUL-separated fields, like the history
+      query, and refuses output that is not whole records, has a malformed hash, or has a
+      non-numeric date, so the graph shows its error view instead of a truncated history. Root
+      commits now have no parents instead of one empty parent.
+      **Verified:** a four-commit test with carriage returns in a subject and an author name loads
+      every commit with Load more available; unit tests reject a missing terminator, a short
+      record, a partial second record, a bad hash, and a bad date; and a malformed `log` output
+      rejects `loadCommits`. All four tests fail against the previous loader.
 
 - [ ] **Identify repositories by their real Git top level.** Discovery accepts any folder inside a
       work tree. **Reproduced:** a workspace folder at `repo/packages/app`, or a symlink to a

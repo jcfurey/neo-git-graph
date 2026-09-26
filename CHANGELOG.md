@@ -43,6 +43,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Fixed
 
+- Load the whole graph when a commit subject or author name contains a carriage return, and show an error instead of a silently truncated graph if Git's log output is incomplete.
 - Reject invalid branch, tag, and remote names such as `a..b`, `x@{1}`, or `has space` before running Git; the previous check never saw Git's refusal.
 - Activate and register every command even when the last viewed repository was deleted, a workspace folder is missing, or no folder is open, and skip folders of virtual workspaces instead of failing; virtual and untrusted workspaces are declared unsupported.
 - Recognize repositories by Git's output and exit status instead of English or German "not a repository" text, so scanning behaves the same in every language.

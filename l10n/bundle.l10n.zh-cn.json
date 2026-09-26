@@ -373,6 +373,7 @@
   "The branch changed. Refresh the graph and try again.": "分支已更改。请刷新分支图后重试。",
   "The remote for '{0}' is no longer configured.": "“{0}”对应的远程仓库已不再配置。",
   "Invalid history page.": "无效的历史页码。",
+  "Git returned an incomplete graph record.": "Git 返回了不完整的提交图记录。",
   "Git returned an incomplete history record.": "Git 返回了不完整的历史记录。",
   "Git returned an unexpected history record.": "Git 返回了意外的历史记录。",
   "Choose a file path inside the repository.": "请选择仓库内的文件路径。",
