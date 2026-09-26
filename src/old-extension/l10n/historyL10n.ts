@@ -108,6 +108,9 @@ export function getHistoryLocalizedStrings() {
     graphKeyboardHint: vscode.l10n.t(
       "Arrow keys move between commits. Enter opens details. Shift+F10 opens actions."
     ),
-    returnToGraph: vscode.l10n.t("Return to Graph")
+    returnToGraph: vscode.l10n.t("Return to Graph"),
+    unknownDate: vscode.l10n.t("Unknown date"),
+    viewFailed: vscode.l10n.t("This view could not be shown: {0}"),
+    retryView: vscode.l10n.t("Try Again")
   };
 }

@@ -7,6 +7,7 @@ import { RefsPane } from "./components/repository/RefsPane";
 import { RepositoryStatus } from "./components/repository/RepositoryStatus";
 import { ContextMenu } from "./components/ui/ContextMenu";
 import { Dialog } from "./components/ui/Dialog";
+import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 import { ScrollShadow } from "./components/ui/ScrollShadow";
 import { GraphView } from "./layout/GraphView";
 import { MainHeader } from "./layout/MainHeader";
@@ -27,13 +28,17 @@ export function App({ repos }: { repos: Array<GitRepo> }) {
           </div>
         )}
         <div class="min-w-0 w-full flex-1">
-          <GraphView />
+          <ErrorBoundary>
+            <GraphView />
+          </ErrorBoundary>
         </div>
       </div>
       <NavigationEffects />
       <ScrollShadow />
       <ContextMenu />
-      <Dialog />
+      <ErrorBoundary>
+        <Dialog />
+      </ErrorBoundary>
     </div>
   );
 }

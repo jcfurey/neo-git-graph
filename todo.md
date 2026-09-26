@@ -360,14 +360,14 @@ improvements rather than confirmed defects.
       [activity view](src/webview/components/history/ActivityView.tsx),
       [dialog](src/webview/components/ui/Dialog.tsx).
 
-- [ ] **Render commits with out-of-range dates.** Git accepts timestamps such as
-      `@99999999999999`, but the date formatters throw `RangeError` on them. There is no error
-      boundary, so one such commit leaves the graph with no rows. **Reproduced** in unit tests and
-      in Chrome.
-      **Accept:** the formatters return a placeholder for non-finite or out-of-range dates, and
-      rows and details render. Consider an error boundary around the graph and dialogs.
-      Sources: [date utilities](src/webview/utils/date.ts),
-      [commit row](src/webview/components/commit/CommitRow.tsx).
+- [x] **Render commits with out-of-range dates.** Completed 2026-09-26. The date formatters
+      return a localized "Unknown date" when a timestamp does not fit in a JavaScript date, and an
+      error boundary around the graph and around dialogs replaces only the failing part with its
+      error and Try Again.
+      **Verified:** tests format `@99999999999999`, its negative, NaN, and Infinity in all three
+      date formats and in the details view, render a graph whose first commit has such a date
+      with every row present, and show that a throwing child leaves its siblings and recovers on
+      Try Again. The formatter and graph tests fail against the previous code.
 
 - [ ] **Keep the Branches pane and branch dropdown responsive with thousands of refs.** Every
       Branches pane row reads the active context-menu source, so opening any menu or dialog

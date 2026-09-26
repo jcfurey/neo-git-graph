@@ -68,14 +68,30 @@ export type CommitDate = {
   value: string;
 };
 
+/**
+ * The date of a Git timestamp, or null when JavaScript cannot represent it. Git accepts
+ * timestamps such as `@99999999999999`, far past the largest JavaScript date, on which every
+ * Intl formatter throws.
+ */
+function toDate(seconds: number): Date | null {
+  const date = new Date(seconds * 1000);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
 /** Full date and time, as shown in the commit details view. */
 export function getFullDate(seconds: number): string {
-  return getFullDateFormatter(getWebviewConfig().locale).format(new Date(seconds * 1000));
+  const date = toDate(seconds);
+  return date === null
+    ? window.l10n.unknownDate
+    : getFullDateFormatter(getWebviewConfig().locale).format(date);
 }
 
 export function getCommitDate(seconds: number): CommitDate {
   const { dateFormat, locale } = getWebviewConfig();
-  const date = new Date(seconds * 1000);
+  const date = toDate(seconds);
+  if (date === null) {
+    return { title: window.l10n.unknownDate, value: window.l10n.unknownDate };
+  }
   const dateStr = getDateFormatter(locale).format(date);
   const title = `${dateStr} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 
