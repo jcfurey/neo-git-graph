@@ -10,7 +10,12 @@ import type {
 import { Button } from "@/webview/components/ui/Button";
 import { Checkbox } from "@/webview/components/ui/Checkbox";
 import { Select } from "@/webview/components/ui/Select";
-import { closeDialog, openContentDialog, openFormDialog } from "@/webview/lib/actions";
+import {
+  closeDialog,
+  openContentDialog,
+  openErrorDialog,
+  openFormDialog
+} from "@/webview/lib/actions";
 import { activity } from "@/webview/lib/activity";
 import {
   emptyFilter,
@@ -19,8 +24,12 @@ import {
   selectionInGraphOrder,
   setHistoryFilter
 } from "@/webview/lib/navigation";
-import { requestRepositoryQuery, sendRepositoryAction } from "@/webview/lib/repository-actions";
-import { selectedRepo } from "@/webview/lib/stores";
+import {
+  requestPanelQuery,
+  requestRepositoryQuery,
+  sendRepositoryAction
+} from "@/webview/lib/repository-actions";
+import { dialog, selectedRepo } from "@/webview/lib/stores";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 import { format } from "@/webview/utils/format";
 
@@ -271,9 +280,48 @@ export function openFileHistory(file: string, revision = "") {
   setHistoryFilter({ ...emptyFilter(), path: file, follow: true, revision });
 }
 
-function RestorePreview({ plan, repo }: { plan: FileRestorePlan; repo: string }) {
+function RestorePreview({ plan: initial, repo }: { plan: FileRestorePlan; repo: string }) {
+  const [plan, setPlan] = useState(initial);
+  const [changed, setChanged] = useState(false);
+  const [checking, setChecking] = useState(false);
   // The native diff can become visible before the extension finishes opening it.
-  const busy = activity.value.some((entry) => entry.repo === repo && entry.finished === null);
+  const busy =
+    checking || activity.value.some((entry) => entry.repo === repo && entry.finished === null);
+
+  /**
+   * Plan again with the same source and destination, since the file can change after planning,
+   * even in the preview itself. `next` learns whether the file still matches what was shown.
+   */
+  function replan(next: (fresh: FileRestorePlan, unchanged: boolean) => void) {
+    const owner = dialog.value;
+    setChecking(true);
+    requestPanelQuery(
+      {
+        kind: "restorePlan",
+        source: plan.source,
+        sourcePath: plan.sourcePath,
+        destination: plan.destination
+      },
+      (data, error) => {
+        if (dialog.value !== owner) {
+          return;
+        }
+        setChecking(false);
+        if (data?.kind !== "restorePlan") {
+          openErrorDialog(window.l10n.unableToLoadRepository, error);
+          return;
+        }
+        const unchanged = data.plan.snapshot === plan.snapshot;
+        if (!unchanged) {
+          setPlan(data.plan);
+          setChanged(true);
+        }
+        next(data.plan, unchanged);
+      },
+      repo
+    );
+  }
+
   return (
     <div class="space-y-3 text-left">
       <p>
@@ -286,6 +334,11 @@ function RestorePreview({ plan, repo }: { plan: FileRestorePlan; repo: string })
       <p class="break-all text-muted">
         {window.l10n.restoreSource}: {plan.sourcePath}
       </p>
+      {changed && (
+        <p class="rounded border border-line p-2" role="status">
+          {window.l10n.restorePlanChanged}
+        </p>
+      )}
       {plan.dirty && (
         <p class="rounded border border-line p-2" role="alert">
           {window.l10n.restoreDirty}
@@ -294,14 +347,25 @@ function RestorePreview({ plan, repo }: { plan: FileRestorePlan; repo: string })
       <div class="flex flex-wrap gap-2">
         <Button
           disabled={busy}
-          onClick={() => sendRepositoryAction({ kind: "previewFileRestore", plan }, repo)}
+          onClick={() =>
+            replan((fresh) =>
+              sendRepositoryAction({ kind: "previewFileRestore", plan: fresh }, repo)
+            )
+          }
         >
           {window.l10n.restorePreview}
         </Button>
         <Button
           variant="primary"
           disabled={busy}
-          onClick={() => sendRepositoryAction({ kind: "restoreFile", plan }, repo)}
+          onClick={() =>
+            // A changed file is shown again for review instead of being restored.
+            replan((fresh, unchanged) => {
+              if (unchanged) {
+                sendRepositoryAction({ kind: "restoreFile", plan: fresh }, repo);
+              }
+            })
+          }
         >
           {window.l10n.restoreHistoricalFile}
         </Button>

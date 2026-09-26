@@ -20,6 +20,7 @@ The manifest carries the fork identity, `jcfurey.neo-git-graph`, continuing the 
 
 ### Fixed
 
+- Refresh the restore dialog when the file changed after its preview, instead of failing on every click with "Preview the restore again".
 - Label an untracked nested repository in the uncommitted-changes list and explain it, with Open Its Graph, instead of failing when it is clicked.
 - Rename or remove a remote with many branches in a moment instead of seconds, and prepare interactive rebases and batch cherry-picks or reverts with one Git process instead of one or two per commit.
 - Keep the Branches pane and branch dropdown responsive with thousands of refs: menus no longer re-render every row, and long lists show 200 at a time with **Show more** or keyboard paging.

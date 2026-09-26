@@ -489,13 +489,15 @@ improvements rather than confirmed defects.
       Sources: [working-tree details](src/webview/components/commit/WorkingTreeDetails.tsx),
       [query hook](src/webview/lib/use-repository-query.ts).
 
-- [ ] **Let the restore dialog recover from a stale preview.** If the file changes after planning,
-      including through edits in the preview itself, both buttons fail with "Preview the restore
-      again", but Preview resends the same stale plan. **Reproduced** in the backend; the UI part is
-      **Code review.**
-      **Accept:** a snapshot mismatch re-plans with the same source and destination and shows the
-      updated local-changes state. A webview test covers this.
-      Sources: [restore dialog](src/webview/components/history/HistoryTools.tsx).
+- [x] **Let the restore dialog recover from a stale preview.** Completed 2026-09-26. Preview and
+      Restore both plan again with the same source and destination first. Preview then opens the
+      fresh plan. Restore runs only when the file still matches what the dialog showed; otherwise
+      the dialog switches to the fresh plan, including its local-changes warning, and says the
+      file changed and needs another review.
+      **Verified:** a webview test edits the file between planning and Restore: no restore is
+      sent, the dialog shows the change and the new warning, Preview uses the fresh plan, and the
+      next Restore sends it. The existing preview test now answers the re-plan. The new test
+      fails against the previous dialog.
 
 - [x] **Explain untracked nested repositories in the uncommitted-changes list.** Completed
       2026-09-26. With every untracked file listed, only a nested repository stays a folder, so

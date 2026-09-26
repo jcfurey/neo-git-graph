@@ -381,6 +381,7 @@
   "Arrow keys move between commits. Enter opens details. Shift+F10 opens actions.": "方向鍵在提交之間移動。Enter 開啟詳細資料。Shift+F10 開啟操作選單。",
   "Return to Graph": "返回圖表",
   "Unknown date": "未知日期",
+  "The file changed since this preview. Review it again before restoring.": "自此預覽以來檔案已變更。請在還原前重新檢查。",
   "This view could not be shown: {0}": "無法顯示此檢視：{0}",
   "Try Again": "重試",
   "Remote '{0}' is not configured for this repository.": "此儲存庫未設定遠端儲存庫「{0}」。",

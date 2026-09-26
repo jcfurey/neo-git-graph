@@ -112,6 +112,9 @@ export function getHistoryLocalizedStrings() {
     ),
     returnToGraph: vscode.l10n.t("Return to Graph"),
     unknownDate: vscode.l10n.t("Unknown date"),
+    restorePlanChanged: vscode.l10n.t(
+      "The file changed since this preview. Review it again before restoring."
+    ),
     viewFailed: vscode.l10n.t("This view could not be shown: {0}"),
     retryView: vscode.l10n.t("Try Again")
   };
