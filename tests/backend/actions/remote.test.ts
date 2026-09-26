@@ -137,7 +137,7 @@ describe("pushBranch", () => {
         remoteBranch: "main:other",
         setUpstream: false
       })
-    ).rejects.toThrow();
+    ).rejects.toThrow(/valid branch name/);
     expect(read(origin, ["rev-parse", "main"])).toBe(original);
   });
 });

@@ -227,15 +227,17 @@ improvements rather than confirmed defects.
       changes, and the VS Code merge-recovery scenario passes.
       Sources: [merge](src/backend/actions/merge.ts).
 
-- [ ] **Make backend ref-name validation reject invalid names.** `git check-ref-format` reports
-      failure only through its exit code, which `git.raw()` ignores. **Reproduced:**
-      `requireBranchName` accepts `a..b`, `*`, `x@{1}`, `has space`, `a:b`, and `.hidden`. The lease
-      query does not validate its branch at all, and an existing remote test passes only because
-      `git push` rejects the name later.
-      **Accept:** validation is exit-code-aware. Tests show each of these names is rejected before
-      any Git write, and the lease query validates its branch.
-      Sources: [validation](src/backend/utils/validation.ts),
-      [repository queries](src/backend/queries/repository.ts).
+- [x] **Make backend ref-name validation reject invalid names.** Completed 2026-09-26.
+      `check-ref-format` reports an invalid name only through its exit status, which simple-git
+      ignores when stderr is empty, so validation asks for `--normalize`, which prints the name
+      only when it is valid, and also refuses names Git would rewrite, such as `a//b`. Branch
+      creation and rename, tag creation and push, remote names, remote ref deletion, and the lease
+      query all validate before running Git, with localized branch, tag, and remote messages.
+      **Verified:** tests reject `a..b`, `*`, `x@{1}`, `has space`, `a:b`, `.hidden`, `a//b`,
+      `end/`, and `x.lock` in each of those paths and assert that no local or remote ref changed;
+      HEAD and option-like branch names and invalid remote names are rejected too. Eleven of the
+      tests fail against the previous validation, and the remote push test now expects the
+      validation message rather than Git's later rejection.
 
 - [ ] **Parse graph log records with NUL delimiters and report malformed records.** The commit
       loader splits its output on any line ending and stops at the first unexpected line.

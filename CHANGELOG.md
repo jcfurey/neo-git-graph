@@ -43,6 +43,7 @@ directly, continuing the locally installed 0.9.x builds. Historical upstream rel
 
 ### Fixed
 
+- Reject invalid branch, tag, and remote names such as `a..b`, `x@{1}`, or `has space` before running Git; the previous check never saw Git's refusal.
 - Activate and register every command even when the last viewed repository was deleted, a workspace folder is missing, or no folder is open, and skip folders of virtual workspaces instead of failing; virtual and untrusted workspaces are declared unsupported.
 - Recognize repositories by Git's output and exit status instead of English or German "not a repository" text, so scanning behaves the same in every language.
 - Accept a `git.path` that contains spaces or parentheses, such as `C:\Program Files\Git\bin\git.exe`, or lists several paths, and prefer the Git that VS Code's own Git extension found.

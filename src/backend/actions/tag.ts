@@ -1,9 +1,10 @@
 import type { SimpleGit } from "simple-git";
 
 import type { ActionPayload } from "@/backend/types";
-import { requireRemote } from "@/backend/utils/validation";
+import { requireRemote, requireTagName } from "@/backend/utils/validation";
 
 export async function addTag(git: SimpleGit, input: ActionPayload<"addTag">): Promise<void> {
+  await requireTagName(git, input.tagName);
   await git.tag([
     ...(input.lightweight ? [] : ["-a", "-m", input.message]),
     "--",
@@ -18,7 +19,7 @@ export async function deleteTag(git: SimpleGit, input: ActionPayload<"deleteTag"
 
 export async function pushTag(git: SimpleGit, input: ActionPayload<"pushTag">): Promise<void> {
   await requireRemote(git, input.remote);
-  await git.raw(["check-ref-format", `refs/tags/${input.tagName}`]);
+  await requireTagName(git, input.tagName);
   await git.raw([
     "push",
     "--",

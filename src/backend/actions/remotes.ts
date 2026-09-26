@@ -3,7 +3,12 @@ import type { SimpleGit } from "simple-git";
 
 import type { RepositoryAction } from "@/backend/types";
 import { refNames } from "@/backend/utils/refs";
-import { requireBranchName, requireRemote } from "@/backend/utils/validation";
+import {
+  requireBranchName,
+  requireRefName,
+  requireRemote,
+  requireTagName
+} from "@/backend/utils/validation";
 
 type RemoteAction = Extract<
   RepositoryAction,
@@ -20,10 +25,12 @@ type RemoteAction = Extract<
 >;
 
 async function requireRemoteName(git: SimpleGit, name: string) {
-  if (!name || name.startsWith("-") || name === ".") {
-    throw new Error(l10n.t("Enter a valid remote name."));
-  }
-  await git.raw(["check-ref-format", `refs/remotes/${name}/branch`]);
+  await requireRefName(
+    git,
+    "refs/remotes/",
+    !name || name === "." ? "" : `${name}/branch`,
+    l10n.t("Enter a valid remote name.")
+  );
 }
 
 function requireUrl(url: string) {
@@ -107,8 +114,8 @@ export async function manageRemote(git: SimpleGit, action: RemoteAction) {
       return;
     case "deleteRemoteRef": {
       await requireRemote(git, action.remote);
+      await (action.refType === "tag" ? requireTagName : requireBranchName)(git, action.name);
       const ref = `refs/${action.refType === "tag" ? "tags" : "heads"}/${action.name}`;
-      await git.raw(["check-ref-format", ref]);
       await git.raw(["push", "--", action.remote, `:${ref}`]);
       return;
     }

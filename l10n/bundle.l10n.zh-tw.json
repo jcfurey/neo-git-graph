@@ -413,6 +413,7 @@
   "This worktree is no longer available. Refresh the worktree list.": "此工作樹已無法使用。請重新整理工作樹清單。",
   "The current or main worktree cannot be removed here.": "無法在此處移除目前工作樹或主工作樹。",
   "The worktree changed. Inspect it before removing it.": "工作樹已變更。請在移除前檢查它。",
+  "Enter a valid tag name.": "請輸入有效的標籤名稱。",
   "Enter a valid remote name.": "請輸入有效的遠端儲存庫名稱。",
   "Enter a nonempty remote URL without line breaks.": "請輸入非空且不含換行字元的遠端儲存庫 URL。",
   "A remote needs at least one fetch URL.": "遠端儲存庫至少需要一個擷取 URL。",

@@ -29,7 +29,7 @@ import type {
 } from "@/backend/types";
 import { autosquashPlan } from "@/backend/utils/autosquash";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
-import { requireRemote, resolveCommit } from "@/backend/utils/validation";
+import { requireBranchName, requireRemote, resolveCommit } from "@/backend/utils/validation";
 
 export async function gitDirectory(git: SimpleGit) {
   return (await git.raw(["rev-parse", "--absolute-git-dir"])).replace(/\n$/, "");
@@ -289,6 +289,7 @@ export async function repositoryQuery(
     }
     case "lease": {
       await requireRemote(git, query.remote);
+      await requireBranchName(git, query.branch);
       const hash = await resolveCommit(git, `refs/remotes/${query.remote}/${query.branch}`);
       return { kind: "lease", hash };
     }

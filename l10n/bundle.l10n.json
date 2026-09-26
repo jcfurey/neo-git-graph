@@ -403,6 +403,7 @@
   "Return to Graph": "Return to Graph",
   "Remote '{0}' is not configured for this repository.": "Remote '{0}' is not configured for this repository.",
   "Enter a valid branch name.": "Enter a valid branch name.",
+  "Enter a valid tag name.": "Enter a valid tag name.",
   "Check out branch '{0}' before running this operation.": "Check out branch '{0}' before running this operation.",
   "The branch changed. Refresh the graph and try again.": "The branch changed. Refresh the graph and try again.",
   "Invalid history page.": "Invalid history page.",

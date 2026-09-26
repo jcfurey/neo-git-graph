@@ -8,6 +8,7 @@ export async function createBranch(
   git: SimpleGit,
   input: ActionPayload<"createBranch">
 ): Promise<void> {
+  await requireBranchName(git, input.branchName);
   await git.raw(["branch", "--", input.branchName, input.commitHash]);
 }
 
@@ -22,6 +23,7 @@ export async function renameBranch(
   git: SimpleGit,
   input: ActionPayload<"renameBranch">
 ): Promise<void> {
+  await requireBranchName(git, input.newName);
   await git.raw(["branch", "-m", "--", input.oldName, input.newName]);
 }
 
