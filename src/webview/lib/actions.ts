@@ -378,7 +378,9 @@ export function loadMoreCommits() {
 
 /** Apply settings changed while the graph is open, then load it again with them. */
 export function applyWebviewConfig(config: WebviewConfig) {
-  updateWebviewConfig(config);
+  if (!updateWebviewConfig(config)) {
+    return;
+  }
   // A larger first page takes effect now; a smaller one keeps the commits already shown.
   maxCommits.value = Math.max(maxCommits.peek(), config.initialLoadCommits);
   refresh();

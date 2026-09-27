@@ -13,9 +13,18 @@ export function initializeWebviewConfig(value: WebviewConfig): void {
   config.value = value;
 }
 
-/** Apply settings that changed while the graph is open. */
-export function updateWebviewConfig(value: WebviewConfig): void {
+/**
+ * Apply settings that changed while the graph is open, and say whether they were applied. The
+ * extension answers in order, so a change that arrives before the page has its configuration is
+ * already part of the configuration it is about to receive, and is ignored.
+ */
+export function updateWebviewConfig(value: WebviewConfig): boolean {
+  if (config.peek() === undefined) {
+    return false;
+  }
+
   config.value = value;
+  return true;
 }
 
 export function getWebviewConfig(): WebviewConfig {
