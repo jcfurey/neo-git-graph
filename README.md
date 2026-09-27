@@ -129,5 +129,6 @@ its last commit under the MIT License. Later Git Graph releases use a different 
 from them is included.
 
 Branchwise is released under the MIT License; see [LICENSE](LICENSE), which keeps both projects'
-copyright notices as the license requires. Branchwise is not affiliated with or endorsed by either
-project.
+copyright notices as the license requires. Branchwise is replacing the inherited code module by
+module; [Replacing inherited code](docs/provenance.md) describes how, and how much is left.
+Branchwise is not affiliated with or endorsed by either project.

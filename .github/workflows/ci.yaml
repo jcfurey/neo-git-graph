@@ -27,6 +27,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The inherited-code check blames every line back to its commit.
+          fetch-depth: 0
 
       - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
@@ -54,6 +57,9 @@ jobs:
 
       - name: Check links in packaged Markdown
         run: pnpm run check:links
+
+      - name: Check that no inherited code was added
+        run: pnpm run check:provenance
 
   test:
     runs-on: ${{ matrix.os }}
