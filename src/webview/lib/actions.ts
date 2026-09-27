@@ -232,6 +232,8 @@ type FormDialog<T extends ReadonlyArray<DialogInput>> = {
   /** Context menu key of the element the dialog belongs to. */
   source: string | null;
   onSubmit: (values: DialogValues<T>) => void;
+  /** The dialog opens with focus on Cancel, so a stray Enter cannot confirm it. */
+  destructive?: boolean;
 };
 
 /**
@@ -243,7 +245,8 @@ export function openFormDialog<const T extends ReadonlyArray<DialogInput>>({
   inputs,
   action,
   source,
-  onSubmit
+  onSubmit,
+  destructive
 }: FormDialog<T>) {
   openDialog({
     kind: "form",
@@ -251,7 +254,8 @@ export function openFormDialog<const T extends ReadonlyArray<DialogInput>>({
     inputs: [...inputs],
     action,
     onSubmit: onSubmit as (values: Array<string | boolean>) => void,
-    source
+    source,
+    destructive: destructive === true
   });
 }
 

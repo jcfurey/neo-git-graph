@@ -105,6 +105,11 @@ function Menu({ state }: { state: ContextMenuState }) {
         break;
       case "Enter":
       case " ": {
+        // A key held down on the menu would otherwise run the item it lands on.
+        if (event.repeat) {
+          event.preventDefault();
+          break;
+        }
         const entry = rows.find((row) => row.item === active)?.entry;
         if (entry !== undefined && entry !== null) {
           event.preventDefault();

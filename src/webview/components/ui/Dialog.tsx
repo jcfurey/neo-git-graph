@@ -64,7 +64,23 @@ function trapTab(panel: HTMLElement, event: KeyboardEvent) {
   }
 }
 
-function Panel({ labelledBy, children }: { labelledBy: string; children: ComponentChildren }) {
+/** A held key repeats its keydown. Only a fresh press may activate a control in a dialog. */
+function ignoreKeyRepeat(event: KeyboardEvent) {
+  if (event.repeat && (event.key === "Enter" || event.key === " ")) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+}
+
+function Panel({
+  labelledBy,
+  children,
+  destructive
+}: {
+  labelledBy: string;
+  children: ComponentChildren;
+  destructive: boolean;
+}) {
   const panel = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -73,7 +89,11 @@ function Panel({ labelledBy, children }: { labelledBy: string; children: Compone
       return;
     }
 
-    (element.querySelector<HTMLElement>('input[type="text"], button') ?? element).focus();
+    (
+      element.querySelector<HTMLElement>(
+        destructive ? "[data-dialog-cancel]" : 'input[type="text"], button'
+      ) ?? element
+    ).focus();
   }, []);
 
   useEffect(() => {
@@ -97,6 +117,7 @@ function Panel({ labelledBy, children }: { labelledBy: string; children: Compone
         aria-labelledby={labelledBy}
         tabIndex={-1}
         class={PANEL_CLASS}
+        onKeyDownCapture={ignoreKeyRepeat}
         onKeyDown={(event) => {
           if (event.key === "Tab" && panel.current !== null) {
             trapTab(panel.current, event);
@@ -234,7 +255,9 @@ function FormBody({
             {state.action}
           </Button>
         </span>
-        <Button onClick={closeDialog}>{window.l10n.dialogCancel}</Button>
+        <Button data-dialog-cancel onClick={closeDialog}>
+          {window.l10n.dialogCancel}
+        </Button>
       </div>
     </form>
   );
@@ -280,7 +303,11 @@ export function Dialog() {
   }
 
   return (
-    <Panel key={state.token} labelledBy={labelledBy}>
+    <Panel
+      key={state.token}
+      labelledBy={labelledBy}
+      destructive={state.kind === "form" && state.destructive === true}
+    >
       {state.kind === "form" ? (
         <FormBody state={state} labelledBy={labelledBy} />
       ) : (
