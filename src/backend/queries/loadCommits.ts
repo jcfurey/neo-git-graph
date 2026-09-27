@@ -68,7 +68,7 @@ async function getLog(
   const format = ["%H", "%P", "%an", "%ae", dateField, "%s"].join(gitLogSeparator);
   const args = ["log", `--max-count=${maxCommits}`, `--format=${format}`, "--date-order"];
   if (branch !== "") {
-    args.push(branch);
+    args.push("--end-of-options", branch, "--");
   } else {
     args.push("--branches", "--tags");
     if (showRemoteBranches) {
