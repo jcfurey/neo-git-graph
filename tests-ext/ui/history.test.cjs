@@ -2611,38 +2611,45 @@ suite("Git Graph workflow UI", function () {
         mobile: false
       });
     try {
-      // At 400 px, the Branch dropdown's list used to reach past the window's left edge.
-      await size(400);
-      await until(() => graph.evaluate("innerWidth <= 400"), "400 px window");
-      const triggers = await graph.evaluate(
-        `document.querySelectorAll('header button[aria-haspopup="listbox"]').length`
-      );
-      assert.ok(triggers >= 3, "header dropdowns");
-      for (let index = 0; index < triggers; index++) {
-        await graph.evaluate(
-          `document.querySelectorAll('header button[aria-haspopup="listbox"]')[${index}].click()`
+      // At 400 px, the Branch dropdown's list used to reach past the window's left edge. At 700 px
+      // the long branch name widened the list past the right edge after it had been placed.
+      const windows = [
+        [400, "innerWidth <= 400"],
+        [700, "innerWidth > 400 && innerWidth <= 700"]
+      ];
+      for (const [width, ready] of windows) {
+        await size(width);
+        await until(() => graph.evaluate(ready), `${width} px window`);
+        const triggers = await graph.evaluate(
+          `document.querySelectorAll('header button[aria-haspopup="listbox"]').length`
         );
-        const panel = await until(
-          () =>
-            graph.evaluate(`(() => {
-              const input = document.querySelector('header [role="combobox"]');
-              if (!input) return null;
-              const rect = input.parentElement.getBoundingClientRect();
-              return { left: rect.left, right: rect.right, width: innerWidth };
-            })()`),
-          "open dropdown " + index
-        );
-        assert.ok(
-          panel.left >= 0 && panel.right <= panel.width,
-          `dropdown ${index} inside the window: ${JSON.stringify(panel)}`
-        );
-        await graph.evaluate(
-          `document.querySelector('header [role="combobox"]').dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`
-        );
-        await until(
-          () => graph.evaluate(`!document.querySelector('header [role="combobox"]')`),
-          "closed dropdown " + index
-        );
+        assert.ok(triggers >= 3, "header dropdowns");
+        for (let index = 0; index < triggers; index++) {
+          await graph.evaluate(
+            `document.querySelectorAll('header button[aria-haspopup="listbox"]')[${index}].click()`
+          );
+          const panel = await until(
+            () =>
+              graph.evaluate(`(() => {
+                const input = document.querySelector('header [role="combobox"]');
+                if (!input) return null;
+                const rect = input.parentElement.getBoundingClientRect();
+                return { left: rect.left, right: rect.right, width: innerWidth };
+              })()`),
+            `open dropdown ${index} at ${width} px`
+          );
+          assert.ok(
+            panel.left >= 0 && panel.right <= panel.width,
+            `dropdown ${index} inside the ${width} px window: ${JSON.stringify(panel)}`
+          );
+          await graph.evaluate(
+            `document.querySelector('header [role="combobox"]').dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`
+          );
+          await until(
+            () => graph.evaluate(`!document.querySelector('header [role="combobox"]')`),
+            `closed dropdown ${index} at ${width} px`
+          );
+        }
       }
 
       // Between 800 and 1000 px the header wraps, and the sticky sidebar must start below it.

@@ -30,15 +30,18 @@ describe("fitPanel", () => {
   });
 
   it("stays right-aligned with its trigger where it fits", () => {
-    expect(fitPanel(box(250, 40, 100, 24), 300, 200, { width: 1200, height: 800 }).left).toBe(-200);
+    const wide = fitPanel(box(250, 40, 100, 24), 300, 200, { width: 1200, height: 800 });
+    expect(wide.left).toBe(-200);
+    // A wide window keeps the usual limit, so a long name cannot widen the panel past its place.
+    expect(wide.maxWidth).toBe(384);
     // A trigger at the right edge still leaves the margin.
     const fit = fitPanel(box(290, 40, 106, 24), 300, 200, { width: 400, height: 800 });
     expect(290 + fit.left + 300).toBe(392);
   });
 
   it("narrows a panel wider than the window", () => {
-    const fit = fitPanel(box(10, 40, 100, 24), 500, 200, { width: 400, height: 800 });
-    expect(fit.maxWidth).toBe(384);
+    const fit = fitPanel(box(10, 40, 100, 24), 380, 200, { width: 300, height: 800 });
+    expect(fit.maxWidth).toBe(284);
     expect(10 + fit.left).toBe(8);
   });
 
@@ -91,7 +94,44 @@ it("places the open panel inside the window and again after a resize", () => {
     window.dispatchEvent(new Event("resize"));
   });
   expect(panel.style.left).toBe("-200px");
-  expect(panel.style.maxWidth).toBe("1184px");
+  expect(panel.style.maxWidth).toBe("384px");
+  act(() => render(null, container));
+  container.remove();
+});
+
+it("places the panel again when the keyboard moves to another page", () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const options = Array.from({ length: 250 }, (_, index) => ({
+    label: `branch-${index}`,
+    value: `branch-${index}`
+  }));
+  act(() =>
+    render(
+      h(Dropdown, { label: "Branch", options, value: "branch-0", onChange: () => {} }),
+      container
+    )
+  );
+  const trigger = container.querySelector<HTMLButtonElement>("button[aria-haspopup]")!;
+  let panelWidth = 200;
+  vi.spyOn(document.documentElement, "clientWidth", "get").mockReturnValue(1200);
+  vi.spyOn(document.documentElement, "clientHeight", "get").mockReturnValue(800);
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+    const rect = this === trigger ? box(600, 40, 100, 24) : box(0, 0, panelWidth, 120);
+    return { ...rect, width: rect.right - rect.left, height: rect.bottom - rect.top } as DOMRect;
+  });
+
+  act(() => trigger.click());
+  const combobox = container.querySelector<HTMLElement>('[role="combobox"]')!;
+  const panel = combobox.parentElement!;
+  expect(panel.style.left).toBe("-100px");
+
+  // The last page's names are longer, so its panel is wider and moves left to stay aligned.
+  panelWidth = 380;
+  act(() => {
+    combobox.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true }));
+  });
+  expect(panel.style.left).toBe("-280px");
   act(() => render(null, container));
   container.remove();
 });
