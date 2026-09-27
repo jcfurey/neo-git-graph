@@ -3,7 +3,7 @@ import path from "node:path";
 
 import * as vscode from "vscode";
 
-import { workTreeRoot } from "@/backend/utils/git";
+import { getSubmodulePaths, workTreeRoot } from "@/backend/utils/git";
 import { extConfig } from "@/extension/config";
 import { logger } from "@/extension/util/logger";
 import type { GitRepo, ScanRepoResult } from "@/types";
@@ -23,7 +23,7 @@ async function startScan(gitBinary: string, paths: string[], maxDepth: number): 
   const repos = await Promise.all(
     paths.map((directory) => scanDirectory(gitBinary, directory, maxDepth))
   );
-  // Several workspace folders can lie in one repository.
+  // Workspace folders inside one repository, and submodules opened as folders, repeat entries.
   const uniqueRepos = new Map(repos.flat().map((repo) => [repo.path, repo]));
   return [...uniqueRepos.values()].toSorted((a, b) => a.path.localeCompare(b.path));
 }
@@ -39,7 +39,8 @@ async function scanDirectory(
   });
 
   if (repoPath !== null) {
-    return [{ name: path.basename(repoPath), path: repoPath }];
+    const submodules = await getSubmodulePaths(repoPath, gitBinary);
+    return [repoPath, ...submodules].map((repo) => ({ name: path.basename(repo), path: repo }));
   }
 
   if (depth <= 0) {

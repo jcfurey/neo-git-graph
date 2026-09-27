@@ -34,6 +34,24 @@ export async function workTreeRoot(directory: string, gitPath: string): Promise<
   return realpath(topLevel.replace(/\n$/, ""));
 }
 
+export async function getSubmodulePaths(repoPath: string, gitPath: string): Promise<string[]> {
+  try {
+    const output = await simpleGit({ baseDir: repoPath, binary: gitPath }).raw([
+      "submodule",
+      "foreach",
+      "--quiet",
+      "--recursive",
+      // Git visits initialized submodules only. NUL separators preserve spaces and newlines.
+      'printf "%s\\0" "$toplevel/$sm_path"'
+    ]);
+    const submodules = output.split("\0").filter((submodule) => submodule.length > 0);
+    // Real paths, like those of workTreeRoot, match a submodule that is also a workspace folder.
+    return await Promise.all(submodules.map((submodule) => realpath(submodule)));
+  } catch {
+    return [];
+  }
+}
+
 export async function getRemoteUrl(repoPath: string, gitPath: string): Promise<string | null> {
   try {
     const url = await simpleGit({ baseDir: repoPath, binary: gitPath }).raw([
