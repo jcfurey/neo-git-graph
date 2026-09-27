@@ -50,26 +50,6 @@
       }
     },
     {
-      "label": "compile-src",
-      "type": "shell",
-      "command": "pnpm run compile-src",
-      "group": "build",
-      "problemMatcher": "$esbuild-watch",
-      "presentation": {
-        "reveal": "silent"
-      }
-    },
-    {
-      "label": "compile-web",
-      "type": "shell",
-      "command": "pnpm run compile-web",
-      "group": "build",
-      "problemMatcher": "$esbuild-watch",
-      "presentation": {
-        "reveal": "silent"
-      }
-    },
-    {
       "label": "typecheck",
       "type": "shell",
       "command": "pnpm run typecheck",
