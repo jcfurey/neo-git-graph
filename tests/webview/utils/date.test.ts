@@ -67,6 +67,14 @@ describe("date formatting", () => {
       expect(getFullDate(8_640_000_000_000)).not.toBe("unknownDate");
     }
   );
+
+  it("shows a placeholder for a date that JSON turned from NaN into null", () => {
+    // The graph's log query gives NaN for a date Git left empty; postMessage sends it as null.
+    const [arrived] = JSON.parse(JSON.stringify([Number.NaN])) as [number];
+    expect(arrived).toBeNull();
+    expect(getCommitDate(arrived)).toEqual({ title: "unknownDate", value: "unknownDate" });
+    expect(getFullDate(arrived)).toBe("unknownDate");
+  });
 });
 
 describe("elapsed time", () => {

@@ -101,5 +101,123 @@
       "event.preventDefault();",
       "return { containerRef, headRef, resizing, startResize, nudge };"
     ]
+  },
+  "src/webview/utils/columns.ts": {
+    "commit": "7b26f2eddfa92c2c06782afe81c4ae90e413d12f",
+    "specification": "docs/clean-room/columns.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the platform API calls the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export const MIN_COLUMN = 40;",
+      "export const MIN_DESCRIPTION = 64;",
+      "export function isColumnWidths(widths: Array<number> | null): widths is Array<number> {",
+      "return (",
+      "widths.length === RESIZABLE_COLUMNS.length &&",
+      "export function moveBoundary(",
+      "widths: Array<number>,",
+      "boundary: number,",
+      "delta: number,",
+      "description: number",
+      "): { widths: Array<number>; moved: number } {",
+      "const next = [...widths];",
+      "return { widths: next, moved };"
+    ]
+  },
+  "src/extension/rpc/rpc-notify.ts": {
+    "commit": "0d7a436df6af084a594e4e0c3279653dea642143",
+    "specification": "docs/clean-room/rpc-notify.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the platform API calls the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export const rpcNotify = {",
+      "async notify<N extends RpcNotificationName>(",
+      "name: N,",
+      "message: RpcNotificationMap[N]",
+      "): Promise<void> {",
+      "kind: \"rpc.notify\",",
+      "name,",
+      "} as RpcNotification<N>;"
+    ]
+  },
+  "src/webview/utils/fileTree.ts": {
+    "commit": "054fd8688f108652b5bac82d74e64f17e4aeaf58",
+    "specification": "docs/clean-room/file-tree.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the platform API calls the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export type FileTreeFile = {",
+      "type: \"file\";",
+      "name: string;",
+      "file: GitFileChange;",
+      "export type FileTreeFolder = {",
+      "type: \"folder\";",
+      "name: string;",
+      "path: string;",
+      "children: Array<FileTreeNode>;",
+      "export type FileTreeNode = FileTreeFile | FileTreeFolder;",
+      "export function buildFileTree(files: Array<GitFileChange>): Array<FileTreeNode> {",
+      "for (const file of files) {"
+    ]
+  },
+  "src/webview/lib/rpc/rpc-client.ts": {
+    "commit": "f48810993f0b99dd3dcd88c7685198c1dd7054b8",
+    "specification": "docs/clean-room/rpc-client.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the platform API calls the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export const rpcClient = {",
+      "init(): void {",
+      "request<M extends RpcMethod>(",
+      "method: M,",
+      "params: RpcMethodMap[M][\"params\"]",
+      "): Promise<RpcMethodMap[M][\"result\"]> {",
+      "return new Promise((resolve, reject) => {",
+      "const id = crypto.randomUUID();",
+      "const timeout = setTimeout(() => {",
+      "reject,",
+      "timeout",
+      "clearTimeout(timeout);"
+    ]
+  },
+  "src/backend/queries/loadCommits.ts": {
+    "commit": "715fa1bfeedd2cc965b8f681785d43d92bba7bff",
+    "specification": "docs/clean-room/load-commits.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the platform API calls the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "type LoadCommitsInput = {",
+      "branchName: string;",
+      "maxCommits: number;",
+      "showRemoteBranches: boolean;",
+      "hard: boolean;",
+      "dateType: DateType;",
+      "showUncommittedChanges: boolean;",
+      "export async function loadCommits(",
+      "git: SimpleGit,",
+      "input: LoadCommitsInput",
+      "let uncommittedChanges = 0;",
+      "if (uncommittedChanges > 0) {",
+      "commits.unshift({",
+      "hash: \"*\",",
+      "author: \"*\",",
+      "email: \"\",",
+      "refs: []",
+      "return {",
+      "hard,",
+      "uncommittedChanges"
+    ]
+  },
+  "src/backend/queries/commitDetails.ts": {
+    "commit": "8d063e281bc378b0eaa3f80375944ee43bc78391",
+    "specification": "docs/clean-room/commit-details.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the platform API calls the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "if (",
+      "return {",
+      "hash,",
+      "author,",
+      "email,",
+      "committer,",
+      "export async function commitDetails(",
+      "git: SimpleGit,",
+      "): Promise<QueryResult<\"commitDetails\">> {",
+      "return { commitDetails: null };",
+      "return { commitDetails: null };"
+    ]
   }
 }

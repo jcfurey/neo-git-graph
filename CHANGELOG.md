@@ -23,6 +23,9 @@ Branchwise was named (neo) Git Graph, `jcfurey.neo-git-graph`, through its 0.9.6
 
 ### Fixed
 
+- Load the graph when a commit has an unusual author line or a date Git leaves empty, showing that date as unknown, and open repositories without a work tree without the uncommitted-changes row.
+- Show a merge's changes against its first parent in the commit details, even when there are none, instead of another parent's changes; list files whose type changed, such as a file that became a symbolic link; and read names and messages as UTF-8 whatever `i18n.logOutputEncoding` says.
+- Sort the files and folders of the commit details in the display language, with numbers in numeric order, and ignore empty path segments.
 - Resize table columns more predictably: a click on a column divider no longer fixes every width, only the primary button drags, a drag ends when the button is released outside the view, a drag never moves a divider the opposite way, and a repository change during a drag saves nothing to either repository.
 - A request from the graph to the extension fails at once, instead of after 30 seconds, when its response is malformed or cannot be delivered.
 - Relative commit dates move up a unit instead of reading "60 minutes ago" or "24 hours ago", round the same way for dates in the past and the future, and read "0 seconds ago" for a commit a moment ahead of the clock. The date column's tooltip keeps its date and time in the same time zone after the system's zone changes.

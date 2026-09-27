@@ -1,18 +1,9 @@
 import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
-import type {
-  DateType,
-  GitCommitNode,
-  GitLogEntry,
-  GitRefData,
-  QueryResult
-} from "@/backend/types";
+import type { DateType, GitCommitNode, GitLogEntry, GitRef, QueryResult } from "@/backend/types";
 import { branchListRef } from "@/backend/utils/refs";
 import { remoteVisibility } from "@/backend/utils/remoteVisibility";
-
-const eolRegex = /\r\n|\r|\n/g;
-const LOG_FIELDS = 6;
 
 type LoadCommitsInput = {
   branchName: string;
@@ -24,177 +15,167 @@ type LoadCommitsInput = {
   showUncommittedChanges: boolean;
 };
 
-async function getRefs(
-  git: SimpleGit,
-  showRemoteBranches: boolean,
-  excluded: ReadonlySet<string>
-): Promise<GitRefData> {
-  const args = ["show-ref"];
-  if (!showRemoteBranches) {
-    args.push("--heads", "--tags");
-  }
-  args.push("-d", "--head");
-  const stdout = await git.raw(args);
-  const refData: GitRefData = { head: null, refs: [] };
-  const lines = stdout.split(eolRegex);
-  for (const line of lines.slice(0, -1)) {
-    const parts = line.split(" ");
-    if (parts.length < 2) {
-      continue;
-    }
-    const hash = parts.shift()!;
-    const ref = parts.join(" ");
-    if (ref.startsWith("refs/heads/")) {
-      refData.refs.push({ hash, name: ref.substring(11), type: "head" });
-    } else if (ref.startsWith("refs/tags/")) {
-      refData.refs.push({
-        hash,
-        name: ref.endsWith("^{}") ? ref.substring(10, ref.length - 3) : ref.substring(10),
-        type: "tag"
-      });
-    } else if (ref.startsWith("refs/remotes/") && !excluded.has(ref.substring(13))) {
-      refData.refs.push({ hash, name: ref.substring(13), type: "remote" });
-    } else if (ref === "HEAD") {
-      refData.head = hash;
-    }
-  }
-  return refData;
-}
+/** Hash, parents, author name, author email, timestamp and subject. */
+const FIELDS_PER_COMMIT = 6;
 
-async function getLog(
-  git: SimpleGit,
-  branch: string,
-  head: string | null,
-  maxCommits: number,
-  remoteArgs: string[],
-  dateType: DateType
-): Promise<GitLogEntry[]> {
-  const dateField = dateType === "Author Date" ? "%at" : "%ct";
-  // With -z, fields and records both end in NUL, so no character in a name or subject can
-  // split a record.
-  const format = ["%H", "%P", "%an", "%ae", dateField, "%s"].join("%x00");
-  const args = ["log", "-z", `--max-count=${maxCommits}`, `--format=${format}`, "--date-order"];
-  if (branch !== "") {
-    args.push(branchListRef(branch));
-  } else {
-    args.push("--branches", "--tags");
-    args.push(...remoteArgs);
-    // Detached HEAD may not be reachable from any visible ref. Use the resolved
-    // hash so an unborn HEAD never turns an otherwise valid query into an error.
-    if (head !== null) {
-      args.push(head);
-    }
-  }
-  args.push("--");
-  return parseLog(await git.raw(args));
-}
+/** A full SHA-1 or SHA-256 object ID, as `%H` and `%P` print them. */
+const OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
-/** Parse NUL-separated log records, refusing output that is not whole records. */
+const incompleteRecord = () => new Error(l10n.t("Git returned an incomplete graph record."));
+
+/**
+ * Commits from the graph's `git log -z`, which ends every field with NUL. Output that is cut
+ * short or out of step throws instead of shifting fields into the wrong commits. Content is
+ * taken as Git gives it: a timestamp Git leaves empty, as it does for a malformed author line,
+ * becomes `NaN`.
+ */
 export function parseLog(stdout: string): GitLogEntry[] {
   if (stdout === "") {
     return [];
   }
-  const fields = stdout.split("\0");
-  // Each record ends in NUL, so a complete output leaves one empty string after the split.
-  if (fields.pop() !== "" || fields.length % LOG_FIELDS !== 0) {
-    throw new Error(l10n.t("Git returned an incomplete graph record."));
+  if (!stdout.endsWith("\0")) {
+    throw incompleteRecord();
   }
-  const commits: GitLogEntry[] = [];
-  for (let index = 0; index < fields.length; index += LOG_FIELDS) {
-    const [hash, parents, author, email, date, message] = fields.slice(index, index + LOG_FIELDS);
-    if (!/^[0-9a-f]{40,64}$/.test(hash!) || !/^\d+$/.test(date!)) {
-      throw new Error(l10n.t("Git returned an incomplete graph record."));
+  const fields = stdout.slice(0, -1).split("\0");
+  if (fields.length % FIELDS_PER_COMMIT !== 0) {
+    throw incompleteRecord();
+  }
+  const entries: GitLogEntry[] = [];
+  for (let start = 0; start < fields.length; start += FIELDS_PER_COMMIT) {
+    const hash = fields[start]!;
+    const parents = fields[start + 1]!;
+    const date = fields[start + 4]!;
+    const parentHashes = parents === "" ? [] : parents.split(" ");
+    if (!OBJECT_ID.test(hash) || !parentHashes.every((parent) => OBJECT_ID.test(parent))) {
+      throw incompleteRecord();
     }
-    commits.push({
-      hash: hash!,
-      parentHashes: parents === "" ? [] : parents!.split(" "),
-      author: author!,
-      email: email!,
-      date: Number(date),
-      message: message!
+    entries.push({
+      hash,
+      parentHashes,
+      author: fields[start + 2]!,
+      email: fields[start + 3]!,
+      date: /^[0-9]+$/.test(date) ? Number(date) : Number.NaN,
+      message: fields[start + 5]!
     });
   }
-  return commits;
+  return entries;
 }
 
-async function countUnsavedChanges(git: SimpleGit) {
-  const status = await git.status(["--untracked-files=all"]);
-  return status.files.length;
+/**
+ * HEAD's commit and the labels in `git show-ref -d --head` output. A tag object's own line never
+ * matches a commit; the `^{}` line after it names the commit the tag chain ends at, so each tag
+ * labels one commit at most. Other namespaces, such as `refs/stash`, give no labels.
+ */
+function parseRefs(stdout: string, showRemoteBranches: boolean, hidden: ReadonlySet<string>) {
+  let head: string | null = null;
+  const labels: GitRef[] = [];
+  for (const line of stdout.split(/\r\n|\r|\n/)) {
+    const space = line.indexOf(" ");
+    if (space < 0) {
+      continue;
+    }
+    const hash = line.slice(0, space);
+    const ref = line.slice(space + 1);
+    if (ref === "HEAD") {
+      head = hash;
+      continue;
+    }
+    const full = ref.endsWith("^{}") ? ref.slice(0, -"^{}".length) : ref;
+    if (full.startsWith("refs/heads/")) {
+      labels.push({ hash, name: full.slice("refs/heads/".length), type: "head" });
+    } else if (full.startsWith("refs/tags/")) {
+      labels.push({ hash, name: full.slice("refs/tags/".length), type: "tag" });
+    } else if (showRemoteBranches && full.startsWith("refs/remotes/")) {
+      const name = full.slice("refs/remotes/".length);
+      if (!hidden.has(name)) {
+        labels.push({ hash, name, type: "remote" });
+      }
+    }
+  }
+  return { head, labels };
 }
 
-/** `repo` and `branchName` are echoed back by the message layer, not by the query. */
-type LoadCommitsResult = Omit<QueryResult<"loadCommits">, "repo" | "branchName">;
+/**
+ * Changed entries in the working tree. Status fails without a work tree, as in a bare
+ * repository, which has nothing to show; only then is Git asked which case it is, so the usual
+ * load keeps to one process. Any other failure is passed on.
+ */
+async function workingTreeChanges(git: SimpleGit) {
+  try {
+    return (await git.status(["--untracked-files=all"])).files.length;
+  } catch (error) {
+    const inWorkTree = await git.raw(["rev-parse", "--is-inside-work-tree"]).then(
+      (output) => output.trim() !== "false",
+      () => true
+    );
+    if (inWorkTree) {
+      throw error;
+    }
+    return 0;
+  }
+}
 
 export async function loadCommits(
   git: SimpleGit,
   input: LoadCommitsInput
-): Promise<LoadCommitsResult> {
-  const { branchName, maxCommits, showRemoteBranches, hard, dateType, showUncommittedChanges } =
-    input;
-  const visibility = await remoteVisibility(git, input);
+): Promise<Omit<QueryResult<"loadCommits">, "repo" | "branchName">> {
+  const { branchName, showRemoteBranches, hard } = input;
+  // Callers send whole numbers from 1 up. Anything else rounds down, to one commit at least.
+  const pageSize = Math.max(1, Math.floor(input.maxCommits) || 1);
+  const [refs, visibility] = await Promise.all([
+    git.raw(["show-ref", ...(showRemoteBranches ? [] : ["--heads", "--tags"]), "-d", "--head"]),
+    // Even with a branch filter, hidden remotes lose their labels.
+    remoteVisibility(git, input)
+  ]);
+  const { head, labels } = parseRefs(refs, showRemoteBranches, visibility.excluded);
 
-  const refData = await getRefs(git, showRemoteBranches, visibility.excluded);
-  const rawCommits = await getLog(
-    git,
-    branchName,
-    refData.head,
-    maxCommits + 1,
-    visibility.logArgs,
-    dateType
+  // HEAD is named by its hash, so a detached checkout is included and an unborn one is skipped.
+  const revisions = branchName
+    ? [branchListRef(branchName)]
+    : ["--branches", "--tags", ...visibility.logArgs, ...(head === null ? [] : [head])];
+  const timestamp = input.dateType === "Author Date" ? "%at" : "%ct";
+  // One commit more than the page tells whether more history exists.
+  const entries = parseLog(
+    await git.raw([
+      "log",
+      "-z",
+      `--max-count=${pageSize + 1}`,
+      `--format=%H%x00%P%x00%an%x00%ae%x00${timestamp}%x00%s`,
+      "--date-order",
+      ...revisions,
+      "--"
+    ])
   );
 
-  let commits = rawCommits;
-  const moreCommitsAvailable = commits.length === maxCommits + 1;
-  if (moreCommitsAvailable) {
-    commits = commits.slice(0, -1);
+  const commits: GitCommitNode[] = entries
+    .slice(0, pageSize)
+    .map((entry) => Object.assign(entry, { refs: [] }));
+  const byHash = new Map(commits.map((commit) => [commit.hash, commit]));
+  for (const label of labels) {
+    byHash.get(label.hash)?.refs.push(label);
   }
 
+  // Changes are shown on top of HEAD's commit, so they need that commit on the page.
   let uncommittedChanges = 0;
-  if (refData.head !== null && showUncommittedChanges) {
-    for (const commit of commits) {
-      if (refData.head === commit.hash) {
-        uncommittedChanges = await countUnsavedChanges(git);
-        if (uncommittedChanges > 0) {
-          // The webview names this row, so that the name is localized.
-          commits.unshift({
-            hash: "*",
-            parentHashes: [refData.head],
-            author: "*",
-            email: "",
-            date: Math.round(new Date().getTime() / 1000),
-            message: ""
-          });
-        }
-        break;
-      }
-    }
-  }
-
-  const commitNodes: GitCommitNode[] = [];
-  const commitLookup: { [hash: string]: number } = {};
-  for (const [i, commit] of commits.entries()) {
-    commitLookup[commit.hash] = i;
-    commitNodes.push({
-      hash: commit.hash,
-      parentHashes: commit.parentHashes,
-      author: commit.author,
-      email: commit.email,
-      date: commit.date,
-      message: commit.message,
-      refs: []
-    });
-  }
-  for (const ref of refData.refs) {
-    const commitIndex = commitLookup[ref.hash];
-    if (commitIndex !== undefined) {
-      commitNodes[commitIndex]?.refs.push(ref);
+  if (input.showUncommittedChanges && head !== null && byHash.has(head)) {
+    uncommittedChanges = await workingTreeChanges(git);
+    if (uncommittedChanges > 0) {
+      commits.unshift({
+        hash: "*",
+        parentHashes: [head],
+        author: "*",
+        email: "",
+        date: Math.floor(Date.now() / 1000),
+        message: "",
+        refs: []
+      });
     }
   }
 
   return {
-    commits: commitNodes,
-    head: refData.head,
-    moreCommitsAvailable,
+    commits,
+    head,
+    moreCommitsAvailable: entries.length > pageSize,
     hard,
     uncommittedChanges
   };

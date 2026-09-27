@@ -8,152 +8,181 @@ import type {
   QueryResult
 } from "@/backend/types";
 
-const eolRegex = /\r\n|\r|\n/g;
-const gitLogSeparator = "XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb";
+const OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
-type CommitDetailsInput = {
-  commitHash: string;
-  dateType: DateType;
-};
+/**
+ * Notations that name a set of commits: `a..b`, `a...b`, `^a`, `a^@`, `a^!` and `a^-`. `show`
+ * accepts them and prints the newest commit, but the details describe one named commit.
+ */
+const RANGE = /\.\.|^\^|\^[@!-]/;
 
-async function fetchCommitInfo(
-  git: SimpleGit,
-  commitHash: string,
-  dateType: DateType
-): Promise<GitCommitDetails> {
-  const dateField = dateType === "Author Date" ? "%at" : "%ct";
-  const format = ["%H", "%P", "%an", "%ae", dateField, "%cn"].join(gitLogSeparator) + "%n%B";
-  const stdout = await git.raw([
+/** The kinds `diff-tree` reports, by status letter. A type change counts as a modification. */
+const CHANGE_TYPES = new Map<string, GitFileChangeType>([
+  ["A", "A"],
+  ["M", "M"],
+  ["D", "D"],
+  ["T", "M"],
+  ["R", "R"]
+]);
+
+type LineCounts = Pick<GitFileChange, "additions" | "deletions">;
+
+function showArgs(commitHash: string, dateType: DateType) {
+  const date = dateType === "Author Date" ? "%at" : "%ct";
+  return [
     "show",
     "--quiet",
-    `--format=${format}`,
+    // Names and message in UTF-8, whatever `i18n.logOutputEncoding` says.
+    "--encoding=UTF-8",
+    `--format=%H%x00%P%x00%an%x00%ae%x00${date}%x00%cn%x00%B`,
     "--end-of-options",
-    commitHash
-  ]);
-  const lines = stdout.split(eolRegex);
-  let lastLine = lines.length - 1;
-  while (lastLine >= 0 && lines[lastLine] === "") {
-    lastLine--;
+    commitHash,
+    // Without it, the name of a file the commit changed would be read as a path filter.
+    "--"
+  ];
+}
+
+/**
+ * The commit's changes against its first parent only, so a merge lists what it brought into its
+ * branch, and nothing when that is nothing. A commit without parents is compared with the empty
+ * tree. Plumbing ignores `diff.renames`, so renames are found here and copies never are.
+ */
+function diffTreeArgs(format: "--name-status" | "--numstat", hash: string, firstParent?: string) {
+  return [
+    "diff-tree",
+    format,
+    "-z",
+    "-r",
+    "--no-commit-id",
+    "--find-renames",
+    "--diff-filter=AMDRT",
+    ...(firstParent === undefined ? ["--root", hash] : [firstParent, hash])
+  ];
+}
+
+/**
+ * Every line ending becomes LF, and the empty lines at the end go, with the newline Git adds
+ * after `%B`. Lines of spaces or tabs stay.
+ */
+function messageBody(message: string) {
+  const body = message.replace(/\r\n?/g, "\n");
+  let end = body.length;
+  while (end > 0 && body[end - 1] === "\n") {
+    end--;
   }
-  const firstLine = lines[0];
-  if (firstLine === undefined) {
-    throw new Error("No commit information returned by Git");
-  }
-  const [hash, parents, author, email, date, committer] = firstLine.split(gitLogSeparator);
+  return body.slice(0, end);
+}
+
+function parseHeader(output: string): Omit<GitCommitDetails, "fileChanges"> {
+  // `%B` holds no NUL, so one commit gives exactly seven fields. An annotated tag's header, printed
+  // before its commit, fails the ID check.
+  const fields = output.split("\0");
+  const [
+    hash = "",
+    parentList = "",
+    author = "",
+    email = "",
+    date = "",
+    committer = "",
+    message = ""
+  ] = fields;
+  const parents = parentList === "" ? [] : parentList.split(" ");
   if (
-    hash === undefined ||
-    parents === undefined ||
-    author === undefined ||
-    email === undefined ||
-    date === undefined ||
-    committer === undefined
+    fields.length !== 7 ||
+    !OBJECT_ID.test(hash) ||
+    !parents.every((parent) => OBJECT_ID.test(parent)) ||
+    !/^\d+$/.test(date)
   ) {
-    throw new Error("Invalid commit information returned by Git");
+    throw new Error("Unexpected commit header");
   }
   return {
     hash,
-    parents: parents.split(" "),
+    parents,
     author,
     email,
-    date: parseInt(date),
+    date: Number(date),
     committer,
-    body: lines.slice(1, lastLine + 1).join("\n"),
-    fileChanges: []
+    body: messageBody(message)
   };
 }
 
-const OBJECT_ID = /^[0-9a-f]{40,64}$/;
+/** The fields of `-z` output, each of which Git ends with a NUL. */
+function nulFields(output: string) {
+  const fields = output.split("\0");
+  if (fields.pop() !== "") {
+    throw new Error("Unterminated diff-tree output");
+  }
+  return fields;
+}
 
 /**
- * NUL-separated records keep names with tabs, quotes, newlines, backslashes, and non-ASCII
- * characters exactly as Git stores them. With `-m`, a merge's first-parent changes come first.
+ * Line counts by the path each entry has after the commit. Only names whose invalid UTF-8
+ * decodes alike can share a path, and those then share the last entry's counts.
  */
-async function diffTree(git: SimpleGit, commitHash: string, format: "--name-status" | "--numstat") {
-  const fields = (
-    await git.raw([
-      "diff-tree",
-      format,
-      "-z",
-      "-r",
-      "-m",
-      "--root",
-      "--find-renames",
-      "--diff-filter=AMDR",
-      "--end-of-options",
-      commitHash
-    ])
-  ).split("\0");
-  // Each parent's changes start with the commit's own ID. A commit without changes has none.
-  if (fields.length === 1 && fields[0] === "") {
-    return [];
-  }
-  if (!OBJECT_ID.test(fields[0] ?? "")) {
-    throw new Error("Invalid file changes returned by Git");
-  }
-  return fields.slice(1);
-}
-
-function parseNameStatus(fields: string[]): GitFileChange[] {
-  const changes: GitFileChange[] = [];
+function parseNumstat(output: string) {
+  const fields = nulFields(output);
+  const counts = new Map<string, LineCounts>();
   for (let index = 0; index < fields.length;) {
-    const status = fields[index++]!;
-    if (status === "" || OBJECT_ID.test(status)) {
-      break;
+    const match = /^(\d+|-)\t(\d+|-)\t(.*)$/s.exec(fields[index++]!);
+    let path = match?.[3];
+    if (path === "") {
+      // A rename leaves the path out. Its source and destination follow as two fields.
+      path = fields[index + 1];
+      index += 2;
     }
-    const type = status[0] as GitFileChangeType;
-    const oldFilePath = fields[index++];
-    const newFilePath = type === "R" ? fields[index++] : oldFilePath;
-    if (!/^[AMDR]/.test(status) || oldFilePath === undefined || newFilePath === undefined) {
-      throw new Error("Invalid file changes returned by Git");
+    if (!match || !path) {
+      throw new Error("Unexpected diff-tree line counts");
     }
-    changes.push({ oldFilePath, newFilePath, type, additions: null, deletions: null });
-  }
-  return changes;
-}
-
-function parseNumStat(fields: string[]) {
-  const counts = new Map<string, { additions: number | null; deletions: number | null }>();
-  for (let index = 0; index < fields.length;) {
-    const entry = /^(\d+|-)\t(\d+|-)\t([^]*)$/.exec(fields[index++]!);
-    if (entry === null) {
-      break;
-    }
-    const [, additions, deletions] = entry;
-    let file = entry[3];
-    // A rename leaves the path empty; its old and new paths follow as separate fields.
-    if (file === "") {
-      index += 1;
-      file = fields[index++];
-    }
-    if (file === undefined) {
-      break;
-    }
-    // Binary files have no line counts.
-    counts.set(file, {
-      additions: additions === "-" ? null : Number(additions),
-      deletions: deletions === "-" ? null : Number(deletions)
+    // Git prints `-` for both counts of content it treats as binary.
+    const binary = match[1] === "-" || match[2] === "-";
+    counts.set(path, {
+      additions: binary ? null : Number(match[1]),
+      deletions: binary ? null : Number(match[2])
     });
   }
   return counts;
 }
 
+/** The entries of `--name-status`, each with the line counts `--numstat` gives for its path. */
+function parseFileChanges(output: string, counts: Map<string, LineCounts>) {
+  const fields = nulFields(output);
+  const changes: GitFileChange[] = [];
+  for (let index = 0; index < fields.length;) {
+    // A rename carries its similarity, as in `R064`, and names the source and the destination.
+    const type = CHANGE_TYPES.get(/^([AMDRT])\d*$/.exec(fields[index++]!)?.[1] ?? "");
+    const oldFilePath = fields[index++];
+    const newFilePath = type === "R" ? fields[index++] : oldFilePath;
+    if (type === undefined || oldFilePath === undefined || newFilePath === undefined) {
+      throw new Error("Unexpected diff-tree status");
+    }
+    const { additions, deletions } = counts.get(newFilePath) ?? {
+      additions: null,
+      deletions: null
+    };
+    changes.push({ oldFilePath, newFilePath, type, additions, deletions });
+  }
+  return changes;
+}
+
 export async function commitDetails(
   git: SimpleGit,
-  input: CommitDetailsInput
+  input: { commitHash: string; dateType: DateType }
 ): Promise<QueryResult<"commitDetails">> {
   try {
-    const [details, nameStatus, numStat] = await Promise.all([
-      fetchCommitInfo(git, input.commitHash, input.dateType),
-      diffTree(git, input.commitHash, "--name-status"),
-      diffTree(git, input.commitHash, "--numstat")
+    if (RANGE.test(input.commitHash)) {
+      return { commitDetails: null };
+    }
+    const header = parseHeader(await git.raw(showArgs(input.commitHash, input.dateType)));
+    // The diff needs the first parent from the header. Both listings describe that one diff, so
+    // they run side by side.
+    const [nameStatus, numstat] = await Promise.all([
+      git.raw(diffTreeArgs("--name-status", header.hash, header.parents[0])),
+      git.raw(diffTreeArgs("--numstat", header.hash, header.parents[0]))
     ]);
-    const counts = parseNumStat(numStat);
-    details.fileChanges = parseNameStatus(nameStatus).map((change) =>
-      Object.assign(change, counts.get(change.newFilePath))
-    );
-
-    return { commitDetails: details };
+    const fileChanges = parseFileChanges(nameStatus, parseNumstat(numstat));
+    return { commitDetails: { ...header, fileChanges } };
   } catch {
+    // Git failed, the request was cancelled, or the revision does not name one commit.
     return { commitDetails: null };
   }
 }
