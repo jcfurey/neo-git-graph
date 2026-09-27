@@ -91,8 +91,11 @@ function clockTime(clock: Intl.DateTimeFormat, date: Date): string {
 
 /** The instant of a Git timestamp in seconds, or null when a JavaScript date cannot hold it. */
 function toDate(seconds: number): Date | null {
-  // NaN fails the comparison too.
-  return Math.abs(seconds) <= MAX_SECONDS ? new Date(seconds * 1000) : null;
+  // NaN fails the comparison too. A date Git left empty is NaN in the extension, and arrives
+  // here as null, because the message to the webview is JSON.
+  return typeof seconds === "number" && Math.abs(seconds) <= MAX_SECONDS
+    ? new Date(seconds * 1000)
+    : null;
 }
 
 /**
