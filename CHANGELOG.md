@@ -15,6 +15,7 @@ Branchwise was named (neo) Git Graph, `jcfurey.neo-git-graph`, through its 0.9.6
 ### Changed
 
 - Rename the extension to Branchwise, `jcfurey.branchwise`: its commands and settings move from the `neo-git-graph.` prefix to `branchwise.`, settings saved under the old names are copied the first time Branchwise starts in each workspace, and the manifest no longer names the upstream author or sponsor.
+- Replace the icons inherited from Git Graph with Branchwise's own: the Marketplace icon, the graph tab icons, and the Source Control button.
 - Add a Getting Started step on branch focus and remote visibility, describe per-remote eye buttons and the clickable Uncommitted Changes row in the walkthroughs, and ship only the user guide, whose links now all resolve.
 - Name the fork's maintainer in CODEOWNERS and override development dependencies with high-severity advisories (js-yaml, vite, serialize-javascript) and a moderate one (qs).
 - Publish from a protected `release` environment after checking both registry tokens, pin third-party actions to commit SHAs, update the artifact actions, and allow a manual dry run of the release workflow.
