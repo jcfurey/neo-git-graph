@@ -82,7 +82,7 @@ export function registerMessageHandlers(
     currentRepo = repo;
     gitClient.setRepo(repo);
     extensionState.setLastActiveRepo(repo);
-    selectWatchedRepo(repo);
+    selectWatchedRepo(repo, config.gitPath());
   }
 
   function registerAction<T extends RequestMessage["command"]>(
