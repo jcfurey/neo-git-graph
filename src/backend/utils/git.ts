@@ -1,3 +1,5 @@
+import * as path from "node:path";
+
 import { simpleGit } from "simple-git";
 
 export async function getGitVersion(gitPath: string): Promise<string | null> {
@@ -14,6 +16,22 @@ export async function isGitRepository(repoPath: string, gitPath: string): Promis
     return await simpleGit({ baseDir: repoPath, binary: gitPath }).checkIsRepo();
   } catch {
     return false;
+  }
+}
+
+/**
+ * The top level of the work tree that contains `repoPath`, or null outside a work tree. It is
+ * resolved from `repoPath`, so a symlinked repository keeps the path that VS Code shows.
+ */
+export async function getRepoRoot(repoPath: string, gitPath: string): Promise<string | null> {
+  try {
+    const cdup = await simpleGit({ baseDir: repoPath, binary: gitPath }).raw([
+      "rev-parse",
+      "--show-cdup"
+    ]);
+    return path.resolve(repoPath, cdup.trim());
+  } catch {
+    return null;
   }
 }
 

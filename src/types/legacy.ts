@@ -61,6 +61,10 @@ export type ResponseViewDiff = {
   success: boolean;
 };
 
+export type RequestViewReady = {
+  command: "viewReady";
+};
+
 export type ResponseRefresh = {
   command: "refresh";
 };
@@ -71,7 +75,8 @@ export type RequestMessage =
   | RequestFetchAvatar
   | RequestSelectRepo
   | RequestSaveRepoState
-  | RequestViewDiff;
+  | RequestViewDiff
+  | RequestViewReady;
 
 export type ResponseMessage =
   | ActionResponse

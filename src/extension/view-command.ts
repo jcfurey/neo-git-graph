@@ -4,6 +4,7 @@ import { extConfig } from "./config";
 import { EXTENSION_NAME } from "./constants";
 import { createWevbviewHtml } from "./html";
 import { createMessageProtocol } from "./legacy";
+import { createRepoSelection, getSourceControlRepo } from "./repo-selection";
 import { initRpcNotify } from "./rpc/rpc-notify";
 import { createRpcServer } from "./rpc/rpc-server";
 import { initConfigWatcher } from "./watchers/config.watcher";
@@ -12,12 +13,17 @@ import { watchGitDir } from "./watchers/git.watcher";
 
 export function createViewCommand(ctx: vscode.ExtensionContext) {
   let currentPanel: vscode.WebviewPanel | undefined = undefined;
+  let repoSelection: ReturnType<typeof createRepoSelection> | undefined = undefined;
   const messageProtocol = createMessageProtocol(ctx);
   const rpcServer = createRpcServer();
 
-  return () => {
+  return (sourceControl?: vscode.SourceControl) => {
+    const repo = getSourceControlRepo(sourceControl);
     if (currentPanel) {
       currentPanel.reveal(vscode.window.activeTextEditor?.viewColumn);
+      if (repo !== undefined) {
+        repoSelection?.select(repo);
+      }
       return;
     }
 
@@ -48,6 +54,8 @@ export function createViewCommand(ctx: vscode.ExtensionContext) {
     const configWatcher = initConfigWatcher();
     const gitDirWatcher = watchGitDir();
     const gitRepoWatcher = watchGitRepo();
+    const selection = createRepoSelection(webPanel.webview);
+    repoSelection = selection;
 
     webPanel.webview.html = createWevbviewHtml(ctx, webPanel.webview);
 
@@ -58,8 +66,13 @@ export function createViewCommand(ctx: vscode.ExtensionContext) {
       configWatcher.dispose();
       gitDirWatcher.dispose();
       gitRepoWatcher.dispose();
+      selection.dispose();
+      repoSelection = undefined;
       currentPanel = undefined;
     });
     currentPanel = webPanel;
+    if (repo !== undefined) {
+      selection.select(repo);
+    }
   };
 }
