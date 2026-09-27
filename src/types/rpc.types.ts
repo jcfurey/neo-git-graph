@@ -35,6 +35,7 @@ export type RpcNotificationMap = {
   "repo.changed": RepoChange;
   "repo.rescan": null;
   "repo.updated": RepoUpdate;
+  "config.changed": WebviewConfig;
 };
 
 export type RpcNotificationName = keyof RpcNotificationMap;

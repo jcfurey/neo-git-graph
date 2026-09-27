@@ -1,5 +1,5 @@
 import type { RpcNotification, RpcResponse } from "@/types";
-import { refresh } from "@/webview/lib/actions";
+import { applyWebviewConfig, refresh } from "@/webview/lib/actions";
 import { loadRepoList } from "@/webview/lib/load-repos";
 import { selectedRepo } from "@/webview/lib/stores";
 import { repoListStore } from "@/webview/lib/stores/repo-list.store";
@@ -50,6 +50,9 @@ function handleRpcNotification(message: RpcNotification): void {
       if (message.message.path === selectedRepo.value) {
         refresh();
       }
+      return;
+    case "config.changed":
+      applyWebviewConfig(message.message);
   }
 }
 
