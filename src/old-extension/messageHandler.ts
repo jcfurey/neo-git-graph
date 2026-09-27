@@ -15,7 +15,11 @@ import { loadBranches } from "@/backend/queries/loadBranches";
 import { loadCommits } from "@/backend/queries/loadCommits";
 import type { GitFileChangeType } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
-import { selectWatchedRepo } from "@/extension/watchers/git-repo.watcher";
+import {
+  muteGitRepoWatcher,
+  selectWatchedRepo,
+  unmuteGitRepoWatcher
+} from "@/extension/watchers/git-repo.watcher";
 import { AvatarManager } from "@/old-extension/avatarManager";
 import type { Config } from "@/old-extension/config";
 import { encodeDiffDocUri } from "@/old-extension/diffDocProvider";
@@ -87,10 +91,14 @@ export function registerMessageHandlers(
   ) {
     bridge.onMessage(command, async (msg) => {
       let status: string | null = null;
+      // Only actions change the repository; the view refreshes itself after them.
+      muteGitRepoWatcher();
       try {
         await handler(msg);
       } catch (e: unknown) {
         status = e instanceof Error ? e.message : String(e);
+      } finally {
+        unmuteGitRepoWatcher();
       }
       bridge.post({ command, status } as ResponseMessage);
     });
