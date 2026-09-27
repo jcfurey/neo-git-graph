@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join, resolve as resolvePath } from "node:path";
@@ -25,6 +25,13 @@ const workspaceFolder = join(runRoot, "workspace");
 const logs = join(artifacts, "vscode-logs", basename(runRoot));
 mkdirSync(logs, { recursive: true });
 execFileSync("git", ["init", "-b", "main", workspaceFolder], { stdio: "pipe" });
+// A setting saved under the name before the rename, at its default value so no test sees a
+// difference. Activation copies it to the branchwise section; tests-ext/extension.test.ts checks.
+mkdirSync(join(runRoot, "user-data", "User"), { recursive: true });
+writeFileSync(
+  join(runRoot, "user-data", "User", "settings.json"),
+  JSON.stringify({ "neo-git-graph.showUncommittedChanges": true })
+);
 process.once("exit", () =>
   rmSync(runRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
 );

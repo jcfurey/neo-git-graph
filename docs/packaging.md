@@ -1,8 +1,9 @@
 # Packaging and releases
 
-The checked-in manifest is the source of truth: `jcfurey.neo-git-graph@0.9.7`.
-Keep `publisher` and `name` stable so local VSIX installations upgrade the existing fork.
-Retain the upstream author credits and license when changing metadata.
+The checked-in manifest is the source of truth: `jcfurey.branchwise@0.9.7`.
+Keep `publisher` and `name` stable so local VSIX installations upgrade the existing installation.
+Keep the upstream projects' copyright notices in `LICENSE` and their credits in `contributors`
+when changing metadata.
 
 ## Build and install
 
@@ -12,15 +13,15 @@ Use Node.js 24 and the pnpm version pinned in `package.json`, which Corepack pro
 corepack enable pnpm
 pnpm install --frozen-lockfile
 pnpm run package:vsix
-code --install-extension ./neo-git-graph-0.9.7.vsix --force
+code --install-extension ./branchwise-0.9.7.vsix --force
 ```
 
-`package:vsix` validates the fork identity, then invokes VSCE. Its prepublish hook cleans the output,
+`package:vsix` validates the extension identity, then invokes VSCE. Its prepublish hook cleans the output,
 runs type and lint checks, and builds the production extension and webview. VSCE uses the manifest
 version in the default filename. For a fixed output name, use:
 
 ```sh
-pnpm run package:vsix --out neo-git-graph.vsix
+pnpm run package:vsix --out branchwise.vsix
 ```
 
 The extension is bundled, so the VSIX contains runtime assets, translations, documentation, and
@@ -33,12 +34,12 @@ after installation. Building and testing do not install into your normal VS Code
 pnpm run test:release
 pnpm run test:package
 # Or, for a custom filename:
-pnpm run test:package neo-git-graph.vsix
+pnpm run test:package branchwise.vsix
 ```
 
 The package test uses temporary extension, user-data, and repository directories. It installs a
-minimal older fork, installs the new VSIX, and checks that only the current fork version remains
-listed. It then activates the installed package, checks shipped assets, opens the graph, and opens
+minimal older build of the same extension, installs the new VSIX, and checks that only the new
+version remains listed. It then activates the installed package, checks shipped assets, opens the graph, and opens
 the guide and walkthrough. Temporary directories are removed afterward.
 
 It downloads stable VS Code unless `NGG_VSCODE_PATH` points to an existing VS Code executable.

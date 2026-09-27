@@ -31,7 +31,7 @@ it("falls back to the defaults declared in package.json", () => {
     tabIconColourTheme: extConfig.tabIconColourTheme()
   };
   for (const [key, value] of Object.entries(fallbacks)) {
-    expect(value, key).toEqual(declared[`neo-git-graph.${key}`]?.default);
+    expect(value, key).toEqual(declared[`branchwise.${key}`]?.default);
   }
   expect(extConfig.gitPath()).toBe("git");
 });
@@ -93,12 +93,12 @@ it("declares the numeric settings as integers with minimums", () => {
     };
   };
   const declared = manifest.contributes.configuration.properties;
-  expect(declared["neo-git-graph.initialLoadCommits"]).toMatchObject({
+  expect(declared["branchwise.initialLoadCommits"]).toMatchObject({
     type: "integer",
     minimum: 1
   });
-  expect(declared["neo-git-graph.loadMoreCommits"]).toMatchObject({ type: "integer", minimum: 1 });
-  expect(declared["neo-git-graph.maxDepthOfRepoSearch"]).toMatchObject({
+  expect(declared["branchwise.loadMoreCommits"]).toMatchObject({ type: "integer", minimum: 1 });
+  expect(declared["branchwise.maxDepthOfRepoSearch"]).toMatchObject({
     type: "integer",
     minimum: 0
   });

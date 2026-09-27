@@ -11,7 +11,7 @@ export function registerFileHistoryCommand(
   open: (repo: string, file: string) => void
 ) {
   ctx.subscriptions.push(
-    vscode.commands.registerCommand("neo-git-graph.fileHistory", async (uri?: vscode.Uri) => {
+    vscode.commands.registerCommand("branchwise.fileHistory", async (uri?: vscode.Uri) => {
       try {
         const file = uri ?? vscode.window.activeTextEditor?.document.uri;
         if (!file || !["file", "vscode-remote"].includes(file.scheme)) {

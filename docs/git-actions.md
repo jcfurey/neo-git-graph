@@ -4,7 +4,7 @@ All controls act on the repository selected in the graph, including initialized 
 
 ## Getting started
 
-After installing, VS Code offers the **Get started with (neo) Git Graph** walkthrough on the Welcome page, and the command **(neo) Git Graph: Open Getting Started Walkthrough** reopens it. Its five steps open the graph, explain how to read it, show where a commit's actions live, open the Branches pane, and cover recovery.
+After installing, VS Code offers the **Get started with Branchwise** walkthrough on the Welcome page, and the command **Branchwise: Open Getting Started Walkthrough** reopens it. Its five steps open the graph, explain how to read it, show where a commit's actions live, open the Branches pane, and cover recovery.
 
 Inside the graph, a hint above the commit list says how to reach a commit's actions until the first menu opens. Every commit row shows a **⋯** button at its end on hover, and the settings cog holds **Getting Started** and **Learn more**, which opens this guide.
 

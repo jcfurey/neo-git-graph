@@ -12,6 +12,8 @@ export const DROPDOWN_PAGE = 200;
 const EDGE = 8;
 /** The gap between the trigger and the panel, as `mt-1`. */
 const GAP = 4;
+/** The panel's usual width limit, as `max-w-96`, which the placement's own limit replaces. */
+const MAX_WIDTH = 384;
 /** The panel's usual height limit, as `max-h-72`. */
 const MAX_HEIGHT = 288;
 
@@ -28,7 +30,7 @@ export function fitPanel(
   height: number,
   viewport: { width: number; height: number }
 ) {
-  const maxWidth = Math.max(0, viewport.width - 2 * EDGE);
+  const maxWidth = Math.max(0, Math.min(MAX_WIDTH, viewport.width - 2 * EDGE));
   const fitted = Math.min(width, maxWidth);
   const left = Math.max(EDGE, Math.min(trigger.right - fitted, viewport.width - EDGE - fitted));
   const below = viewport.height - trigger.bottom - GAP - EDGE;
@@ -107,7 +109,7 @@ export function Dropdown({
   }, [open]);
 
   // Keep the open panel inside the window, which a narrow window or a trigger near its left edge
-  // would otherwise cut off.
+  // would otherwise cut off. Place it again on another page, whose longer names can widen it.
   useLayoutEffect(() => {
     const panel = panelRef.current;
     const trigger = triggerRef.current;
@@ -133,7 +135,7 @@ export function Dropdown({
     place();
     window.addEventListener("resize", place);
     return () => window.removeEventListener("resize", place);
-  }, [open, matches.length]);
+  }, [open, matches.length, pageStart]);
 
   useEffect(() => {
     listRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: "nearest" });

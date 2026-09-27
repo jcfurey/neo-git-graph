@@ -1,121 +1,183 @@
 import { getWebviewConfig } from "@/webview/lib/webview-config";
 
-/**
- * Build a formatter once per locale. Constructing an Intl formatter is costly
- * enough to be worth caching when rendering a column of hundreds of commits.
- * Invalid locale tags fall back to the runtime's default locale.
- */
-function memoizeByLocale<T>(build: (locale: string | undefined) => T) {
-  const cache = new Map<string, T>();
-  return (locale: string): T => {
-    let formatter = cache.get(locale);
-    if (!formatter) {
-      try {
-        formatter = build(locale);
-      } catch {
-        formatter = build(undefined);
-      }
-      cache.set(locale, formatter);
-    }
-    return formatter;
-  };
-}
+/** The date cell of a commit row: `value` is shown, `title` is its tooltip. */
+export type CommitDate = { title: string; value: string };
 
-const getDateFormatter = memoizeByLocale(
-  (locale) => new Intl.DateTimeFormat(locale, { year: "numeric", month: "short", day: "numeric" })
-);
+/** How far from the epoch, in seconds and in either direction, a JavaScript date reaches. */
+const MAX_SECONDS = 8_640_000_000_000;
 
-const getFullDateFormatter = memoizeByLocale(
-  (locale) => new Intl.DateTimeFormat(locale, { dateStyle: "full", timeStyle: "long" })
-);
-
-const getRelativeFormatter = memoizeByLocale(
-  (locale) => new Intl.RelativeTimeFormat(locale, { numeric: "always" })
-);
-
-const getSecondsFormatter = memoizeByLocale(
-  (locale) =>
-    new Intl.NumberFormat(locale, { style: "unit", unit: "second", unitDisplay: "narrow" })
-);
+type Unit = { name: Intl.RelativeTimeFormatUnit; seconds: number };
 
 /**
- * The whole seconds between two times in milliseconds, in the display language's own units,
- * such as "5s" or "5秒". A later start than end counts as no time.
+ * Units of a relative date, from the smallest. A year is 365.25 days and a month a twelfth
+ * of that, so the calendar is never consulted.
  */
-export function formatSeconds(started: number, finished: number): string {
-  return getSecondsFormatter(getWebviewConfig().locale).format(
-    Math.max(0, Math.floor((finished - started) / 1000))
-  );
-}
-
-/** Largest unit that fits, paired with the number of seconds in it. */
-const RELATIVE_UNITS: [threshold: number, unit: Intl.RelativeTimeFormatUnit, seconds: number][] = [
-  [60, "second", 1],
-  [3600, "minute", 60],
-  [86400, "hour", 3600],
-  [604800, "day", 86400],
-  [2629800, "week", 604800],
-  [31557600, "month", 2629800],
-  [Infinity, "year", 31557600]
+const UNITS: ReadonlyArray<Unit> = [
+  { name: "second", seconds: 1 },
+  { name: "minute", seconds: 60 },
+  { name: "hour", seconds: 3_600 },
+  { name: "day", seconds: 86_400 },
+  { name: "week", seconds: 604_800 },
+  { name: "month", seconds: 2_629_800 },
+  { name: "year", seconds: 31_557_600 }
 ];
 
 /**
- * Format a commit date as a relative time ("5 minutes ago") using the VS Code
- * display language. Intl supplies the locale's own plural rules and word order,
- * so no part of this string is localized by the extension itself.
+ * The day formatter of a locale and the clock that goes with it. A formatter keeps the time
+ * zone it was built in, so the clock is pinned to the day's zone and the two agree even when
+ * the runtime's zone changes while the page is open.
  */
-function formatRelativeDate(date: Date, now: Date, locale: string): string {
-  const diff = Math.round((now.getTime() - date.getTime()) / 1000);
-  const abs = Math.abs(diff);
-  const [, unit, seconds] = RELATIVE_UNITS.find(([threshold]) => abs < threshold)!;
-  // Negative = in the past, which is what RelativeTimeFormat expects.
-  return getRelativeFormatter(locale).format(-Math.round(diff / seconds), unit);
-}
+type ShortDate = { day: Intl.DateTimeFormat; clock: Intl.DateTimeFormat };
 
-function pad2(value: number): string {
-  return value > 9 ? String(value) : "0" + value;
-}
-
-export type CommitDate = {
-  /** Absolute date and time, always shown as the cell tooltip. */
-  title: string;
-  /** Cell text, in the format the user configured. */
-  value: string;
-};
+// The graph formats a date for every commit it shows, so each formatter is built once per
+// locale tag and kept. Keyed by the tag rather than the config object, a new locale takes
+// effect on the next call however the configuration was changed.
+const shortDates = new Map<string, ShortDate>();
+const fullDates = new Map<string, Intl.DateTimeFormat>();
+const relativeTimes = new Map<string, Intl.RelativeTimeFormat>();
+const secondCounts = new Map<string, Intl.NumberFormat>();
 
 /**
- * The date of a Git timestamp, or null when JavaScript cannot represent it. Git accepts
- * timestamps such as `@99999999999999`, far past the largest JavaScript date, on which every
- * Intl formatter throws.
+ * The formatter that `cache` holds for `locale`, built on first use. Intl rejects some tags,
+ * such as "en_US", and those format in the runtime's default locale. The fallback is kept
+ * like any other formatter, so a rejected tag is tried only once.
  */
-function toDate(seconds: number): Date | null {
-  const date = new Date(seconds * 1000);
-  return Number.isFinite(date.getTime()) ? date : null;
+function formatterFor<T>(
+  cache: Map<string, T>,
+  locale: string,
+  build: (locale: string | undefined) => T
+): T {
+  let formatter = cache.get(locale);
+  if (formatter === undefined) {
+    try {
+      formatter = build(locale);
+    } catch {
+      formatter = build(undefined);
+    }
+    cache.set(locale, formatter);
+  }
+
+  return formatter;
 }
 
-/** Full date and time, as shown in the commit details view. */
+/** Hours and minutes on a 24-hour clock in ASCII digits, whatever the display language uses. */
+function clockIn(timeZone: string): Intl.DateTimeFormat {
+  const options: Intl.DateTimeFormatOptions = {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  };
+  try {
+    return new Intl.DateTimeFormat("en-US", { ...options, timeZone });
+  } catch {
+    return new Intl.DateTimeFormat("en-US", options);
+  }
+}
+
+function shortDate(locale: string): ShortDate {
+  return formatterFor(shortDates, locale, (tag) => {
+    const day = new Intl.DateTimeFormat(tag, { year: "numeric", month: "short", day: "numeric" });
+    return { day, clock: clockIn(day.resolvedOptions().timeZone) };
+  });
+}
+
+/** "HH:MM". Seconds are dropped, never rounded into the minute. */
+function clockTime(clock: Intl.DateTimeFormat, date: Date): string {
+  const parts = clock.formatToParts(date);
+  const field = (type: Intl.DateTimeFormatPartTypes) =>
+    (parts.find((part) => part.type === type)?.value ?? "").padStart(2, "0");
+  return `${field("hour")}:${field("minute")}`;
+}
+
+/** The instant of a Git timestamp in seconds, or null when a JavaScript date cannot hold it. */
+function toDate(seconds: number): Date | null {
+  // NaN fails the comparison too.
+  return Math.abs(seconds) <= MAX_SECONDS ? new Date(seconds * 1000) : null;
+}
+
+/**
+ * How long ago `date` was, or how far ahead it is, as of now. The age is rounded once, halves
+ * up, in the largest unit it has reached, so both directions read alike. A count that rounds
+ * up to the next unit's size moves to that unit: "60 minutes" reads "1 hour". An age that
+ * rounds to nothing reads as past, since commits a moment ahead come from a skewed clock.
+ */
+function relativeTo(date: Date, locale: string): string {
+  const age = (Date.now() - date.getTime()) / 1000;
+  const magnitude = Math.abs(age);
+
+  // The largest unit the age has reached, or seconds while it is under one.
+  const reached = Math.max(
+    0,
+    UNITS.findLastIndex(({ seconds }) => magnitude >= seconds)
+  );
+  let unit = UNITS[reached]!;
+  let count = Math.round(magnitude / unit.seconds);
+  const next = UNITS[reached + 1];
+  if (next !== undefined && count * unit.seconds >= next.seconds) {
+    unit = next;
+    count = Math.round(magnitude / unit.seconds);
+  }
+
+  // Intl reads -0 as past, so a count of 0 in either direction reads "0 seconds ago".
+  const signed = age < 0 && count > 0 ? count : -count;
+  return formatterFor(
+    relativeTimes,
+    locale,
+    (tag) => new Intl.RelativeTimeFormat(tag, { numeric: "always" })
+  ).format(signed, unit.name);
+}
+
+/** Whole seconds from `started` to `finished`, both in milliseconds, such as "5s". */
+export function formatSeconds(started: number, finished: number): string {
+  const elapsed = Math.floor((finished - started) / 1000);
+  // A clock that moved backwards, or an argument that is not finite, shows zero seconds.
+  const count = Number.isFinite(elapsed) && elapsed > 0 ? elapsed : 0;
+  const { locale } = getWebviewConfig();
+  return formatterFor(
+    secondCounts,
+    locale,
+    (tag) => new Intl.NumberFormat(tag, { style: "unit", unit: "second", unitDisplay: "narrow" })
+  ).format(count);
+}
+
+/** A Git timestamp in seconds as a long date and time in the display language. */
 export function getFullDate(seconds: number): string {
   const date = toDate(seconds);
-  return date === null
-    ? window.l10n.unknownDate
-    : getFullDateFormatter(getWebviewConfig().locale).format(date);
+  if (date === null) {
+    return window.l10n.unknownDate;
+  }
+
+  const { locale } = getWebviewConfig();
+  return formatterFor(
+    fullDates,
+    locale,
+    (tag) => new Intl.DateTimeFormat(tag, { dateStyle: "full", timeStyle: "long" })
+  ).format(date);
 }
 
+/**
+ * The date cell of a commit with a Git timestamp in seconds. The tooltip always holds the
+ * day and a 24-hour time; the `dateFormat` setting decides what the cell shows.
+ */
 export function getCommitDate(seconds: number): CommitDate {
-  const { dateFormat, locale } = getWebviewConfig();
   const date = toDate(seconds);
   if (date === null) {
-    return { title: window.l10n.unknownDate, value: window.l10n.unknownDate };
+    const unknown = window.l10n.unknownDate;
+    return { title: unknown, value: unknown };
   }
-  const dateStr = getDateFormatter(locale).format(date);
-  const title = `${dateStr} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+
+  const { locale, dateFormat } = getWebviewConfig();
+  const { day, clock } = shortDate(locale);
+  const dayText = day.format(date);
+  const title = `${dayText} ${clockTime(clock, date)}`;
 
   switch (dateFormat) {
     case "Date Only":
-      return { title, value: dateStr };
+      return { title, value: dayText };
     case "Relative":
-      return { title, value: formatRelativeDate(date, new Date(), locale) };
+      return { title, value: relativeTo(date, locale) };
     default:
+      // "Date & Time", and whatever else a hand-edited setting holds.
       return { title, value: title };
   }
 }

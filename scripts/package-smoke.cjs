@@ -8,7 +8,7 @@ const { brokenLinks } = require("./markdown-links.cjs");
 
 exports.run = async () => {
   const extension = vscode.extensions.getExtension(process.env.NGG_EXTENSION_ID);
-  assert.ok(extension, "The packaged fork must be installed");
+  assert.ok(extension, "The packaged extension must be installed");
   assert.equal(extension.packageJSON.version, process.env.NGG_EXTENSION_VERSION);
   assert.equal(path.dirname(extension.extensionPath), process.env.NGG_EXTENSIONS_DIR);
   const files = [
@@ -60,16 +60,16 @@ exports.run = async () => {
   }
   await extension.activate();
   assert.ok(extension.isActive);
-  await vscode.commands.executeCommand("neo-git-graph.view");
+  await vscode.commands.executeCommand("branchwise.view");
   const deadline = Date.now() + 10000;
   const opened = () =>
     vscode.window.tabGroups.all
       .flatMap((group) => group.tabs)
-      .some((tab) => tab.label === "(neo) Git Graph");
+      .some((tab) => tab.label === "Branchwise");
   while (!opened() && Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, 50)); // eslint-disable-line no-await-in-loop
   }
   assert.ok(opened(), "The installed VSIX must open its graph");
-  await vscode.commands.executeCommand("neo-git-graph.openDocumentation");
-  await vscode.commands.executeCommand("neo-git-graph.openWalkthrough");
+  await vscode.commands.executeCommand("branchwise.openDocumentation");
+  await vscode.commands.executeCommand("branchwise.openWalkthrough");
 };

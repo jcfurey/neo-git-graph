@@ -94,7 +94,7 @@ export async function runRepositoryAction(
         "push",
         ...(action.includeUntracked ? ["--include-untracked"] : []),
         "--message",
-        action.message || "Git Graph stash"
+        action.message || "Branchwise stash"
       ]);
       return;
     case "stash": {

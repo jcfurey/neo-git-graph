@@ -1,1 +1,1 @@
-export const EXTENSION_NAME = "(neo) Git Graph";
+export const EXTENSION_NAME = "Branchwise";

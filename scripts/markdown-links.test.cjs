@@ -7,7 +7,7 @@ test("finds relative targets and ignores URLs, anchors, and absolute paths", () 
   assert.deepEqual(
     relativeTargets(
       "[a](guide.md) [b](../x/y.md#part) [c](https://example.com) [d](#top) [e](mailto:x@y) " +
-        '[f](/root.md) [g](<with space.md>) [h](img.png "title") [i](command:neo-git-graph.view)'
+        '[f](/root.md) [g](<with space.md>) [h](img.png "title") [i](command:branchwise.view)'
     ),
     ["guide.md", "../x/y.md", "with space.md", "img.png"]
   );

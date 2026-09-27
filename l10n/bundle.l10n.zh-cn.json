@@ -1,5 +1,5 @@
 {
-  "View Git Graph": "查看 Git 分支图",
+  "View Graph": "查看分支图",
   "Added in {0}": "在 {0} 中添加",
   "Deleted in {0}": "在 {0} 中删除",
   "Another Git operation is running in this repository. Wait for it to finish.": "此仓库中已有另一个 Git 操作正在运行，请等待其完成。",
@@ -84,7 +84,7 @@
   "No Git repository found": "未找到 Git 仓库",
   "Initialize Repository": "初始化仓库",
   "Unable to initialize the repository: {0}": "无法初始化仓库：{0}",
-  "Unable to load Git Graph": "无法加载 Git 图形",
+  "Unable to load the graph": "无法加载分支图",
   "If you are using a portable Git installation, make sure you have set the Visual Studio Code Setting \"git.path\" to the path of your portable installation (e.g. \"C:\\Program Files\\Git\\bin\\git.exe\" on Windows).": "如果您使用的是便携版 Git，请确保已将 Visual Studio Code 的设置 “git.path” 设置为便携版安装的路径（例如 Windows 上的 “C:\\Program Files\\Git\\bin\\git.exe”）。",
   "Unable to load commit details": "无法加载提交详情",
   "Unable to Copy {0} to Clipboard": "无法复制{0}到剪贴板",

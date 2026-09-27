@@ -16,7 +16,7 @@ import { historyActive, refsVisible, searchVisible, workspaceVisible } from "./l
 export function App({ repos }: { repos: Array<GitRepo> }) {
   const sidebar = refsVisible.value || workspaceVisible.value;
   return (
-    <div data-git-graph class="flex min-h-screen flex-col">
+    <div data-branchwise class="flex min-h-screen flex-col">
       <MainHeader repos={repos} />
       {(searchVisible.value || historyActive.value) && <SearchBar />}
       <RepositoryStatus />

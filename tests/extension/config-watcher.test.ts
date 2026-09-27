@@ -38,7 +38,7 @@ function change(...sections: string[]) {
 
 it("sends changed display settings to an open graph", () => {
   mocks.settings = { graphStyle: "angular", dateFormat: "Relative", initialLoadCommits: 50.7 };
-  change("neo-git-graph.graphStyle");
+  change("branchwise.graphStyle");
   expect(mocks.notify).toHaveBeenCalledExactlyOnceWith(
     "config.changed",
     expect.objectContaining({
@@ -51,7 +51,7 @@ it("sends changed display settings to an open graph", () => {
 });
 
 it("scans for repositories again only when the search changes", () => {
-  change("neo-git-graph.maxDepthOfRepoSearch");
+  change("branchwise.maxDepthOfRepoSearch");
   expect(mocks.notify).toHaveBeenCalledWith("repo.rescan", null);
   expect(mocks.notify).toHaveBeenCalledWith("config.changed", expect.any(Object));
   mocks.notify.mockClear();

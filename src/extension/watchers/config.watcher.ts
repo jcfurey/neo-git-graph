@@ -8,13 +8,13 @@ export function initConfigWatcher(): vscode.Disposable {
   return vscode.workspace.onDidChangeConfiguration((e) => {
     if (
       e.affectsConfiguration("git.path") ||
-      e.affectsConfiguration("neo-git-graph.maxDepthOfRepoSearch")
+      e.affectsConfiguration("branchwise.maxDepthOfRepoSearch")
     ) {
       logger.info("Configuration changed");
       void rpcNotify.notify("repo.rescan", null);
     }
     // An open graph applies display settings at once instead of on its next start.
-    if (e.affectsConfiguration("neo-git-graph")) {
+    if (e.affectsConfiguration("branchwise")) {
       void rpcNotify.notify("config.changed", webviewConfig());
     }
   });

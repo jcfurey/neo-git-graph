@@ -2,8 +2,8 @@
 
 ## [Unreleased]
 
-The manifest carries the fork identity, `jcfurey.neo-git-graph`, continuing the locally installed
-0.9.x builds. Historical upstream releases remain below.
+Branchwise was named (neo) Git Graph, `jcfurey.neo-git-graph`, through its 0.9.6 builds. Releases
+0.6.0 and earlier are from [asispts/neo-git-graph](https://github.com/asispts/neo-git-graph).
 
 ## [0.9.7] - 2026-09-26
 
@@ -14,6 +14,8 @@ The manifest carries the fork identity, `jcfurey.neo-git-graph`, continuing the 
 
 ### Changed
 
+- Rename the extension to Branchwise, `jcfurey.branchwise`: its commands and settings move from the `neo-git-graph.` prefix to `branchwise.`, settings saved under the old names are copied the first time Branchwise starts in each workspace, and the manifest no longer names the upstream author or sponsor.
+- Replace the icons inherited from Git Graph with Branchwise's own: the Marketplace icon, the graph tab icons, and the Source Control button.
 - Add a Getting Started step on branch focus and remote visibility, describe per-remote eye buttons and the clickable Uncommitted Changes row in the walkthroughs, and ship only the user guide, whose links now all resolve.
 - Name the fork's maintainer in CODEOWNERS and override development dependencies with high-severity advisories (js-yaml, vite, serialize-javascript) and a moderate one (qs).
 - Publish from a protected `release` environment after checking both registry tokens, pin third-party actions to commit SHAs, update the artifact actions, and allow a manual dry run of the release workflow.
@@ -21,9 +23,12 @@ The manifest carries the fork identity, `jcfurey.neo-git-graph`, continuing the 
 
 ### Fixed
 
+- Resize table columns more predictably: a click on a column divider no longer fixes every width, only the primary button drags, a drag ends when the button is released outside the view, a drag never moves a divider the opposite way, and a repository change during a drag saves nothing to either repository.
+- A request from the graph to the extension fails at once, instead of after 30 seconds, when its response is malformed or cannot be delivered.
+- Relative commit dates move up a unit instead of reading "60 minutes ago" or "24 hours ago", round the same way for dates in the past and the future, and read "0 seconds ago" for a commit a moment ahead of the clock. The date column's tooltip keeps its date and time in the same time zone after the system's zone changes.
 - Show the remaining webview text in VS Code's display language: the loading and startup messages, repository-load failures, timeouts, reflog dates, and elapsed times, and mark the page with that language.
 - Keep keyboard focus on an entry moved in the interactive rebase and batch editors and announce its new position, keep the sync preview and its focus through background refreshes, and name Branches pane buttons with their full ref.
-- Keep dropdown lists inside narrow windows, opening upwards when there is more room above, and keep the Branches and Workspace sidebar below the header when the header wraps.
+- Keep dropdown lists inside the window at any width, opening upwards when there is more room above, and keep the Branches and Workspace sidebar below the header when the header wraps.
 - Keep the uncommitted-changes list, its focus, and its scroll position on screen while it refreshes, follow a staged file to its new group, and show large groups 200 files at a time.
 - Apply changed settings to an open graph instead of on its next start, and read fractional or negative commit counts and search depths as whole numbers within range.
 - Open menus activated with Enter, Space, or the context-menu key next to their button instead of in the window's top-left corner.

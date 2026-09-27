@@ -18,6 +18,6 @@ export const rpcHandlers = {
   "git.init": () => initializeRepo(),
   "repo.scan": () => scanRepos(),
   "settings.open": () => openExtensionSettings(),
-  "docs.open": () => runCommand("neo-git-graph.openDocumentation"),
-  "walkthrough.open": () => runCommand("neo-git-graph.openWalkthrough")
+  "docs.open": () => runCommand("branchwise.openDocumentation"),
+  "walkthrough.open": () => runCommand("branchwise.openWalkthrough")
 } satisfies RpcHandlers;

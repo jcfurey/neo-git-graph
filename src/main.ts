@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { resolveBuiltInGitPath } from "./extension/config";
 import { EXTENSION_NAME } from "./extension/constants";
 import { openDocumentation, openWalkthrough } from "./extension/handlers/onboarding";
+import { migrateSettings } from "./extension/migrate-settings";
 import { logger } from "./extension/util/logger";
 import { createViewCommand } from "./extension/view-command";
 import { registerFileHistoryCommand } from "./old-extension/fileHistoryCommand";
@@ -15,6 +16,7 @@ import { registerFileHistoryCommand } from "./old-extension/fileHistoryCommand";
  */
 export function activate(ctx: vscode.ExtensionContext) {
   logger.init(ctx);
+  void migrateSettings(ctx);
   void resolveBuiltInGitPath();
   // Backend messages are marked with the standalone l10n package, which cannot
   // see VS Code's API. Hand it the bundle VS Code loaded for the display language.
@@ -22,21 +24,19 @@ export function activate(ctx: vscode.ExtensionContext) {
 
   const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
   statusBarItem.name = EXTENSION_NAME;
-  statusBarItem.command = "neo-git-graph.view";
+  statusBarItem.command = "branchwise.view";
   statusBarItem.text = `$(type-hierarchy) ${EXTENSION_NAME}`;
-  statusBarItem.tooltip = vscode.l10n.t("View Git Graph");
+  statusBarItem.tooltip = vscode.l10n.t("View Graph");
   statusBarItem.show();
 
   ctx.subscriptions.push(statusBarItem);
 
   const view = createViewCommand(ctx);
   ctx.subscriptions.push(
-    vscode.commands.registerCommand("neo-git-graph.view", view),
-    vscode.commands.registerCommand("neo-git-graph.showBranches", () => view.showPane("refs")),
-    vscode.commands.registerCommand("neo-git-graph.openDocumentation", () =>
-      openDocumentation(ctx)
-    ),
-    vscode.commands.registerCommand("neo-git-graph.openWalkthrough", () => openWalkthrough(ctx))
+    vscode.commands.registerCommand("branchwise.view", view),
+    vscode.commands.registerCommand("branchwise.showBranches", () => view.showPane("refs")),
+    vscode.commands.registerCommand("branchwise.openDocumentation", () => openDocumentation(ctx)),
+    vscode.commands.registerCommand("branchwise.openWalkthrough", () => openWalkthrough(ctx))
   );
   registerFileHistoryCommand(ctx, (repo, file) => view({ rootUri: vscode.Uri.file(repo) }, file));
 

@@ -1,6 +1,6 @@
 {
-  "name": "neo-git-graph",
-  "displayName": "(neo) Git Graph",
+  "name": "branchwise",
+  "displayName": "Branchwise",
   "version": "0.9.7",
   "description": "%description%",
   "categories": [
@@ -19,22 +19,19 @@
     "url": "https://github.com/jcfurey/neo-git-graph/issues"
   },
   "license": "MIT",
-  "author": {
-    "name": "Asis Pattisahusiwa",
-    "email": "asispts@gmail.com"
-  },
   "contributors": [
     {
       "name": "Michael Hutchison",
       "url": "https://github.com/mhutchie"
+    },
+    {
+      "name": "Asis Pattisahusiwa",
+      "url": "https://github.com/asispts"
     }
   ],
   "repository": {
     "type": "git",
     "url": "https://github.com/jcfurey/neo-git-graph.git"
-  },
-  "sponsor": {
-    "url": "https://github.com/sponsors/asispts"
   },
   "publisher": "jcfurey",
   "main": "./out/extension.js",
@@ -45,7 +42,9 @@
     "package:vsix": "node scripts/check-release.cjs && vsce package --no-dependencies",
     "check:release": "node scripts/check-release.cjs",
     "check:links": "node scripts/markdown-links.cjs",
-    "test:release": "node --test scripts/check-release.test.cjs scripts/markdown-links.test.cjs",
+    "check:provenance": "node scripts/provenance.cjs --check",
+    "provenance": "node scripts/provenance.cjs",
+    "test:release": "node --test scripts/check-release.test.cjs scripts/markdown-links.test.cjs scripts/provenance.test.cjs",
     "test:package": "node scripts/test-package.cjs",
     "clean": "node -e \"require('fs').rmSync('out',{recursive:true,force:true})\"",
     "clean:all": "node -e \"const fs=require('fs');for(const p of ['out','tests-ext/out','.vscode-test','test-results',...fs.readdirSync('.').filter(f=>f.endsWith('.vsix'))])fs.rmSync(p,{recursive:true,force:true})\"",
@@ -99,8 +98,8 @@
   "contributes": {
     "commands": [
       {
-        "category": "(neo) Git Graph",
-        "command": "neo-git-graph.view",
+        "category": "Branchwise",
+        "command": "branchwise.view",
         "title": "%command.view%",
         "icon": {
           "light": "resources/webview-icon-light.svg",
@@ -108,44 +107,44 @@
         }
       },
       {
-        "category": "(neo) Git Graph",
-        "command": "neo-git-graph.fileHistory",
+        "category": "Branchwise",
+        "command": "branchwise.fileHistory",
         "title": "%command.fileHistory%"
       },
       {
-        "category": "(neo) Git Graph",
-        "command": "neo-git-graph.showBranches",
+        "category": "Branchwise",
+        "command": "branchwise.showBranches",
         "title": "%command.showBranches%"
       },
       {
-        "category": "(neo) Git Graph",
-        "command": "neo-git-graph.openDocumentation",
+        "category": "Branchwise",
+        "command": "branchwise.openDocumentation",
         "title": "%command.openDocumentation%"
       },
       {
-        "category": "(neo) Git Graph",
-        "command": "neo-git-graph.openWalkthrough",
+        "category": "Branchwise",
+        "command": "branchwise.openWalkthrough",
         "title": "%command.openWalkthrough%"
       }
     ],
     "menus": {
       "scm/title": [
         {
-          "command": "neo-git-graph.view",
+          "command": "branchwise.view",
           "group": "navigation",
           "when": "scmProvider == git"
         }
       ],
       "explorer/context": [
         {
-          "command": "neo-git-graph.fileHistory",
+          "command": "branchwise.fileHistory",
           "group": "git",
           "when": "!explorerResourceIsFolder && (resourceScheme == file || resourceScheme == vscode-remote)"
         }
       ],
       "editor/title/context": [
         {
-          "command": "neo-git-graph.fileHistory",
+          "command": "branchwise.fileHistory",
           "group": "git",
           "when": "!explorerResourceIsFolder && (resourceScheme == file || resourceScheme == vscode-remote)"
         }
@@ -153,14 +152,14 @@
     },
     "configuration": {
       "type": "object",
-      "title": "(neo) Git Graph",
+      "title": "Branchwise",
       "properties": {
-        "neo-git-graph.autoCenterCommitDetailsView": {
+        "branchwise.autoCenterCommitDetailsView": {
           "type": "boolean",
           "default": true,
           "description": "%config.autoCenterCommitDetailsView%"
         },
-        "neo-git-graph.dateFormat": {
+        "branchwise.dateFormat": {
           "type": "string",
           "enum": [
             "Date & Time",
@@ -175,7 +174,7 @@
           "default": "Date & Time",
           "description": "%config.dateFormat%"
         },
-        "neo-git-graph.dateType": {
+        "branchwise.dateType": {
           "type": "string",
           "enum": [
             "Author Date",
@@ -188,13 +187,13 @@
           "default": "Author Date",
           "description": "%config.dateType%"
         },
-        "neo-git-graph.fetchAvatars": {
+        "branchwise.fetchAvatars": {
           "type": "boolean",
           "default": false,
           "description": "%config.fetchAvatars%",
           "deprecationMessage": "%config.fetchAvatars.deprecation%"
         },
-        "neo-git-graph.graphColours": {
+        "branchwise.graphColours": {
           "type": "array",
           "items": {
             "type": "string",
@@ -217,7 +216,7 @@
           ],
           "description": "%config.graphColours%"
         },
-        "neo-git-graph.graphStyle": {
+        "branchwise.graphStyle": {
           "type": "string",
           "enum": [
             "rounded",
@@ -230,35 +229,35 @@
           "default": "rounded",
           "description": "%config.graphStyle%"
         },
-        "neo-git-graph.initialLoadCommits": {
+        "branchwise.initialLoadCommits": {
           "type": "integer",
           "minimum": 1,
           "default": 300,
           "description": "%config.initialLoadCommits%"
         },
-        "neo-git-graph.loadMoreCommits": {
+        "branchwise.loadMoreCommits": {
           "type": "integer",
           "minimum": 1,
           "default": 100,
           "description": "%config.loadMoreCommits%"
         },
-        "neo-git-graph.maxDepthOfRepoSearch": {
+        "branchwise.maxDepthOfRepoSearch": {
           "type": "integer",
           "minimum": 0,
           "default": 0,
           "description": "%config.maxDepthOfRepoSearch%"
         },
-        "neo-git-graph.showCurrentBranchByDefault": {
+        "branchwise.showCurrentBranchByDefault": {
           "type": "boolean",
           "default": false,
           "description": "%config.showCurrentBranchByDefault%"
         },
-        "neo-git-graph.showUncommittedChanges": {
+        "branchwise.showUncommittedChanges": {
           "type": "boolean",
           "default": true,
           "description": "%config.showUncommittedChanges%"
         },
-        "neo-git-graph.tabIconColourTheme": {
+        "branchwise.tabIconColourTheme": {
           "type": "string",
           "enum": [
             "colour",
@@ -287,7 +286,7 @@
               "markdown": "walkthroughs/open-graph.md"
             },
             "completionEvents": [
-              "onCommand:neo-git-graph.view"
+              "onCommand:branchwise.view"
             ]
           },
           {
@@ -314,7 +313,7 @@
               "markdown": "walkthroughs/branches-pane.md"
             },
             "completionEvents": [
-              "onCommand:neo-git-graph.showBranches"
+              "onCommand:branchwise.showBranches"
             ]
           },
           {
@@ -333,7 +332,7 @@
               "markdown": "walkthroughs/recover.md"
             },
             "completionEvents": [
-              "onCommand:neo-git-graph.openDocumentation"
+              "onCommand:branchwise.openDocumentation"
             ]
           }
         ]

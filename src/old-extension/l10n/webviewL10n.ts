@@ -67,7 +67,7 @@ export function getWebviewLocalizedStrings() {
     unableToInitializeRepo: vscode.l10n.t("Unable to initialize the repository: {0}"),
 
     // Error messages
-    unableToLoad: vscode.l10n.t("Unable to load Git Graph"),
+    unableToLoad: vscode.l10n.t("Unable to load the graph"),
     portableGitHint: vscode.l10n.t(
       'If you are using a portable Git installation, make sure you have set the Visual Studio Code Setting "git.path" to the path of your portable installation (e.g. "C:\\Program Files\\Git\\bin\\git.exe" on Windows).'
     ),

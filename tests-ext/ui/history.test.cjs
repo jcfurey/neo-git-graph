@@ -288,7 +288,7 @@ async function findGraph() {
           try {
             if (
               await connection.evaluate(
-                '!!document.querySelector("header") && !!document.querySelector("[data-git-graph]")',
+                '!!document.querySelector("header") && !!document.querySelector("[data-branchwise]")',
                 context
               )
             ) {
@@ -366,7 +366,7 @@ async function contextRef(name) {
   );
 }
 async function openRepo(dir) {
-  await vscode.commands.executeCommand("neo-git-graph.view", { rootUri: vscode.Uri.file(dir) });
+  await vscode.commands.executeCommand("branchwise.view", { rootUri: vscode.Uri.file(dir) });
   graph = await findGraph();
   // The extension selects the repository once Git names its top level.
   await until(
@@ -403,7 +403,7 @@ async function headerChoice(label, option) {
     "option " + option
   );
 }
-suite("Git Graph workflow UI", function () {
+suite("Branchwise workflow UI", function () {
   this.timeout(120000);
   suiteSetup(async () => {
     try {
@@ -738,7 +738,7 @@ suite("Git Graph workflow UI", function () {
       const right = await vscode.workspace.openTextDocument(input.modified);
       assert.equal(left.getText(), before);
       assert.equal(right.getText(), after);
-      assert.equal(input.modified.scheme, working ? "file" : "neo-git-graph");
+      assert.equal(input.modified.scheme, working ? "file" : "branchwise");
       await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
       await openRepo(dir);
       await until(loaded, "refreshed changes");
@@ -1041,7 +1041,7 @@ suite("Git Graph workflow UI", function () {
     );
     await button("Return to Graph");
     await vscode.commands.executeCommand(
-      "neo-git-graph.fileHistory",
+      "branchwise.fileHistory",
       vscode.Uri.file(path.join(history, "current.txt"))
     );
     await until(
@@ -1067,10 +1067,10 @@ suite("Git Graph workflow UI", function () {
     );
     await button("Preview Restore");
     await until(
-      () => vscode.window.activeTextEditor?.document.uri.scheme === "neo-git-graph",
+      () => vscode.window.activeTextEditor?.document.uri.scheme === "branchwise",
       "native restore diff"
     );
-    await vscode.commands.executeCommand("neo-git-graph.view", {
+    await vscode.commands.executeCommand("branchwise.view", {
       rootUri: vscode.Uri.file(history)
     });
     await button("Restore File Contents");
@@ -1119,10 +1119,10 @@ suite("Git Graph workflow UI", function () {
       `(() => { const button = [...document.querySelectorAll('[role=dialog] li button')].find(b => b.textContent.includes('right.txt')); button.click(); })()`
     );
     await until(
-      () => vscode.window.activeTextEditor?.document.uri.scheme === "neo-git-graph",
+      () => vscode.window.activeTextEditor?.document.uri.scheme === "branchwise",
       "native comparison diff"
     );
-    await vscode.commands.executeCommand("neo-git-graph.view", {
+    await vscode.commands.executeCommand("branchwise.view", {
       rootUri: vscode.Uri.file(history)
     });
     assert.equal(
@@ -1604,7 +1604,7 @@ suite("Git Graph workflow UI", function () {
       await until(
         () =>
           graph.evaluate(
-            'document.querySelector("[data-graph-error] [role=alert]") !== null && /Unable to load Git Graph/.test(document.querySelector("[data-graph-error]").innerText)'
+            'document.querySelector("[data-graph-error] [role=alert]") !== null && /Unable to load the graph/.test(document.querySelector("[data-graph-error]").innerText)'
           ),
         "recoverable graph error"
       );
@@ -1961,7 +1961,7 @@ suite("Git Graph workflow UI", function () {
 
   for (const style of ["rounded", "angular"]) {
     test(`clips wide graphs after scrolling, resizing, zoom and details (${style})`, async () => {
-      const config = vscode.workspace.getConfiguration("neo-git-graph");
+      const config = vscode.workspace.getConfiguration("branchwise");
       const originalStyle = config.inspect("graphStyle").globalValue;
       const windowConfig = vscode.workspace.getConfiguration("window");
       const originalZoom = windowConfig.inspect("zoomLevel").globalValue;
@@ -2611,38 +2611,45 @@ suite("Git Graph workflow UI", function () {
         mobile: false
       });
     try {
-      // At 400 px, the Branch dropdown's list used to reach past the window's left edge.
-      await size(400);
-      await until(() => graph.evaluate("innerWidth <= 400"), "400 px window");
-      const triggers = await graph.evaluate(
-        `document.querySelectorAll('header button[aria-haspopup="listbox"]').length`
-      );
-      assert.ok(triggers >= 3, "header dropdowns");
-      for (let index = 0; index < triggers; index++) {
-        await graph.evaluate(
-          `document.querySelectorAll('header button[aria-haspopup="listbox"]')[${index}].click()`
+      // At 400 px, the Branch dropdown's list used to reach past the window's left edge. At 700 px
+      // the long branch name widened the list past the right edge after it had been placed.
+      const windows = [
+        [400, "innerWidth <= 400"],
+        [700, "innerWidth > 400 && innerWidth <= 700"]
+      ];
+      for (const [width, ready] of windows) {
+        await size(width);
+        await until(() => graph.evaluate(ready), `${width} px window`);
+        const triggers = await graph.evaluate(
+          `document.querySelectorAll('header button[aria-haspopup="listbox"]').length`
         );
-        const panel = await until(
-          () =>
-            graph.evaluate(`(() => {
-              const input = document.querySelector('header [role="combobox"]');
-              if (!input) return null;
-              const rect = input.parentElement.getBoundingClientRect();
-              return { left: rect.left, right: rect.right, width: innerWidth };
-            })()`),
-          "open dropdown " + index
-        );
-        assert.ok(
-          panel.left >= 0 && panel.right <= panel.width,
-          `dropdown ${index} inside the window: ${JSON.stringify(panel)}`
-        );
-        await graph.evaluate(
-          `document.querySelector('header [role="combobox"]').dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`
-        );
-        await until(
-          () => graph.evaluate(`!document.querySelector('header [role="combobox"]')`),
-          "closed dropdown " + index
-        );
+        assert.ok(triggers >= 3, "header dropdowns");
+        for (let index = 0; index < triggers; index++) {
+          await graph.evaluate(
+            `document.querySelectorAll('header button[aria-haspopup="listbox"]')[${index}].click()`
+          );
+          const panel = await until(
+            () =>
+              graph.evaluate(`(() => {
+                const input = document.querySelector('header [role="combobox"]');
+                if (!input) return null;
+                const rect = input.parentElement.getBoundingClientRect();
+                return { left: rect.left, right: rect.right, width: innerWidth };
+              })()`),
+            `open dropdown ${index} at ${width} px`
+          );
+          assert.ok(
+            panel.left >= 0 && panel.right <= panel.width,
+            `dropdown ${index} inside the ${width} px window: ${JSON.stringify(panel)}`
+          );
+          await graph.evaluate(
+            `document.querySelector('header [role="combobox"]').dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`
+          );
+          await until(
+            () => graph.evaluate(`!document.querySelector('header [role="combobox"]')`),
+            `closed dropdown ${index} at ${width} px`
+          );
+        }
       }
 
       // Between 800 and 1000 px the header wraps, and the sticky sidebar must start below it.

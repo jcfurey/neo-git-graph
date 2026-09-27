@@ -27,6 +27,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The inherited-code check blames every line back to its commit.
+          fetch-depth: 0
 
       - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         with:
@@ -49,11 +52,14 @@ jobs:
       - name: Check l10n
         run: pnpm run l10n:check
 
-      - name: Validate fork identity and release checks
+      - name: Validate extension identity and release checks
         run: pnpm run check:release && pnpm run test:release
 
       - name: Check links in packaged Markdown
         run: pnpm run check:links
+
+      - name: Check that no inherited code was added
+        run: pnpm run check:provenance
 
   test:
     runs-on: ${{ matrix.os }}
@@ -155,17 +161,17 @@ jobs:
 
       - name: Build installable extension
         if: runner.os == 'Linux'
-        run: pnpm run package:vsix --out neo-git-graph.vsix
+        run: pnpm run package:vsix --out branchwise.vsix
 
       - name: Verify packaged upgrade and activation
         if: runner.os == 'Linux'
-        run: xvfb-run -a pnpm run test:package neo-git-graph.vsix
+        run: xvfb-run -a pnpm run test:package branchwise.vsix
 
       - name: Upload extension
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v7
         with:
-          name: neo-git-graph-vsix
-          path: neo-git-graph.vsix
+          name: branchwise-vsix
+          path: branchwise.vsix
           if-no-files-found: error
           retention-days: 30

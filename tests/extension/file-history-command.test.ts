@@ -50,7 +50,7 @@ it.each([
     { subscriptions: [] } as unknown as import("vscode").ExtensionContext,
     open
   );
-  await mocks.commands.get("neo-git-graph.fileHistory")!({
+  await mocks.commands.get("branchwise.fileHistory")!({
     scheme: "file",
     fsPath: path.join(base(), "sub dir", "file #1.txt")
   });
@@ -64,7 +64,7 @@ it("reports a file outside any repository", async () => {
     { subscriptions: [] } as unknown as import("vscode").ExtensionContext,
     open
   );
-  await mocks.commands.get("neo-git-graph.fileHistory")!({
+  await mocks.commands.get("branchwise.fileHistory")!({
     scheme: "file",
     fsPath: path.join(outside, "loose.txt")
   });

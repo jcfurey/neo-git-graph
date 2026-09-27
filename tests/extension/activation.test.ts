@@ -30,7 +30,10 @@ vi.mock("vscode", () => {
       get workspaceFolders() {
         return mocks.folders;
       },
-      getConfiguration: () => ({ get: (_key: string, value: unknown) => value }),
+      getConfiguration: () => ({
+        get: (_key: string, value: unknown) => value,
+        inspect: () => undefined
+      }),
       registerTextDocumentContentProvider: disposable,
       onDidCloseTextDocument: disposable
     },
@@ -40,6 +43,7 @@ vi.mock("vscode", () => {
       dispose() {}
     },
     StatusBarAlignment: { Left: 1 },
+    ConfigurationTarget: { Global: 1, Workspace: 2 },
     Uri: { file: (fsPath: string) => ({ fsPath }) },
     l10n: { t: (message: string) => message, bundle: undefined }
   };
@@ -72,11 +76,11 @@ function context(saved: Record<string, unknown>) {
 }
 
 const COMMANDS = [
-  "neo-git-graph.view",
-  "neo-git-graph.fileHistory",
-  "neo-git-graph.showBranches",
-  "neo-git-graph.openDocumentation",
-  "neo-git-graph.openWalkthrough"
+  "branchwise.view",
+  "branchwise.fileHistory",
+  "branchwise.showBranches",
+  "branchwise.openDocumentation",
+  "branchwise.openWalkthrough"
 ];
 
 async function activate(saved: Record<string, unknown> = {}) {

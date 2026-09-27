@@ -3,20 +3,24 @@ import * as assert from "node:assert";
 import * as vscode from "vscode";
 
 function isPanelOpen() {
-  return vscode.window.tabGroups.all
-    .flatMap((g) => g.tabs)
-    .some((t) => t.label === "(neo) Git Graph");
+  return vscode.window.tabGroups.all.flatMap((g) => g.tabs).some((t) => t.label === "Branchwise");
+}
+
+/** The user setting that .vscode-test.mjs saves under the name before the rename. */
+function copiedSetting() {
+  return vscode.workspace.getConfiguration("branchwise").inspect("showUncommittedChanges")
+    ?.globalValue;
 }
 
 async function openPanel() {
-  await vscode.commands.executeCommand("neo-git-graph.view");
+  await vscode.commands.executeCommand("branchwise.view");
   const deadline = Date.now() + 2000;
   while (!isPanelOpen() && Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 50)); // eslint-disable-line no-await-in-loop
   }
 }
 
-suite("GitGraphPanel", () => {
+suite("BranchwisePanel", () => {
   suiteSetup(async () => {
     const ext = vscode.extensions.getExtension(process.env.NGG_EXTENSION_ID!);
     assert.ok(ext, "The extension identified by package.json must be installed");
@@ -42,7 +46,7 @@ suite("GitGraphPanel", () => {
     assert.ok(isPanelOpen());
 
     const tabsBefore = vscode.window.tabGroups.all.flatMap((g) => g.tabs).length;
-    await vscode.commands.executeCommand("neo-git-graph.view");
+    await vscode.commands.executeCommand("branchwise.view");
     await new Promise((r) => setTimeout(r, 300));
     const tabsAfter = vscode.window.tabGroups.all.flatMap((g) => g.tabs).length;
 
@@ -52,21 +56,29 @@ suite("GitGraphPanel", () => {
   test("registers the onboarding commands and opens the panel for the branches pane", async () => {
     const commands = await vscode.commands.getCommands(true);
     for (const command of [
-      "neo-git-graph.showBranches",
-      "neo-git-graph.openDocumentation",
-      "neo-git-graph.openWalkthrough"
+      "branchwise.showBranches",
+      "branchwise.openDocumentation",
+      "branchwise.openWalkthrough"
     ]) {
       assert.ok(commands.includes(command), command + " should be registered");
     }
-    await vscode.commands.executeCommand("neo-git-graph.showBranches");
+    await vscode.commands.executeCommand("branchwise.showBranches");
     const deadline = Date.now() + 2000;
     while (!isPanelOpen() && Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 50)); // eslint-disable-line no-await-in-loop
     }
     assert.ok(isPanelOpen(), "Panel should open when the branches pane is requested");
     // Both resolve only when the walkthrough id and the shipped guide are valid.
-    await vscode.commands.executeCommand("neo-git-graph.openWalkthrough");
-    await vscode.commands.executeCommand("neo-git-graph.openDocumentation");
+    await vscode.commands.executeCommand("branchwise.openWalkthrough");
+    await vscode.commands.executeCommand("branchwise.openDocumentation");
+  });
+
+  test("copies a user setting saved under the name before the rename", async () => {
+    const deadline = Date.now() + 5000;
+    while (copiedSetting() === undefined && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 50)); // eslint-disable-line no-await-in-loop
+    }
+    assert.strictEqual(copiedSetting(), true);
   });
 
   test("closing the panel and running view command opens a fresh panel", async () => {
