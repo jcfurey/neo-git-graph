@@ -1,45 +1,25 @@
 <div align="center">
   <img src="./resources/icon.png" height="128"/>
   <samp>
-    <h1>(neo) Git Graph for Visual Studio Code</h1>
-    <h3>The jcfurey fork: visual Git history, branch focus, repository workflows, and devcontainer support.</h3>
+    <h1>Branchwise for Visual Studio Code</h1>
+    <h3>Visual Git history, branch focus, repository workflows, and devcontainer support.</h3>
   </samp>
 </div>
 
 <h4 align="center">
-  <a href="#why-this-fork">Why this fork</a> |
   <a href="#features">Features</a> |
   <a href="#installation">Installation</a> |
   <a href="#roadmap">Roadmap</a> |
   <a href="#configuration">Configuration</a> |
-  <a href="#contributing">Contributing</a>
+  <a href="#contributing">Contributing</a> |
+  <a href="#origins-and-license">Origins and license</a>
 </h4>
 
 <p align="center">
   <a href="./LICENSE"><img src="https://img.shields.io/github/license/jcfurey/neo-git-graph" alt="License"></a>
 </p>
 
-<!-- ![demo](resources/demo.gif) -->
-
 <p>&nbsp;</p>
-
-## Why this fork
-
-This repository maintains **`jcfurey.neo-git-graph`**, based on
-[asispts/neo-git-graph](https://github.com/asispts/neo-git-graph). Its current build version is
-**0.9.7**. The upstream authors and MIT license are retained.
-
-The original [Git Graph](https://github.com/mhutchie/vscode-git-graph) by mhutchie changed its license in May 2019.
-This fork is based on the last MIT-licensed commit, [`4af8583`](https://github.com/mhutchie/vscode-git-graph/commit/4af8583a42082b2c230d2c0187d4eaff4b69c665).
-
-Everything after that commit is no longer MIT-licensed.
-
-This fork:
-
-- Remains MIT-licensed
-- Adds devcontainer support
-- Adds internationalization support (English, zh-CN, zh-TW)
-- Improves codebase, tooling, and maintainability
 
 ## Features
 
@@ -68,15 +48,16 @@ This fork:
 - **Tag actions**: Create, delete, and push tags
 - **Commit actions**: Checkout, cherry-pick, revert, and reset
 - **Multi-repo**: Work with multiple repositories in one workspace, including initialized submodules and their nested submodules
-- **Repository selection**: Click a repository's Git Graph button in Source Control to open its graph or switch the existing graph to that repository
+- **Repository selection**: Click a repository's Branchwise button in Source Control to open its graph or switch the existing graph to that repository
 - **Devcontainer support**: Works in remote and container environments
+- **Languages**: English, Simplified Chinese, and Traditional Chinese
 
 See [Working from the graph](docs/git-actions.md) for the available actions and their behavior.
 See [View preferences](docs/preferences.md) for what is saved per repository and when navigation resets.
 
 ## Installation
 
-Build the fork from this checkout using **Node.js 24**, **pnpm 11.15.1** (pinned in `package.json`), and Git:
+Build Branchwise from this checkout using **Node.js 24**, **pnpm 11.15.1** (pinned in `package.json`), and Git:
 
 ```sh
 git clone https://github.com/jcfurey/neo-git-graph.git
@@ -84,40 +65,37 @@ cd neo-git-graph
 corepack enable pnpm
 pnpm install --frozen-lockfile
 pnpm run package:vsix
-code --install-extension ./neo-git-graph-0.9.7.vsix --force
+code --install-extension ./branchwise-0.9.7.vsix --force
 ```
 
 Alternatively, use **Extensions → … → Install from VSIX…** and select the generated file.
 VS Code **1.125.0 or newer** is required. Reload the VS Code window after upgrading an active extension.
 
-The manifest supplies the publisher, version, and fork links directly. Installing this VSIX upgrades
-an existing `jcfurey.neo-git-graph` installation, including 0.9.4. The upstream
-`asispts.neo-git-graph` has a separate extension identity; disable it if it is also installed to avoid
-duplicate graph commands. No temporary manifest edits are needed.
+Branchwise installs as `jcfurey.branchwise`. Builds before the rename installed as
+`jcfurey.neo-git-graph`; uninstall that extension, and `asispts.neo-git-graph` if you have it, so
+Source Control shows one graph button.
 
 See [Packaging and releases](docs/packaging.md) for package verification and release validation.
 See [VS Code UI tests](docs/testing.md) for individual scenarios, failure artifacts, and
 minimum-version compatibility checks.
 
-After installing, the **Get started with (neo) Git Graph** walkthrough appears on the Welcome page. Reopen it any time with the **Getting Started** entry in the graph's settings cog.
+After installing, the **Get started with Branchwise** walkthrough appears on the Welcome page. Reopen it any time with the **Getting Started** entry in the graph's settings cog.
 
 ## Roadmap
 
-The fork already includes the Preact webview, request/response repository workflows, branch
+Branchwise already includes the Preact webview, request/response repository workflows, branch
 focus, individual remote visibility, horizontal graph navigation, and browsing of uncommitted
 changes, all described above. Per-repository view preferences, graph geometry and theme regression
 coverage, large-repository performance measurements, and UI failure diagnostics have also shipped.
 See the [changelog](CHANGELOG.md) for implemented changes.
 
-The current backlog, reviewed 2026-09-25, prioritizes data safety and security. Its first items are
-hardening file restore, Git argument handling, and destructive dialogs, followed by making Git
-output parsing independent of user configuration and locale. Row virtualization and ancestry
-caching remain deferred; see the [performance report](docs/performance.md). The tracked acceptance
-criteria are in [todo.md](todo.md).
+The backlog reviewed 2026-09-25 is complete; [todo.md](todo.md) records each item's acceptance
+criteria and how it was verified. Row virtualization and ancestry caching remain deferred; see the
+[performance report](docs/performance.md).
 
 ## Configuration
 
-All settings use the `neo-git-graph` prefix.
+All settings use the `branchwise` prefix.
 
 | Setting                       | Default         | Description                                     |
 | ----------------------------- | --------------- | ----------------------------------------------- |
@@ -136,14 +114,18 @@ All settings use the `neo-git-graph` prefix.
 
 ## Contributing
 
-Pull requests from external contributors are currently limited while the project undergoes heavy refactoring.
-
 Please use [Issues](https://github.com/jcfurey/neo-git-graph/issues) for bug reports, feature requests, and discussion.
 
 See the [Roadmap](#roadmap) for the project's current direction.
 
-## License
+## Origins and license
 
-MIT — see [LICENSE](LICENSE).
+Branchwise began as a fork of [asispts/neo-git-graph](https://github.com/asispts/neo-git-graph),
+which continued mhutchie's [Git Graph](https://github.com/mhutchie/vscode-git-graph) from
+[`4af8583`](https://github.com/mhutchie/vscode-git-graph/commit/4af8583a42082b2c230d2c0187d4eaff4b69c665),
+its last commit under the MIT License. Later Git Graph releases use a different license, and no code
+from them is included.
 
-> Not related to the original Git Graph project.
+Branchwise is released under the MIT License; see [LICENSE](LICENSE), which keeps both projects'
+copyright notices as the license requires. Branchwise is not affiliated with or endorsed by either
+project.

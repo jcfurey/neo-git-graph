@@ -22,7 +22,7 @@ suite("Git actions in the extension host", () => {
   setup(() => {
     repo = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-host-actions-")));
     git(["init", "-b", "main"]);
-    git(["config", "user.name", "Git Graph Test"]);
+    git(["config", "user.name", "Branchwise Test"]);
     git(["config", "user.email", "test@example.com"]);
     git(["config", "commit.gpgsign", "false"]);
     git(["config", "rerere.enabled", "false"]);

@@ -302,7 +302,7 @@ export function registerMessageHandlers(
         )
         .then((choice) => {
           if (choice === open) {
-            void vscode.commands.executeCommand("neo-git-graph.view", {
+            void vscode.commands.executeCommand("branchwise.view", {
               rootUri: vscode.Uri.file(nested)
             });
           }

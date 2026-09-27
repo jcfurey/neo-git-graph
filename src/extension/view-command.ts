@@ -65,7 +65,7 @@ export function createViewCommand(ctx: vscode.ExtensionContext) {
     }
 
     const webPanel = vscode.window.createWebviewPanel(
-      "neo-git-graph",
+      "branchwise",
       EXTENSION_NAME,
       vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One,
       {

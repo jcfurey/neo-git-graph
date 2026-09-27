@@ -10,12 +10,12 @@ const EMPTY_OBJECT_ID = /^0+$/;
 
 /**
  * Repositories this session encoded documents for. Links, other extensions, and `vscode.open`
- * can open any `neo-git-graph:` URI, so a URI naming another directory never starts Git.
+ * can open any `branchwise:` URI, so a URI naming another directory never starts Git.
  */
 const openedRepos = new Set<string>();
 
 export class DiffDocProvider implements vscode.TextDocumentContentProvider {
-  public static scheme = "neo-git-graph";
+  public static scheme = "branchwise";
   private forRepo: (repo: string) => SimpleGit;
   private isSavedRepo: (repo: string) => boolean;
   private onDidChangeEventEmitter = new vscode.EventEmitter<vscode.Uri>();

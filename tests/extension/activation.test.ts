@@ -72,11 +72,11 @@ function context(saved: Record<string, unknown>) {
 }
 
 const COMMANDS = [
-  "neo-git-graph.view",
-  "neo-git-graph.fileHistory",
-  "neo-git-graph.showBranches",
-  "neo-git-graph.openDocumentation",
-  "neo-git-graph.openWalkthrough"
+  "branchwise.view",
+  "branchwise.fileHistory",
+  "branchwise.showBranches",
+  "branchwise.openDocumentation",
+  "branchwise.openWalkthrough"
 ];
 
 async function activate(saved: Record<string, unknown> = {}) {

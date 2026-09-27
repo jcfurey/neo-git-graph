@@ -22,21 +22,19 @@ export function activate(ctx: vscode.ExtensionContext) {
 
   const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
   statusBarItem.name = EXTENSION_NAME;
-  statusBarItem.command = "neo-git-graph.view";
+  statusBarItem.command = "branchwise.view";
   statusBarItem.text = `$(type-hierarchy) ${EXTENSION_NAME}`;
-  statusBarItem.tooltip = vscode.l10n.t("View Git Graph");
+  statusBarItem.tooltip = vscode.l10n.t("View Graph");
   statusBarItem.show();
 
   ctx.subscriptions.push(statusBarItem);
 
   const view = createViewCommand(ctx);
   ctx.subscriptions.push(
-    vscode.commands.registerCommand("neo-git-graph.view", view),
-    vscode.commands.registerCommand("neo-git-graph.showBranches", () => view.showPane("refs")),
-    vscode.commands.registerCommand("neo-git-graph.openDocumentation", () =>
-      openDocumentation(ctx)
-    ),
-    vscode.commands.registerCommand("neo-git-graph.openWalkthrough", () => openWalkthrough(ctx))
+    vscode.commands.registerCommand("branchwise.view", view),
+    vscode.commands.registerCommand("branchwise.showBranches", () => view.showPane("refs")),
+    vscode.commands.registerCommand("branchwise.openDocumentation", () => openDocumentation(ctx)),
+    vscode.commands.registerCommand("branchwise.openWalkthrough", () => openWalkthrough(ctx))
   );
   registerFileHistoryCommand(ctx, (repo, file) => view({ rootUri: vscode.Uri.file(repo) }, file));
 

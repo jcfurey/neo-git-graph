@@ -1,10 +1,10 @@
 const { readFileSync } = require("node:fs");
 const path = require("node:path");
 
-/** Prevent accidentally packaging upstream or publishing a tag for a different version. */
+/** Prevent packaging under another identity or publishing a tag for a different version. */
 function checkRelease(manifest, tag) {
-  if (manifest.publisher !== "jcfurey" || manifest.name !== "neo-git-graph") {
-    throw new Error("Expected extension identity jcfurey.neo-git-graph");
+  if (manifest.publisher !== "jcfurey" || manifest.name !== "branchwise") {
+    throw new Error("Expected extension identity jcfurey.branchwise");
   }
   if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(manifest.version)) {
     throw new Error("Expected a stable major.minor.patch extension version");
@@ -25,9 +25,9 @@ function checkDocuments(version, documents) {
     throw new Error(`CHANGELOG.md needs a dated "## [${version}] - YYYY-MM-DD" heading`);
   }
   for (const [name, text] of Object.entries(documents.guides)) {
-    const named = [...text.matchAll(/neo-git-graph-(\d+\.\d+\.\d+)\.vsix/g)].map((m) => m[1]);
+    const named = [...text.matchAll(/branchwise-(\d+\.\d+\.\d+)\.vsix/g)].map((m) => m[1]);
     if (named.length === 0 || named.some((other) => other !== version)) {
-      throw new Error(`${name} must install neo-git-graph-${version}.vsix`);
+      throw new Error(`${name} must install branchwise-${version}.vsix`);
     }
   }
 }

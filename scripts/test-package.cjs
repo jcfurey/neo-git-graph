@@ -37,7 +37,7 @@ async function main() {
         timeout: 120000
       }).trim();
 
-    // Install a minimal older fork first, so a publisher/name mistake creates a detectable duplicate.
+    // Install a minimal older build first, so a publisher/name mistake creates a detectable duplicate.
     const previous = path.join(temp, "previous");
     fs.mkdirSync(previous);
     fs.writeFileSync(
@@ -66,7 +66,7 @@ async function main() {
     assert.equal(
       runCLI(["--list-extensions", "--show-versions"]),
       expected,
-      "Installation must upgrade the fork without adding another extension"
+      "Installation must upgrade the existing installation without adding another extension"
     );
 
     const workspace = path.join(temp, "workspace");

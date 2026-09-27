@@ -37,7 +37,7 @@ module.exports = async function benchmark({
   assert.ok(Number.isSafeInteger(samples) && samples >= 3 && samples <= 20);
   const dir = directory();
   const fixture = createBenchmarkRepository(dir, count);
-  const config = vscode.workspace.getConfiguration("neo-git-graph");
+  const config = vscode.workspace.getConfiguration("branchwise");
   const original = config.inspect("initialLoadCommits").globalValue;
   const originalMore = config.inspect("loadMoreCommits").globalValue;
   const report = {

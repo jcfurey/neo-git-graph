@@ -350,7 +350,7 @@ describe("interactive rebase", () => {
     expect(read(["log", "-1", "--format=%B", "HEAD^"])).toBe(message);
     expect(read(["log", "-1", "--format=%B"])).toContain("a\n\nc");
     expect(fs.existsSync(path.join(repo, "d"))).toBe(false);
-    expect(fs.existsSync(path.join(repo, ".git", "neo-git-graph-rebase"))).toBe(false);
+    expect(fs.existsSync(path.join(repo, ".git", "branchwise-rebase"))).toBe(false);
   });
 
   it("refuses stale or invalid plans before rewriting history", async () => {

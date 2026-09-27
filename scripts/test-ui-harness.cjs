@@ -72,7 +72,7 @@ function verifyFailure({ directory, runtime }) {
     fs.readFileSync(path.join(failure, "webview.txt"), "utf8"),
     /NGG visible diagnostic marker/
   );
-  assert.match(fs.readFileSync(path.join(failure, "webview.html"), "utf8"), /data-git-graph/);
+  assert.match(fs.readFileSync(path.join(failure, "webview.html"), "utf8"), /data-branchwise/);
   const screenshot = fs.readFileSync(path.join(failure, "workbench.png"));
   assert.equal(screenshot.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
   assert.ok(screenshot.length > 10000, "Expected a populated workbench screenshot");

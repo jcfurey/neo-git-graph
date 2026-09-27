@@ -54,7 +54,7 @@ export function configuredGitPath(value: unknown): string {
 }
 
 function getConfig<T>(key: string, defaultValue: T): T {
-  return vscode.workspace.getConfiguration("neo-git-graph").get(key, defaultValue);
+  return vscode.workspace.getConfiguration("branchwise").get(key, defaultValue);
 }
 
 /**

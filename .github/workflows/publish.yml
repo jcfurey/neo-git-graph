@@ -61,12 +61,12 @@ jobs:
       - name: Download validated extension
         uses: actions/download-artifact@v8
         with:
-          name: neo-git-graph-vsix
+          name: branchwise-vsix
           path: release
 
       - name: Check packaged identity and release version
         run: |
-          unzip -p release/neo-git-graph.vsix extension/package.json > "$RUNNER_TEMP/vsix-manifest.json"
+          unzip -p release/branchwise.vsix extension/package.json > "$RUNNER_TEMP/vsix-manifest.json"
           node scripts/check-release.cjs "$RELEASE_TAG" "$RUNNER_TEMP/vsix-manifest.json"
         env:
           RELEASE_TAG: ${{ needs.release.outputs.tag }}
@@ -83,12 +83,12 @@ jobs:
 
       - name: Publish to VS Marketplace
         if: github.event_name == 'push'
-        run: pnpm exec vsce publish --packagePath release/neo-git-graph.vsix --skip-duplicate
+        run: pnpm exec vsce publish --packagePath release/branchwise.vsix --skip-duplicate
         env:
           VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
 
       - name: Publish to Open VSX
         if: github.event_name == 'push'
-        run: pnpm exec ovsx publish release/neo-git-graph.vsix --skip-duplicate
+        run: pnpm exec ovsx publish release/branchwise.vsix --skip-duplicate
         env:
           OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}

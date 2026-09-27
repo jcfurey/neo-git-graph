@@ -45,7 +45,7 @@ if (mode === "sequence") {
 `;
 
 async function helperDirectory(git: SimpleGit) {
-  return path.join(await gitDirectory(git), "neo-git-graph-rebase");
+  return path.join(await gitDirectory(git), "branchwise-rebase");
 }
 
 function editorEnvironment(directory: string) {

@@ -50,7 +50,7 @@ it("explains a nested repository and offers its graph", async () => {
     "Open Its Graph"
   );
   await vi.waitFor(() =>
-    expect(mocks.executeCommand).toHaveBeenCalledWith("neo-git-graph.view", {
+    expect(mocks.executeCommand).toHaveBeenCalledWith("branchwise.view", {
       rootUri: { fsPath: "/repo/nested" }
     })
   );

@@ -126,7 +126,7 @@ export async function runHistoryAction(
         );
       }
       const backup = await backupFile(git, plan.destination, file);
-      const directory = await mkdtemp(path.join(os.tmpdir(), "neo-git-graph-restore-"));
+      const directory = await mkdtemp(path.join(os.tmpdir(), "branchwise-restore-"));
       const env = { ...process.env, GIT_INDEX_FILE: path.join(directory, "index") };
       try {
         // A private index lets Git apply file modes, symlinks and checkout filters
