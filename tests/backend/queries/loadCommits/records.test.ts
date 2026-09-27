@@ -78,11 +78,14 @@ describe("graph log records", () => {
       record.join("\0"),
       record.slice(0, 5).join("\0") + "\0",
       [...record, ...record.slice(0, 3)].join("\0") + "\0",
-      ["not a hash", ...record.slice(1)].join("\0") + "\0",
-      [hash, "", "A", "a@x", "yesterday", "s"].join("\0") + "\0"
+      ["not a hash", ...record.slice(1)].join("\0") + "\0"
     ]) {
       expect(() => parseLog(output), JSON.stringify(output)).toThrow(INCOMPLETE);
     }
+    // A whole record keeps its commit even when Git gives no usable timestamp.
+    expect(parseLog([hash, "", "A", "a@x", "yesterday", "s"].join("\0") + "\0")).toEqual([
+      { hash, parentHashes: [], author: "A", email: "a@x", date: Number.NaN, message: "s" }
+    ]);
   });
 
   it("reports a malformed log instead of showing a truncated graph", async () => {
