@@ -102,15 +102,18 @@ export function initExtension(
     );
 
     const gitClient = gitClientFactory(extensionState.getLastActiveRepo() ?? "", config.gitPath());
+    const repoManager = createRepoManager(extensionState, config);
     ctx.subscriptions.push(
       vscode.workspace.registerTextDocumentContentProvider(
         DiffDocProvider.scheme,
-        new DiffDocProvider(gitClient.getInstance)
+        new DiffDocProvider(
+          (repo) => gitClientFactory(repo, config.gitPath()).getInstance(),
+          () => Object.keys(repoManager.getRepos())
+        )
       )
     );
 
     const maxDepth = createMaxDepthTracker(config.maxDepthOfRepoSearch());
-    const repoManager = createRepoManager(extensionState, config);
     repoManager.setRepos(repos);
     repoManager.sendRepos();
     registerViewCommand(ctx, repoManager, extensionState, avatarManager, gitClient);
