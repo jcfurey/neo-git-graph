@@ -69,10 +69,16 @@ the code came from and how it was replaced.
 
 ## Rewritten modules
 
-| Module                                             | Specification                                   | Rewritten in |
-| -------------------------------------------------- | ----------------------------------------------- | ------------ |
-| `src/webview/utils/date.ts`                        | [date.md](clean-room/date.md)                   | `bc67508`    |
-| `src/extension/rpc/rpc-server.ts`                  | [rpc-server.md](clean-room/rpc-server.md)       | `ce0d7bb`    |
-| `src/webview/lib/rpc/rpc-handler.ts`               | [rpc-handler.md](clean-room/rpc-handler.md)     | `8983b4e`    |
-| `src/webview/graph/utils.ts`                       | [graph-utils.md](clean-room/graph-utils.md)     | `b71ac82`    |
-| `src/webview/components/commit/useColumnResize.ts` | [column-resize.md](clean-room/column-resize.md) | `391b9fd`    |
+| Module                                             | Specification                                     | Rewritten in |
+| -------------------------------------------------- | ------------------------------------------------- | ------------ |
+| `src/webview/utils/date.ts`                        | [date.md](clean-room/date.md)                     | `bc67508`    |
+| `src/extension/rpc/rpc-server.ts`                  | [rpc-server.md](clean-room/rpc-server.md)         | `ce0d7bb`    |
+| `src/webview/lib/rpc/rpc-handler.ts`               | [rpc-handler.md](clean-room/rpc-handler.md)       | `8983b4e`    |
+| `src/webview/graph/utils.ts`                       | [graph-utils.md](clean-room/graph-utils.md)       | `b71ac82`    |
+| `src/webview/components/commit/useColumnResize.ts` | [column-resize.md](clean-room/column-resize.md)   | `391b9fd`    |
+| `src/webview/utils/columns.ts`                     | [columns.md](clean-room/columns.md)               | `7b26f2e`    |
+| `src/extension/rpc/rpc-notify.ts`                  | [rpc-notify.md](clean-room/rpc-notify.md)         | `0d7a436`    |
+| `src/webview/utils/fileTree.ts`                    | [file-tree.md](clean-room/file-tree.md)           | `054fd86`    |
+| `src/webview/lib/rpc/rpc-client.ts`                | [rpc-client.md](clean-room/rpc-client.md)         | `f488109`    |
+| `src/backend/queries/loadCommits.ts`               | [load-commits.md](clean-room/load-commits.md)     | `715fa1b`    |
+| `src/backend/queries/commitDetails.ts`             | [commit-details.md](clean-room/commit-details.md) | `8d063e2`    |
