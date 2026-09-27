@@ -9,7 +9,15 @@ import { logger } from "@/extension/util/logger";
 import type { GitRepo, ScanRepoResult } from "@/types";
 
 export async function scanRepos(): Promise<ScanRepoResult> {
-  const workspaceDirs = (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath);
+  const workspaceDirs = (vscode.workspace.workspaceFolders ?? [])
+    .filter((f) => {
+      if (f.uri.scheme !== "file") {
+        logger.warn(`Skipping workspace folder without a local path: ${f.uri.toString()}`);
+        return false;
+      }
+      return true;
+    })
+    .map((f) => f.uri.fsPath);
   const gitBinary = extConfig.gitBinary();
   const repos = await startScan(gitBinary, workspaceDirs, extConfig.maxDepth());
   logger.info(`Repository scan completed: ${repos.length} found; Git binary: ${gitBinary}`);
@@ -21,9 +29,22 @@ export async function scanRepos(): Promise<ScanRepoResult> {
 
 async function startScan(gitBinary: string, paths: string[], maxDepth: number): Promise<GitRepo[]> {
   const repos = await Promise.all(
-    paths.map((directory) => scanDirectory(gitBinary, directory, maxDepth))
+    paths.map(async (directory) => {
+      if (!(await isDirectory(directory))) {
+        logger.warn(`Skipping workspace folder that is not a readable directory: ${directory}`);
+        return [];
+      }
+      return scanDirectory(gitBinary, directory, maxDepth);
+    })
   );
   return repos.flat().toSorted((a, b) => a.path.localeCompare(b.path));
+}
+
+function isDirectory(directory: string): Promise<boolean> {
+  return fs.stat(directory).then(
+    (stats) => stats.isDirectory(),
+    () => false
+  );
 }
 
 async function scanDirectory(

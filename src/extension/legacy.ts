@@ -13,7 +13,8 @@ import type { WebviewBridge } from "@/old-extension/webviewBridge";
 export function createMessageProtocol(ctx: vscode.ExtensionContext) {
   const extensionState = new ExtensionState(ctx);
   const avatarManager = new AvatarManager(config.gitPath, extensionState);
-  const gitClient = gitClientFactory(extensionState.getLastActiveRepo() ?? "", config.gitPath());
+  // Selecting a repository sets the client's path; a saved path may no longer exist.
+  const gitClient = gitClientFactory("", config.gitPath());
   const repoManager = createRepoManager(extensionState, config);
 
   ctx.subscriptions.push(
