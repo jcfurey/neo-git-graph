@@ -13,6 +13,7 @@
   "Show All": "Show All",
   "Filter {0}...": "Filter {0}...",
   "No results found.": "No results found.",
+  "{0}–{1} of {2}. Type to narrow the list, or use the arrow keys.": "{0}–{1} of {2}. Type to narrow the list, or use the arrow keys.",
   "Graph": "Graph",
   "Description": "Description",
   "Date": "Date",

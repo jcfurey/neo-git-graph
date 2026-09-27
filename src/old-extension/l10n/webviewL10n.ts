@@ -19,6 +19,7 @@ export function getWebviewLocalizedStrings() {
     showAll: vscode.l10n.t("Show All"),
     filterPlaceholder: vscode.l10n.t("Filter {0}..."),
     noResultsFound: vscode.l10n.t("No results found."),
+    dropdownPage: vscode.l10n.t("{0}–{1} of {2}. Type to narrow the list, or use the arrow keys."),
     graph: vscode.l10n.t("Graph"),
     description: vscode.l10n.t("Description"),
     date: vscode.l10n.t("Date"),

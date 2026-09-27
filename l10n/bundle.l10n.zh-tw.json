@@ -10,6 +10,7 @@
   "Show All": "顯示全部",
   "Filter {0}...": "篩選{0}...",
   "No results found.": "未找到結果。",
+  "{0}–{1} of {2}. Type to narrow the list, or use the arrow keys.": "第 {0}–{1} 個，共 {2} 個。輸入以縮小清單，或使用方向鍵。",
   "Graph": "分支圖",
   "Description": "描述",
   "Date": "日期",
