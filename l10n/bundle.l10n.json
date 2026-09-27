@@ -8,6 +8,8 @@
   "Branch": "Branch",
   "Show Remote Branches": "Show Remote Branches",
   "Refresh": "Refresh",
+  "Retry": "Retry",
+  "Unable to load repositories: {0}": "Unable to load repositories: {0}",
   "Close": "Close",
   "Load More Commits": "Load More Commits",
   "Show All": "Show All",
@@ -103,5 +105,8 @@
   "{0} addition": "{0} addition",
   "{0} additions": "{0} additions",
   "{0} deletion": "{0} deletion",
-  "{0} deletions": "{0} deletions"
+  "{0} deletions": "{0} deletions",
+  "Loading…": "Loading…",
+  "Unable to open the graph: {0}": "Unable to open the graph: {0}",
+  "The extension did not answer in time: {0}": "The extension did not answer in time: {0}"
 }

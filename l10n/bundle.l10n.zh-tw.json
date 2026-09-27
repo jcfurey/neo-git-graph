@@ -5,6 +5,8 @@
   "Branch": "分支",
   "Show Remote Branches": "顯示遠端分支",
   "Refresh": "重新整理",
+  "Retry": "重試",
+  "Unable to load repositories: {0}": "無法載入存放庫：{0}",
   "Close": "關閉",
   "Load More Commits": "載入更多提交",
   "Show All": "顯示全部",
@@ -103,5 +105,8 @@
   "{0} addition": "{0} 處新增",
   "{0} additions": "{0} 處新增",
   "{0} deletion": "{0} 處刪除",
-  "{0} deletions": "{0} 處刪除"
+  "{0} deletions": "{0} 處刪除",
+  "Loading…": "正在載入…",
+  "Unable to open the graph: {0}": "無法開啟分支圖：{0}",
+  "The extension did not answer in time: {0}": "擴充功能未及時回應：{0}"
 }

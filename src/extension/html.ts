@@ -11,9 +11,19 @@ export function createWevbviewHtml(ctx: vscode.ExtensionContext, webview: vscode
   };
 
   const nonce = crypto.randomBytes(32).toString("base64url");
+  // The page shows these before it receives its localized strings from the extension.
+  const shell = {
+    lang: vscode.env.language,
+    "data-loading": vscode.l10n.t("Loading…"),
+    "data-init-failed": vscode.l10n.t("Unable to open the graph: {0}"),
+    "data-rpc-timeout": vscode.l10n.t("The extension did not answer in time: {0}")
+  };
+  const attributes = Object.entries(shell)
+    .map(([name, value]) => `${name}="${escapeAttribute(value)}"`)
+    .join(" ");
 
   const html = `<!DOCTYPE html>
-  <html lang="en">
+  <html ${attributes}>
     <head>
       <meta charset="UTF-8">
       <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline';
@@ -29,4 +39,13 @@ export function createWevbviewHtml(ctx: vscode.ExtensionContext, webview: vscode
   </html>`;
 
   return html;
+}
+
+/** Text for a double-quoted HTML attribute. */
+export function escapeAttribute(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }

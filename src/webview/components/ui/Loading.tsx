@@ -1,3 +1,5 @@
+import { shellText } from "@/webview/lib/shell-text";
+
 type LoadingProps = {
   class?: string;
   variant?: "inline" | "page";
@@ -5,6 +7,7 @@ type LoadingProps = {
 
 export function Loading({ class: className, variant = "inline" }: LoadingProps) {
   const page = variant === "page";
+  const text = shellText("loading");
 
   return (
     <div
@@ -35,9 +38,9 @@ export function Loading({ class: className, variant = "inline" }: LoadingProps) 
         </svg>
       </div>
       {page ? (
-        <h1 class="text-ui font-medium text-fg">Loading ...</h1>
+        <h1 class="text-ui font-medium text-fg">{text}</h1>
       ) : (
-        <span class="text-ui font-medium text-fg">Loading ...</span>
+        <span class="text-ui font-medium text-fg">{text}</span>
       )}
       {page && (
         <div class="mx-auto mt-3 h-px w-12 overflow-hidden bg-line-soft" aria-hidden="true">

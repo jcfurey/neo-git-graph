@@ -5,6 +5,8 @@
   "Branch": "分支",
   "Show Remote Branches": "显示远程分支",
   "Refresh": "刷新",
+  "Retry": "重试",
+  "Unable to load repositories: {0}": "无法加载仓库：{0}",
   "Close": "关闭",
   "Load More Commits": "加载更多提交",
   "Show All": "显示全部",
@@ -103,5 +105,8 @@
   "{0} addition": "{0} 处添加",
   "{0} additions": "{0} 处添加",
   "{0} deletion": "{0} 处删除",
-  "{0} deletions": "{0} 处删除"
+  "{0} deletions": "{0} 处删除",
+  "Loading…": "正在加载…",
+  "Unable to open the graph: {0}": "无法打开分支图：{0}",
+  "The extension did not answer in time: {0}": "扩展未及时响应：{0}"
 }

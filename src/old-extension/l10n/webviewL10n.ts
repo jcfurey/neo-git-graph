@@ -14,6 +14,8 @@ export function getWebviewLocalizedStrings() {
     branch: vscode.l10n.t("Branch"),
     showRemoteBranches: vscode.l10n.t("Show Remote Branches"),
     refresh: vscode.l10n.t("Refresh"),
+    retry: vscode.l10n.t("Retry"),
+    unableToLoadRepositories: vscode.l10n.t("Unable to load repositories: {0}"),
     close: vscode.l10n.t("Close"),
     loadMore: vscode.l10n.t("Load More Commits"),
     showAll: vscode.l10n.t("Show All"),
