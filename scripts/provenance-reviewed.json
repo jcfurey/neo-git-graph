@@ -16,5 +16,90 @@
       "case \"Relative\":",
       "return { title, value: title };"
     ]
+  },
+  "src/extension/rpc/rpc-server.ts": {
+    "commit": "ce0d7bb6316a7c4284069d2f6cd02f6a6d1a628d",
+    "specification": "docs/clean-room/rpc-server.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the platform API calls the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export function createRpcServer() {",
+      "return {",
+      "await webview.postMessage(response);",
+      "const listener = webview.onDidReceiveMessage(async (message: unknown) => {"
+    ]
+  },
+  "src/webview/lib/rpc/rpc-handler.ts": {
+    "commit": "8983b4ef1b0c2a304a77c3b8f5c93b4fb48d22c9",
+    "specification": "docs/clean-room/rpc-handler.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the platform API calls the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export type PendingRpcRequest = {",
+      "timeout: ReturnType<typeof setTimeout>;",
+      "export function initRpcHandler(requests: Map<string, PendingRpcRequest>): void {",
+      "window.addEventListener(\"message\", (event: MessageEvent<unknown>) => {",
+      "if (request === undefined) {",
+      "clearTimeout(request.timeout);"
+    ]
+  },
+  "src/webview/graph/utils.ts": {
+    "commit": "b71ac827a689ec6056691901e9c29926e21e78d4",
+    "specification": "docs/clean-room/graph-utils.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the platform API calls the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export function laneX(x: number): number {",
+      "export function rowY(y: number): number {",
+      "export function graphWidth(layout: GraphLayout): number {",
+      "export function graphHeight(layout: GraphLayout, expansion: GraphExpansion | null): number {",
+      "export function expandOffset(row: number, expansion: GraphExpansion | null): number {",
+      "export function pointOf(vertex: Vertex): GraphPoint {",
+      "return { x: vertex.x, y: vertex.y };",
+      "export function nextPointOf(vertex: Vertex): GraphPoint {",
+      "return { x: vertex.nextX, y: vertex.y };",
+      "export function connectionTo(",
+      "vertex: Vertex,",
+      "connectsTo: Vertex | null,",
+      "onBranch: Branch",
+      "): GraphPoint | null {",
+      "export function takePoint(",
+      "vertex: Vertex,",
+      "x: number,",
+      "connectsTo: Vertex | null,",
+      "onBranch: Branch",
+      "): void {",
+      "export function joinBranch(vertex: Vertex, branch: Branch, x: number): void {",
+      "vertex.branch = branch;",
+      "vertex.x = x;"
+    ]
+  },
+  "src/webview/components/commit/useColumnResize.ts": {
+    "commit": "391b9fdf872a7e7a78ae2eda9332f0509a382b0e",
+    "specification": "docs/clean-room/column-resize.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the platform API calls the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export type ColumnResize = {",
+      "containerRef: RefObject<HTMLDivElement>;",
+      "headRef: RefObject<HTMLTableRowElement>;",
+      "resizing: boolean;",
+      "startResize: (boundary: number, event: MouseEvent) => void;",
+      "nudge: (boundary: number, event: KeyboardEvent) => void;",
+      "return cell.clientWidth;",
+      "container.style.removeProperty(property);",
+      "container.style.setProperty(property, `${width}px`);",
+      "export function useColumnResize(graphColumn: number): ColumnResize {",
+      "const containerRef = useRef<HTMLDivElement>(null);",
+      "const headRef = useRef<HTMLTableRowElement>(null);",
+      "const [resizing, setResizing] = useState(false);",
+      "drag.current = null;",
+      "setResizing(false);",
+      "const row = headRef.current;",
+      "function startResize(boundary: number, event: MouseEvent) {",
+      "const row = headRef.current;",
+      "event.preventDefault();",
+      "setResizing(true);",
+      "function nudge(boundary: number, event: KeyboardEvent) {",
+      "const row = headRef.current;",
+      "event.preventDefault();",
+      "return { containerRef, headRef, resizing, startResize, nudge };"
+    ]
   }
 }

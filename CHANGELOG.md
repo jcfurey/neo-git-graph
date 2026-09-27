@@ -23,6 +23,8 @@ Branchwise was named (neo) Git Graph, `jcfurey.neo-git-graph`, through its 0.9.6
 
 ### Fixed
 
+- Resize table columns more predictably: a click on a column divider no longer fixes every width, only the primary button drags, a drag ends when the button is released outside the view, a drag never moves a divider the opposite way, and a repository change during a drag saves nothing to either repository.
+- A request from the graph to the extension fails at once, instead of after 30 seconds, when its response is malformed or cannot be delivered.
 - Relative commit dates move up a unit instead of reading "60 minutes ago" or "24 hours ago", round the same way for dates in the past and the future, and read "0 seconds ago" for a commit a moment ahead of the clock. The date column's tooltip keeps its date and time in the same time zone after the system's zone changes.
 - Show the remaining webview text in VS Code's display language: the loading and startup messages, repository-load failures, timeouts, reflog dates, and elapsed times, and mark the page with that language.
 - Keep keyboard focus on an entry moved in the interactive rebase and batch editors and announce its new position, keep the sync preview and its focus through background refreshes, and name Branches pane buttons with their full ref.

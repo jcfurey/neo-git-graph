@@ -69,6 +69,10 @@ the code came from and how it was replaced.
 
 ## Rewritten modules
 
-| Module                      | Specification                 | Rewritten in |
-| --------------------------- | ----------------------------- | ------------ |
-| `src/webview/utils/date.ts` | [date.md](clean-room/date.md) | `bc67508`    |
+| Module                                             | Specification                                   | Rewritten in |
+| -------------------------------------------------- | ----------------------------------------------- | ------------ |
+| `src/webview/utils/date.ts`                        | [date.md](clean-room/date.md)                   | `bc67508`    |
+| `src/extension/rpc/rpc-server.ts`                  | [rpc-server.md](clean-room/rpc-server.md)       | `ce0d7bb`    |
+| `src/webview/lib/rpc/rpc-handler.ts`               | [rpc-handler.md](clean-room/rpc-handler.md)     | `8983b4e`    |
+| `src/webview/graph/utils.ts`                       | [graph-utils.md](clean-room/graph-utils.md)     | `b71ac82`    |
+| `src/webview/components/commit/useColumnResize.ts` | [column-resize.md](clean-room/column-resize.md) | `391b9fd`    |
