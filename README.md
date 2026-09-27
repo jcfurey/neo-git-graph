@@ -142,13 +142,6 @@ Please use [Issues](https://github.com/jcfurey/neo-git-graph/issues) for bug rep
 
 See the [Roadmap](#roadmap) for the project's current direction.
 
-<!-- ## Sponsors
-
-If you find this extension useful, consider [sponsoring its development](https://github.com/sponsors/asispts).
-Your support helps keep it maintained and improving. -->
-
-<!-- Sponsor names and logos go here -->
-
 ## License
 
 MIT — see [LICENSE](LICENSE).
