@@ -9,8 +9,8 @@ export const repoListStore = {
   get: (): Array<GitRepo> | undefined => {
     return repoList.value;
   },
+  // A rescan keeps the current list on screen until the new one arrives.
   load: async (): Promise<Array<GitRepo>> => {
-    repoList.value = undefined;
     const result = await rpcClient.request("repo.scan", null);
     repoList.value = result.repos;
     return result.repos;
