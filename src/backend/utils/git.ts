@@ -1,4 +1,4 @@
-import { simpleGit } from "simple-git";
+import { simpleGit } from "@/backend/utils/simpleGit";
 
 export async function getGitVersion(gitPath: string): Promise<string | null> {
   try {

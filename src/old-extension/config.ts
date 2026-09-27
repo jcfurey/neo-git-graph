@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 
 import type { DateType } from "@/backend/types";
+import { extConfig } from "@/extension/config";
 import type { DateFormat, GraphStyle } from "@/types";
 
 type TabIconColourTheme = "colour" | "grey";
@@ -36,7 +37,7 @@ export const config = {
   showStatusBarItem: (): boolean => true,
   showUncommittedChanges: (): boolean => getConfig("showUncommittedChanges", true),
   tabIconColourTheme: (): TabIconColourTheme => getConfig("tabIconColourTheme", "colour"),
-  gitPath: (): string => vscode.workspace.getConfiguration("git").get("path", null) ?? "git"
+  gitPath: (): string => extConfig.gitBinary()
 };
 
 export type Config = typeof config;

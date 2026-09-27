@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 
+import { resolveBuiltInGitPath } from "./extension/config";
 import { EXTENSION_NAME } from "./extension/constants";
 import { logger } from "./extension/util/logger";
 import { createViewCommand } from "./extension/view-command";
@@ -11,6 +12,7 @@ export function activate(ctx: vscode.ExtensionContext) {
   }
   logger.init(ctx);
   legacyLogger.init(ctx);
+  void resolveBuiltInGitPath();
 
   const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
   statusBarItem.name = EXTENSION_NAME;

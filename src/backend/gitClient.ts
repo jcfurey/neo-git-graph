@@ -1,5 +1,6 @@
 import type { SimpleGit } from "simple-git";
-import { simpleGit } from "simple-git";
+
+import { simpleGit } from "@/backend/utils/simpleGit";
 
 export type GitClient = ReturnType<typeof gitClientFactory>;
 export type GitInstance = GitClient["getInstance"];

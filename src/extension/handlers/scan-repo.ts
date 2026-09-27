@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { simpleGit } from "simple-git";
 import * as vscode from "vscode";
 
+import { simpleGit } from "@/backend/utils/simpleGit";
 import { extConfig } from "@/extension/config";
 import { logger } from "@/extension/util/logger";
 import type { GitRepo, ScanRepoResult } from "@/types";
