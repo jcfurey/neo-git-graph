@@ -49,5 +49,12 @@ export const histories = {
     commit("main", "base"),
     commit("shallow"),
     commit("base")
+  ],
+  "merge into a parent another branch reached first": [
+    commit("tip", "merge", "side"),
+    commit("merge", "main", "base"),
+    commit("side", "base"),
+    commit("main", "base"),
+    commit("base")
   ]
 };
