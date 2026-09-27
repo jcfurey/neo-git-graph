@@ -11,6 +11,8 @@ import { git, makeRepo } from "@tests/backend/helpers";
 
 let repo: string;
 let commitHash: string;
+const byName = (a: { newFilePath: string }, b: { newFilePath: string }) =>
+  a.newFilePath < b.newFilePath ? -1 : 1;
 
 beforeAll(() => {
   repo = makeRepo();
@@ -98,5 +100,56 @@ describe("commitDetails", () => {
   it("body contains the commit message", async () => {
     const result = await commitDetails(simpleGit(repo), { commitHash, dateType: "Author Date" });
     expect(result.commitDetails!.body).toContain("init");
+  });
+
+  it("keeps exact names, renames, and line counts for unusual file names", async () => {
+    const repo2 = makeRepo();
+    const names = ["中文.txt", "café.md", "tab\tname", 'quote"name', "new\nline", "back\\slash"];
+    try {
+      fs.writeFileSync(path.join(repo2, "old.txt"), "moved\n");
+      git(["add", "old.txt"], repo2);
+      git(["commit", "-m", "before"], repo2);
+      for (const name of names) {
+        fs.writeFileSync(path.join(repo2, name), "one\ntwo\n");
+      }
+      fs.writeFileSync(path.join(repo2, "binary.dat"), Buffer.from([0, 1, 2]));
+      fs.mkdirSync(path.join(repo2, "目录"));
+      git(["mv", "old.txt", "目录/新.txt"], repo2);
+      git(["add", "-A"], repo2);
+      git(["commit", "-m", "unusual names"], repo2);
+      const hash = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo2 }).toString().trim();
+
+      const result = await commitDetails(simpleGit(repo2), {
+        commitHash: hash,
+        dateType: "Author Date"
+      });
+      expect(result.commitDetails!.fileChanges.toSorted(byName)).toEqual(
+        [
+          ...names.map((name) => ({
+            oldFilePath: name,
+            newFilePath: name,
+            type: "A",
+            additions: 2,
+            deletions: 0
+          })),
+          {
+            oldFilePath: "binary.dat",
+            newFilePath: "binary.dat",
+            type: "A",
+            additions: null,
+            deletions: null
+          },
+          {
+            oldFilePath: "old.txt",
+            newFilePath: "目录/新.txt",
+            type: "R",
+            additions: 0,
+            deletions: 0
+          }
+        ].toSorted(byName)
+      );
+    } finally {
+      fs.rmSync(repo2, { recursive: true, force: true });
+    }
   });
 });

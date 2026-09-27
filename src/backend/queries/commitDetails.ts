@@ -10,10 +10,6 @@ type CommitDetailsInput = {
   dateType: DateType;
 };
 
-function toPath(str: string) {
-  return str.replace(/\\/g, "/");
-}
-
 async function fetchCommitInfo(
   git: SimpleGit,
   commitHash: string,
@@ -58,6 +54,7 @@ async function fetchNameStatus(git: SimpleGit, commitHash: string): Promise<stri
   const stdout = await git.raw([
     "diff-tree",
     "--name-status",
+    "-z",
     "-r",
     "-m",
     "--root",
@@ -65,13 +62,14 @@ async function fetchNameStatus(git: SimpleGit, commitHash: string): Promise<stri
     "--diff-filter=AMDR",
     commitHash
   ]);
-  return stdout.split(eolRegex);
+  return stdout.split("\0");
 }
 
 async function fetchNumStat(git: SimpleGit, commitHash: string): Promise<string[]> {
   const stdout = await git.raw([
     "diff-tree",
     "--numstat",
+    "-z",
     "-r",
     "-m",
     "--root",
@@ -79,7 +77,7 @@ async function fetchNumStat(git: SimpleGit, commitHash: string): Promise<string[
     "--diff-filter=AMDR",
     commitHash
   ]);
-  return stdout.split(eolRegex);
+  return stdout.split("\0");
 }
 
 export async function commitDetails(
@@ -87,46 +85,49 @@ export async function commitDetails(
   input: CommitDetailsInput
 ): Promise<QueryResult<"commitDetails">> {
   try {
-    const [details, nameStatusLines, numStatLines] = await Promise.all([
+    const [details, nameStatusFields, numStatFields] = await Promise.all([
       fetchCommitInfo(git, input.commitHash, input.dateType),
       fetchNameStatus(git, input.commitHash),
       fetchNumStat(git, input.commitHash)
     ]);
 
+    // With -z, fields end in NUL and paths are not quoted. The first field is the commit hash,
+    // which -m repeats before each further parent's changes.
     const fileLookup: { [file: string]: number } = {};
-    for (const nameStatusLine of nameStatusLines.slice(1, -1)) {
-      const [status, oldPath, ...newPaths] = nameStatusLine.split("\t");
-      const type = status?.[0];
-      if (type === undefined || oldPath === undefined) {
+    for (let i = 1; i < nameStatusFields.length - 1;) {
+      const status = nameStatusFields[i++]!;
+      const oldFilePath = nameStatusFields[i++];
+      const newFilePath = status.startsWith("R") ? nameStatusFields[i++] : oldFilePath;
+      if (!/^[AMDR]\d*$/.test(status) || oldFilePath === undefined || newFilePath === undefined) {
         break;
       }
-      const oldFilePath = toPath(oldPath);
-      const newFilePath = toPath(newPaths.at(-1) ?? oldPath);
       fileLookup[newFilePath] = details.fileChanges.length;
       details.fileChanges.push({
         oldFilePath,
         newFilePath,
-        type: type as GitFileChangeType,
+        type: status[0] as GitFileChangeType,
         additions: null,
         deletions: null
       });
     }
 
-    for (const numStatLine of numStatLines.slice(1, -1)) {
-      const [additions, deletions, path, ...extraFields] = numStatLine.split("\t");
-      if (
-        additions === undefined ||
-        deletions === undefined ||
-        path === undefined ||
-        extraFields.length > 0
-      ) {
+    for (let i = 1; i < numStatFields.length - 1;) {
+      const [, additions, deletions, path] =
+        /^(\d+|-)\t(\d+|-)\t(.*)$/s.exec(numStatFields[i++]!) ?? [];
+      if (additions === undefined || deletions === undefined || path === undefined) {
         break;
       }
-      const fileName = path.replace(/(.*){.* => (.*)}/, "$1$2").replace(/.* => (.*)/, "$1");
+      // A rename leaves the path empty and gives its old and new paths as the next two fields.
+      let fileName = path;
+      if (fileName === "") {
+        fileName = numStatFields[i + 1] ?? "";
+        i += 2;
+      }
       const fileChange = details.fileChanges[fileLookup[fileName] ?? -1];
       if (fileChange !== undefined) {
-        fileChange.additions = parseInt(additions);
-        fileChange.deletions = parseInt(deletions);
+        // Binary files have no line counts.
+        fileChange.additions = additions === "-" ? null : parseInt(additions);
+        fileChange.deletions = deletions === "-" ? null : parseInt(deletions);
       }
     }
 
