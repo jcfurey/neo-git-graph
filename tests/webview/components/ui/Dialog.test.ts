@@ -139,3 +139,24 @@ describe("held Enter", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("accessible names", () => {
+  const mergeCommit: GitCommitNode = { ...commit, parentHashes: ["a".repeat(40), "b".repeat(40)] };
+
+  it.each([
+    ["reset…", () => menus.commitMenu(commit, new Map())],
+    ["cherryPick…", () => menus.commitMenu(mergeCommit, new Map())],
+    ["revert…", () => menus.commitMenu(mergeCommit, new Map())]
+  ])("names the unlabelled choice of %s by the dialog message", (title, entries) => {
+    act(() =>
+      entries()
+        .find((entry) => entry?.title === title)!
+        .onClick()
+    );
+
+    const select = container.querySelector("select")!;
+    const name = document.getElementById(select.getAttribute("aria-labelledby") ?? "");
+    expect(name?.textContent?.trim()).toBeTruthy();
+    expect(container.querySelector('[role="dialog"]')?.contains(name)).toBe(true);
+  });
+});
