@@ -19,8 +19,14 @@ const input = {
 const hash = "a".repeat(40);
 const INCOMPLETE = "Git returned an incomplete graph record.";
 
-let repo: string;
-afterEach(() => fs.rmSync(repo, { recursive: true, force: true }));
+let repo: string | undefined;
+afterEach(() => {
+  // Some tests parse text and create no repository; in a shuffled run they can come first.
+  if (repo !== undefined) {
+    fs.rmSync(repo, { recursive: true, force: true });
+    repo = undefined;
+  }
+});
 
 function commit(message: string, author = "T") {
   cp.execFileSync("git", ["commit", "--allow-empty", "-m", message], {
