@@ -52,6 +52,8 @@ export function getWebviewLocalizedStrings() {
     unableToReset: vscode.l10n.t("Unable to Reset to Commit"),
     unableToRevert: vscode.l10n.t("Unable to Revert Commit"),
     invalidCharacters: vscode.l10n.t("Unable to {0}, one or more invalid characters entered."),
+    viewFailed: vscode.l10n.t("This view could not be shown: {0}"),
+    retryView: vscode.l10n.t("Try Again"),
 
     // Actions
     addTag: vscode.l10n.t("Add Tag"),
@@ -119,6 +121,7 @@ export function getWebviewLocalizedStrings() {
 
     // Relative commit dates are formatted by Intl.RelativeTimeFormat in the
     // webview (see utils/date.ts), so no time units are declared here.
+    unknownDate: vscode.l10n.t("Unknown date"),
 
     // Commit details ({0} is the value; the text before it is rendered bold)
     detailCommit: vscode.l10n.t("Commit: {0}"),
