@@ -12,11 +12,8 @@ import { git, makeRepo } from "@tests/backend/helpers";
 let simpleRepo: string;
 let detachedRepo: string;
 let repoWithRemote: string;
-let originalLang: string | undefined;
 
 beforeAll(() => {
-  originalLang = process.env["LANG"];
-  process.env["LANG"] = "en_US.UTF-8";
   simpleRepo = makeRepo();
   git(["branch", "feature/foo"], simpleRepo);
 
@@ -34,11 +31,6 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  if (originalLang === undefined) {
-    delete process.env["LANG"];
-  } else {
-    process.env["LANG"] = originalLang;
-  }
   fs.rmSync(simpleRepo, { recursive: true, force: true });
   fs.rmSync(detachedRepo, { recursive: true, force: true });
   fs.rmSync(repoWithRemote, { recursive: true, force: true });
@@ -86,7 +78,7 @@ describe("loadBranches", () => {
       hard: false,
       isRepo: true
     });
-    expect(result.branches.length).toBeGreaterThan(0);
+    expect(result.branches).toEqual(["main"]);
   });
 
   it("excludes remote-tracking branches when showRemoteBranches is false", async () => {
@@ -120,7 +112,7 @@ describe("loadBranches", () => {
       hard: false,
       isRepo: true
     });
-    expect(result.branches.some((b) => b.startsWith("remotes/origin/"))).toBe(true);
+    expect(result.branches).toEqual(["main", "remotes/origin/main"]);
   });
 
   it("returns isRepo: false for a non-git directory", async () => {
@@ -152,6 +144,95 @@ describe("loadBranches", () => {
       head: expect.any(String),
       hard: true,
       isRepo: true
+    });
+  });
+
+  it("ignores forced color in git branch output", async () => {
+    const repo = makeRepo();
+    try {
+      git(["config", "color.ui", "always"], repo);
+      git(["branch", "feature/foo"], repo);
+      const result = await loadBranches(simpleGit(repo), {
+        showRemoteBranches: true,
+        hard: false,
+        repo,
+        gitPath: "git"
+      });
+      expect(result).toEqual({
+        repo,
+        branches: ["main", "feature/foo"],
+        head: "main",
+        hard: false,
+        isRepo: true
+      });
+    } finally {
+      fs.rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  describe("while HEAD is not on a branch", () => {
+    let repo: string;
+    const branches = (showRemoteBranches = false) =>
+      loadBranches(simpleGit(repo), { showRemoteBranches, hard: false, repo, gitPath: "git" });
+
+    beforeAll(() => {
+      repo = makeRepo();
+      git(["branch", "topic"], repo);
+      git(["tag", "v1"], repo);
+      // A remote HEAD is a symbolic ref, not a branch.
+      git(["remote", "add", "origin", repo], repo);
+      git(["fetch", "-q", "origin"], repo);
+      git(["remote", "set-head", "origin", "main"], repo);
+    });
+
+    afterAll(() => fs.rmSync(repo, { recursive: true, force: true }));
+
+    it.each([
+      ["a branch tip", ["checkout", "--detach", "main"]],
+      ["a tag", ["checkout", "--detach", "v1"]],
+      ["a hash", ["checkout", "--detach", "HEAD"]]
+    ])("lists only real branches when detached at %s", async (_, checkout) => {
+      git(checkout, repo);
+      try {
+        expect(await branches()).toMatchObject({ head: null, branches: ["main", "topic"] });
+        expect((await branches(true)).branches).toEqual([
+          "main",
+          "topic",
+          "remotes/origin/main",
+          "remotes/origin/topic"
+        ]);
+      } finally {
+        git(["checkout", "main"], repo);
+      }
+    });
+
+    it("lists only real branches during a conflicted rebase", async () => {
+      fs.writeFileSync(`${repo}/f`, "main side");
+      git(["commit", "-am", "main side"], repo);
+      git(["checkout", "topic"], repo);
+      fs.writeFileSync(`${repo}/f`, "topic side");
+      git(["commit", "-am", "topic side"], repo);
+      expect(() => git(["rebase", "main"], repo)).toThrow();
+      try {
+        expect(await branches()).toMatchObject({ head: null, branches: ["main", "topic"] });
+      } finally {
+        git(["rebase", "--abort"], repo);
+        git(["checkout", "main"], repo);
+      }
+    });
+
+    it("lists only real branches during a bisect", async () => {
+      const base = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
+      git(["commit", "--allow-empty", "-m", "middle"], repo);
+      git(["commit", "--allow-empty", "-m", "last"], repo);
+      // Bisect checks out the middle commit, detaching HEAD.
+      git(["bisect", "start", "main", base], repo);
+      try {
+        expect(await branches()).toMatchObject({ head: null, branches: ["main", "topic"] });
+      } finally {
+        git(["bisect", "reset"], repo);
+      }
+      expect(await branches()).toMatchObject({ head: "main", branches: ["main", "topic"] });
     });
   });
 });
