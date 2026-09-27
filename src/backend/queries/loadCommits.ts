@@ -9,7 +9,7 @@ import type {
 } from "@/backend/types";
 
 const eolRegex = /\r\n|\r|\n/g;
-const gitLogSeparator = "XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb";
+const logFieldCount = 6;
 
 type LoadCommitsInput = {
   branchName: string;
@@ -65,8 +65,10 @@ async function getLog(
   dateType: DateType
 ): Promise<GitLogEntry[]> {
   const dateField = dateType === "Author Date" ? "%at" : "%ct";
-  const format = ["%H", "%P", "%an", "%ae", dateField, "%s"].join(gitLogSeparator);
-  const args = ["log", `--max-count=${maxCommits}`, `--format=${format}`, "--date-order"];
+  // With -z, every field and record ends in NUL, so a line break in a subject or name cannot
+  // split a record.
+  const format = ["%H", "%P", "%an", "%ae", dateField, "%s"].join("%x00");
+  const args = ["log", "-z", `--max-count=${maxCommits}`, `--format=${format}`, "--date-order"];
   if (branch !== "") {
     args.push(branch);
   } else {
@@ -76,20 +78,17 @@ async function getLog(
     }
   }
   try {
-    const stdout = await git.raw(args);
-    const lines = stdout.split(eolRegex);
+    const fields = (await git.raw(args)).split("\0");
     const commits: GitLogEntry[] = [];
-    for (const line of lines.slice(0, -1)) {
-      const [hash, parents, author, email, date, message, ...extraFields] =
-        line.split(gitLogSeparator);
+    for (let i = 0; i + logFieldCount < fields.length; i += logFieldCount) {
+      const [hash, parents, author, email, date, message] = fields.slice(i, i + logFieldCount);
       if (
         hash === undefined ||
         parents === undefined ||
         author === undefined ||
         email === undefined ||
         date === undefined ||
-        message === undefined ||
-        extraFields.length > 0
+        message === undefined
       ) {
         break;
       }
