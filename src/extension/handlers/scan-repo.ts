@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { simpleGit } from "simple-git";
 import * as vscode from "vscode";
 
+import { workTreeRoot } from "@/backend/utils/git";
 import { extConfig } from "@/extension/config";
 import { logger } from "@/extension/util/logger";
 import type { GitRepo, ScanRepoResult } from "@/types";
@@ -23,7 +23,9 @@ async function startScan(gitBinary: string, paths: string[], maxDepth: number): 
   const repos = await Promise.all(
     paths.map((directory) => scanDirectory(gitBinary, directory, maxDepth))
   );
-  return repos.flat().toSorted((a, b) => a.path.localeCompare(b.path));
+  // Several workspace folders can lie in one repository.
+  const uniqueRepos = new Map(repos.flat().map((repo) => [repo.path, repo]));
+  return [...uniqueRepos.values()].toSorted((a, b) => a.path.localeCompare(b.path));
 }
 
 async function scanDirectory(
@@ -31,15 +33,13 @@ async function scanDirectory(
   directory: string,
   depth: number
 ): Promise<GitRepo[]> {
-  const isRepo = await simpleGit({ baseDir: directory, binary: gitBinary })
-    .checkIsRepo()
-    .catch((error: unknown) => {
-      logger.warn(`Failed to check Git repository: ${directory}; Git binary: ${gitBinary}`, error);
-      return false;
-    });
+  const repoPath = await workTreeRoot(directory, gitBinary).catch((error: unknown) => {
+    logger.warn(`Failed to check Git repository: ${directory}; Git binary: ${gitBinary}`, error);
+    return null;
+  });
 
-  if (isRepo) {
-    return [{ name: path.basename(directory), path: directory }];
+  if (repoPath !== null) {
+    return [{ name: path.basename(repoPath), path: repoPath }];
   }
 
   if (depth <= 0) {
