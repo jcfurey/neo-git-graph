@@ -73,7 +73,9 @@ VS Code **1.125.0 or newer** is required. Reload the VS Code window after upgrad
 
 Branchwise installs as `jcfurey.branchwise`. Builds before the rename installed as
 `jcfurey.neo-git-graph`; uninstall that extension, and `asispts.neo-git-graph` if you have it, so
-Source Control shows one graph button.
+Source Control shows one graph button. The first time Branchwise starts, it copies your user and
+workspace settings from their `neo-git-graph.` names to `branchwise.`, keeping any you have already
+set under the new name. It leaves the old entries in place.
 
 See [Packaging and releases](docs/packaging.md) for package verification and release validation.
 See [VS Code UI tests](docs/testing.md) for individual scenarios, failure artifacts, and

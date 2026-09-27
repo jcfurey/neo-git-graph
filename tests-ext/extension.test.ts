@@ -6,6 +6,12 @@ function isPanelOpen() {
   return vscode.window.tabGroups.all.flatMap((g) => g.tabs).some((t) => t.label === "Branchwise");
 }
 
+/** The user setting that .vscode-test.mjs saves under the name before the rename. */
+function copiedSetting() {
+  return vscode.workspace.getConfiguration("branchwise").inspect("showUncommittedChanges")
+    ?.globalValue;
+}
+
 async function openPanel() {
   await vscode.commands.executeCommand("branchwise.view");
   const deadline = Date.now() + 2000;
@@ -65,6 +71,14 @@ suite("BranchwisePanel", () => {
     // Both resolve only when the walkthrough id and the shipped guide are valid.
     await vscode.commands.executeCommand("branchwise.openWalkthrough");
     await vscode.commands.executeCommand("branchwise.openDocumentation");
+  });
+
+  test("copies a user setting saved under the name before the rename", async () => {
+    const deadline = Date.now() + 5000;
+    while (copiedSetting() === undefined && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 50)); // eslint-disable-line no-await-in-loop
+    }
+    assert.strictEqual(copiedSetting(), true);
   });
 
   test("closing the panel and running view command opens a fresh panel", async () => {

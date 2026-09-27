@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { resolveBuiltInGitPath } from "./extension/config";
 import { EXTENSION_NAME } from "./extension/constants";
 import { openDocumentation, openWalkthrough } from "./extension/handlers/onboarding";
+import { migrateSettings } from "./extension/migrate-settings";
 import { logger } from "./extension/util/logger";
 import { createViewCommand } from "./extension/view-command";
 import { registerFileHistoryCommand } from "./old-extension/fileHistoryCommand";
@@ -15,6 +16,7 @@ import { registerFileHistoryCommand } from "./old-extension/fileHistoryCommand";
  */
 export function activate(ctx: vscode.ExtensionContext) {
   logger.init(ctx);
+  void migrateSettings(ctx);
   void resolveBuiltInGitPath();
   // Backend messages are marked with the standalone l10n package, which cannot
   // see VS Code's API. Hand it the bundle VS Code loaded for the display language.
