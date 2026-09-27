@@ -25,6 +25,18 @@ code, lower the baseline in the same change:
 pnpm run provenance --update
 ```
 
+A rewrite written without sight of the old code can still match it word for word on a few lines:
+an exported signature that callers depend on, a `case` for each value of a setting, or a short
+generic helper. Blame cannot tell those from copies, so after reviewing them, list them in
+[scripts/provenance-reviewed.json](../scripts/provenance-reviewed.json) under the file, with the
+rewrite commit and its specification. The count excuses exactly those lines, each as many times as
+it is listed; any other upstream line in the file still counts. To see a file's upstream lines,
+and which are excused:
+
+```sh
+pnpm run provenance --lines src/webview/utils/date.ts
+```
+
 The count is a floor, not proof. A line edited beyond recognition counts as Branchwise's even when
 the code is still a modified version of upstream's, and code pasted from an old version that is no
 longer in the tree is not traced. The rules below are what make a replacement independent.
@@ -42,8 +54,10 @@ longer in the tree is not traced. The rules below are what make a replacement in
    specification and the tests. The old file is deleted before they start, and they do not open
    it, its history, or built output that contains it. They add tests for the gaps the
    specification lists.
-4. **Verify and record.** The replacement passes the same checks as any change. Its commit deletes
-   the old code, lowers the baseline, and adds the module to the log below. Inherited tests are
+4. **Verify and record.** The replacement passes the same checks as any change. The reviewer
+   compares it with the old module for anything that looks copied rather than written, and lists
+   any reviewed coincidences as described above. The rewrite deletes the old code, lowers the
+   baseline, and adds the module to the log below. Inherited tests are
    replaced the same way, with the behaviour they check as the specification.
 
 ## End state
@@ -55,5 +69,6 @@ the code came from and how it was replaced.
 
 ## Rewritten modules
 
-| Module | Specification | Rewritten in |
-| ------ | ------------- | ------------ |
+| Module                      | Specification                 | Rewritten in |
+| --------------------------- | ----------------------------- | ------------ |
+| `src/webview/utils/date.ts` | [date.md](clean-room/date.md) | `bc67508`    |

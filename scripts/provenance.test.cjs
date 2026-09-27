@@ -19,13 +19,16 @@ test("counts statements, comments and prose, not punctuation or module wiring", 
     "}",
     "  });",
     "} else {",
+    "try {",
+    "} catch (error) {",
     "return;",
+    "default:",
     "</div>",
     "// Why the cache is keyed by locale.",
     "const cache = new Map<string, number>();",
     "The graph shows every branch."
   ];
-  assert.deepEqual(substantiveLines(lines), [...Array(12).fill(false), true, true, true]);
+  assert.deepEqual(substantiveLines(lines), [...Array(15).fill(false), true, true, true]);
 });
 
 test("reports files that gained inherited lines, and those that lost them", () => {
@@ -83,14 +86,20 @@ test("attributes lines to upstream commits, following lines moved to another fil
     git("add", ".");
     git("commit", "-q", "-m", "ours");
 
-    assert.deepEqual(await inheritedLines({ cwd: repo, forkPoint }), {
+    assert.deepEqual(await inheritedLines({ cwd: repo, forkPoint, reviewed: {} }), {
       "moved.ts": 3,
       "old.ts": 1
     });
+    // A reviewed line is excused only in its file, and only as many times as it is listed.
+    const reviewed = { "old.ts": [upstream[1]], "moved.ts": [upstream[2], upstream[2]] };
+    assert.deepEqual(await inheritedLines({ cwd: repo, forkPoint, reviewed }), { "moved.ts": 2 });
     // Uncommitted work counts as ours too.
     fs.writeFileSync(path.join(repo, "moved.ts"), "const replaced = true;\n");
-    assert.deepEqual(await inheritedLines({ cwd: repo, forkPoint }), { "old.ts": 1 });
-    assert.equal(await inheritedLines({ cwd: repo, forkPoint: "0".repeat(40) }), null);
+    assert.deepEqual(await inheritedLines({ cwd: repo, forkPoint, reviewed: {} }), { "old.ts": 1 });
+    assert.equal(
+      await inheritedLines({ cwd: repo, forkPoint: "0".repeat(40), reviewed: {} }),
+      null
+    );
   } finally {
     fs.rmSync(repo, { recursive: true, force: true });
   }

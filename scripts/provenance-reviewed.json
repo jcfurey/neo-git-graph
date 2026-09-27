@@ -1,0 +1,20 @@
+{
+  "src/webview/utils/date.ts": {
+    "commit": "bc67508f5643d300057860f60054c8273814c919",
+    "specification": "docs/clean-room/date.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the interface, the setting's values, or a short generic helper leave little other way to write them.",
+    "lines": [
+      "let formatter = cache.get(locale);",
+      "formatter = build(locale);",
+      "formatter = build(undefined);",
+      "cache.set(locale, formatter);",
+      "return formatter;",
+      "export function getFullDate(seconds: number): string {",
+      "export function getCommitDate(seconds: number): CommitDate {",
+      "switch (dateFormat) {",
+      "case \"Date Only\":",
+      "case \"Relative\":",
+      "return { title, value: title };"
+    ]
+  }
+}

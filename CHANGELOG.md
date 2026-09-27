@@ -23,6 +23,7 @@ Branchwise was named (neo) Git Graph, `jcfurey.neo-git-graph`, through its 0.9.6
 
 ### Fixed
 
+- Relative commit dates move up a unit instead of reading "60 minutes ago" or "24 hours ago", round the same way for dates in the past and the future, and read "0 seconds ago" for a commit a moment ahead of the clock. The date column's tooltip keeps its date and time in the same time zone after the system's zone changes.
 - Show the remaining webview text in VS Code's display language: the loading and startup messages, repository-load failures, timeouts, reflog dates, and elapsed times, and mark the page with that language.
 - Keep keyboard focus on an entry moved in the interactive rebase and batch editors and announce its new position, keep the sync preview and its focus through background refreshes, and name Branches pane buttons with their full ref.
 - Keep dropdown lists inside the window at any width, opening upwards when there is more room above, and keep the Branches and Workspace sidebar below the header when the header wraps.
