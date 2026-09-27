@@ -4,7 +4,6 @@ export type GraphStyle = "rounded" | "angular";
 export type WebviewConfig = Readonly<{
   autoCenterCommitDetailsView: boolean;
   dateFormat: DateFormat;
-  fetchAvatars: boolean;
   graphColours: readonly string[];
   graphStyle: GraphStyle;
   initialLoadCommits: number;

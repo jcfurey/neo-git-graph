@@ -7,7 +7,6 @@ type TabIconColourTheme = "colour" | "grey";
 export const extConfig = {
   autoCenterCommitDetailsView: (): boolean => getConfig("autoCenterCommitDetailsView", true),
   dateFormat: (): DateFormat => getConfig("dateFormat", "Date & Time"),
-  fetchAvatars: (): boolean => getConfig("fetchAvatars", false),
   gitBinary: () => vscode.workspace.getConfiguration("git").get("path", null) ?? "git",
   graphColours: (): string[] =>
     getConfig("graphColours", ["#0085d9", "#d9008f", "#00d90a", "#d98500", "#a300d9", "#ff0000"]),

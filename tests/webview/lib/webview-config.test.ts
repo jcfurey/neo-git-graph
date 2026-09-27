@@ -7,7 +7,6 @@ it("initializes the webview configuration once", () => {
   const config: WebviewConfig = {
     autoCenterCommitDetailsView: true,
     dateFormat: "Date & Time",
-    fetchAvatars: false,
     graphColours: [],
     graphStyle: "rounded",
     initialLoadCommits: 300,

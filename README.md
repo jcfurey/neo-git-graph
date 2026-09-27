@@ -46,7 +46,6 @@ This fork:
 - **Branch actions**: Create, checkout, rename, delete, and merge
 - **Tag actions**: Create, delete, and push tags
 - **Commit actions**: Checkout, cherry-pick, revert, and reset
-- **Avatar support (deprecated in v0.6.0)**: Optional avatars from GitHub, GitLab, or Gravatar
 - **Multi-repo**: Work with multiple repositories in one workspace
 - **Devcontainer support**: Works in remote and container environments
 
@@ -73,20 +72,20 @@ Search for `neo-git-graph` in Extensions, or install from:
 
 All settings use the `neo-git-graph` prefix.
 
-| Setting                       | Default         | Description                                                            |
-| ----------------------------- | --------------- | ---------------------------------------------------------------------- |
-| `autoCenterCommitDetailsView` | `true`          | Center commit details when opened                                      |
-| `dateFormat`                  | `"Date & Time"` | `"Date & Time"`, `"Date Only"`, or `"Relative"`                        |
-| `dateType`                    | `"Author Date"` | `"Author Date"` or `"Commit Date"`                                     |
-| `fetchAvatars`                | `false`         | Fetch avatars (sends email to external services); deprecated in v0.6.0 |
-| `graphColours`                | 12 defaults     | Colors for graph lines                                                 |
-| `graphStyle`                  | `"rounded"`     | `"rounded"` or `"angular"`                                             |
-| `initialLoadCommits`          | `300`           | Commits to load on open                                                |
-| `loadMoreCommits`             | `100`           | Commits to load on demand                                              |
-| `maxDepthOfRepoSearch`        | `0`             | Folder depth for repo search                                           |
-| `showCurrentBranchByDefault`  | `false`         | Show only current branch on open                                       |
-| `showUncommittedChanges`      | `true`          | Show uncommitted changes node                                          |
-| `tabIconColourTheme`          | `"colour"`      | `"colour"` or `"grey"`                                                 |
+| Setting                       | Default         | Description                                     |
+| ----------------------------- | --------------- | ----------------------------------------------- |
+| `autoCenterCommitDetailsView` | `true`          | Center commit details when opened               |
+| `dateFormat`                  | `"Date & Time"` | `"Date & Time"`, `"Date Only"`, or `"Relative"` |
+| `dateType`                    | `"Author Date"` | `"Author Date"` or `"Commit Date"`              |
+| `fetchAvatars`                | `false`         | No effect; deprecated in v0.6.0                 |
+| `graphColours`                | 12 defaults     | Colors for graph lines                          |
+| `graphStyle`                  | `"rounded"`     | `"rounded"` or `"angular"`                      |
+| `initialLoadCommits`          | `300`           | Commits to load on open                         |
+| `loadMoreCommits`             | `100`           | Commits to load on demand                       |
+| `maxDepthOfRepoSearch`        | `0`             | Folder depth for repo search                    |
+| `showCurrentBranchByDefault`  | `false`         | Show only current branch on open                |
+| `showUncommittedChanges`      | `true`          | Show uncommitted changes node                   |
+| `tabIconColourTheme`          | `"colour"`      | `"colour"` or `"grey"`                          |
 
 ## Contributing
 

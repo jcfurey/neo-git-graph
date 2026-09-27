@@ -16,26 +16,7 @@ export type GitRepoState = {
   columnWidths: number[] | null;
 };
 
-export type Avatar = {
-  image: string;
-  timestamp: number;
-  identicon: boolean;
-};
-export type AvatarCache = { [email: string]: Avatar };
-
 /* Infrastructure Request / Response Messages */
-
-export type RequestFetchAvatar = {
-  command: "fetchAvatar";
-  repo: string;
-  email: string;
-  commits: string[];
-};
-export type ResponseFetchAvatar = {
-  command: "fetchAvatar";
-  email: string;
-  image: string;
-};
 
 export type RequestSelectRepo = {
   command: "selectRepo";
@@ -68,14 +49,8 @@ export type ResponseRefresh = {
 export type RequestMessage =
   | ActionRequest
   | QueryRequest
-  | RequestFetchAvatar
   | RequestSelectRepo
   | RequestSaveRepoState
   | RequestViewDiff;
 
-export type ResponseMessage =
-  | ActionResponse
-  | QueryResponse
-  | ResponseFetchAvatar
-  | ResponseViewDiff
-  | ResponseRefresh;
+export type ResponseMessage = ActionResponse | QueryResponse | ResponseViewDiff | ResponseRefresh;

@@ -47,9 +47,6 @@ describe("createWebviewPanel", () => {
       extensionState: {
         getLastActiveRepo: () => "/repo"
       } as unknown as import("@/old-extension/extensionState").ExtensionState,
-      avatarManager: {
-        deregisterBridge: vi.fn()
-      } as unknown as import("@/old-extension/avatarManager").AvatarManager,
       repoManager: repoManager as unknown as import("@/old-extension/repoManager").RepoManager,
       onDispose: vi.fn(),
       onPanelShown

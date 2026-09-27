@@ -13,7 +13,6 @@ export const config = {
   autoCenterCommitDetailsView: (): boolean => getConfig("autoCenterCommitDetailsView", true),
   dateFormat: (): DateFormat => getConfig("dateFormat", "Date & Time"),
   dateType: (): DateType => getConfig("dateType", "Author Date"),
-  fetchAvatars: (): boolean => getConfig("fetchAvatars", false),
   graphColours: (): string[] =>
     getConfig("graphColours", [
       "#0085d9",

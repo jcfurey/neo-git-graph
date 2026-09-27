@@ -8,7 +8,6 @@ export async function webviewInitialize(): Promise<WebviewInitialize> {
   const config: WebviewConfig = {
     autoCenterCommitDetailsView: extConfig.autoCenterCommitDetailsView(),
     dateFormat: extConfig.dateFormat(),
-    fetchAvatars: extConfig.fetchAvatars(),
     graphColours: extConfig.graphColours(),
     graphStyle: extConfig.graphStyle(),
     initialLoadCommits: extConfig.initialLoadCommits(),

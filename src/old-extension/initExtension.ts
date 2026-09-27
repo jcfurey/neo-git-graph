@@ -7,7 +7,6 @@ import type { GitClient } from "@/backend/gitClient";
 import { findGitRepos } from "@/backend/queries/repoSearch";
 import { buildExtensionUri } from "@/backend/utils/path";
 import { watchGitRepo } from "@/extension/watchers/git-repo.watcher";
-import { AvatarManager } from "@/old-extension/avatarManager";
 import { config } from "@/old-extension/config";
 import { EXTENSION_NAME } from "@/old-extension/constant/const";
 import { DiffDocProvider } from "@/old-extension/diffDocProvider";
@@ -29,7 +28,6 @@ function registerViewCommand(
   ctx: vscode.ExtensionContext,
   repoManager: RepoManager,
   extensionState: ExtensionState,
-  avatarManager: AvatarManager,
   gitClient: GitClient
 ) {
   let currentPanel: WebviewPanel | undefined;
@@ -56,14 +54,12 @@ function registerViewCommand(
 
       const gitRepoWatcher = watchGitRepo();
       const bridge: WebviewBridge = webviewBridgeFactory(vsPanel.webview);
-      avatarManager.registerBridge(bridge.post.bind(bridge));
 
       const { onPanelShown } = registerMessageHandlers(bridge, {
         config,
         gitClient,
         repoManager,
-        extensionState,
-        avatarManager
+        extensionState
       });
 
       currentPanel = createWebviewPanel({
@@ -72,7 +68,6 @@ function registerViewCommand(
         config,
         extensionPath: ctx.extensionPath,
         extensionState,
-        avatarManager,
         repoManager,
         onDispose: () => {
           gitRepoWatcher.dispose();
@@ -93,14 +88,6 @@ export function initExtension(
     legacyLogger.log(`Initializing extension with ${repos.length} repo(s)`);
 
     const extensionState = new ExtensionState(ctx);
-    const avatarManager = new AvatarManager(config.gitPath, extensionState);
-
-    ctx.subscriptions.push(
-      vscode.commands.registerCommand("neo-git-graph.clearAvatarCache", () => {
-        avatarManager.clearCache();
-      })
-    );
-
     const gitClient = gitClientFactory(extensionState.getLastActiveRepo() ?? "", config.gitPath());
     ctx.subscriptions.push(
       vscode.workspace.registerTextDocumentContentProvider(
@@ -113,7 +100,7 @@ export function initExtension(
     const repoManager = createRepoManager(extensionState, config);
     repoManager.setRepos(repos);
     repoManager.sendRepos();
-    registerViewCommand(ctx, repoManager, extensionState, avatarManager, gitClient);
+    registerViewCommand(ctx, repoManager, extensionState, gitClient);
 
     const gitWatcher = vscode.workspace.createFileSystemWatcher("**/.git");
     ctx.subscriptions.push(

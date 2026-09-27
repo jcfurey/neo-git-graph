@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 
 import { buildExtensionUri } from "@/backend/utils/path";
-import { AvatarManager } from "@/old-extension/avatarManager";
 import type { Config } from "@/old-extension/config";
 import { ExtensionState } from "@/old-extension/extensionState";
 
@@ -15,7 +14,6 @@ export function createWebviewPanel(opts: {
   config: Config;
   extensionPath: string;
   extensionState: ExtensionState;
-  avatarManager: AvatarManager;
   repoManager: RepoManager;
   onDispose: () => void;
   onPanelShown: () => void;
@@ -26,7 +24,6 @@ export function createWebviewPanel(opts: {
     config,
     extensionPath,
     extensionState,
-    avatarManager,
     repoManager,
     onDispose,
     onPanelShown
@@ -46,7 +43,6 @@ export function createWebviewPanel(opts: {
   function dispose() {
     onDispose();
     panel.dispose();
-    avatarManager.deregisterBridge();
     while (disposables.length) {
       const x = disposables.pop();
       if (x) {

@@ -16,7 +16,6 @@ import { loadCommits } from "@/backend/queries/loadCommits";
 import type { GitFileChangeType } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
 import { selectWatchedRepo } from "@/extension/watchers/git-repo.watcher";
-import { AvatarManager } from "@/old-extension/avatarManager";
 import type { Config } from "@/old-extension/config";
 import { encodeDiffDocUri } from "@/old-extension/diffDocProvider";
 import { ExtensionState } from "@/old-extension/extensionState";
@@ -64,10 +63,9 @@ export function registerMessageHandlers(
     gitClient: GitClient;
     repoManager: RepoManager;
     extensionState: ExtensionState;
-    avatarManager: AvatarManager;
   }
 ) {
-  const { config, gitClient, repoManager, extensionState, avatarManager } = deps;
+  const { config, gitClient, repoManager, extensionState } = deps;
 
   let currentRepo: string | null = null;
 
@@ -158,10 +156,6 @@ export function registerMessageHandlers(
 
   bridge.onMessage("selectRepo", (msg) => {
     setCurrentRepo(msg.repo);
-  });
-
-  bridge.onMessage("fetchAvatar", (msg) => {
-    avatarManager.fetchAvatarImage(msg.email, msg.repo, msg.commits);
   });
 
   bridge.onMessage("saveRepoState", (msg) => {

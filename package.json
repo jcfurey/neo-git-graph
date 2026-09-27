@@ -93,11 +93,6 @@
           "light": "resources/webview-icon-light.svg",
           "dark": "resources/webview-icon-dark.svg"
         }
-      },
-      {
-        "category": "(neo) Git Graph",
-        "command": "neo-git-graph.clearAvatarCache",
-        "title": "%command.clearAvatarCache%"
       }
     ],
     "menus": {
