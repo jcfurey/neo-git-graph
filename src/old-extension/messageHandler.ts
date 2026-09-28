@@ -13,6 +13,7 @@ import {
 import { mergeBranch, mergeCommit } from "@/backend/actions/merge";
 import { fetchRemote, pullBranch, pushBranch } from "@/backend/actions/remote";
 import { runRepositoryAction } from "@/backend/actions/repository";
+import type { RepositoryEffect } from "@/backend/actions/repository";
 import { addTag, deleteTag, pushTag } from "@/backend/actions/tag";
 import { gitClientFactory } from "@/backend/gitClient";
 import { commitDetails } from "@/backend/queries/commitDetails";
@@ -22,9 +23,10 @@ import { loadRemotes } from "@/backend/queries/loadRemotes";
 import { repositoryQuery } from "@/backend/queries/repository";
 import type {
   ActionRequest,
-  GitFileChangeType,
   GraphQueryCommand,
-  QueryResult,
+  RepositoryAction,
+  RepositoryQueryData,
+  RepositoryState,
   RestoreBackup
 } from "@/backend/types";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
@@ -40,49 +42,127 @@ import {
 } from "@/extension/watchers/git-repo.watcher";
 import { invalidateWorkspaceScan, listRepos } from "@/extension/workspace-scan";
 import { encodeDiffBlobUri, encodeDiffDocUri } from "@/old-extension/diffDocProvider";
+import type { RepoManager } from "@/old-extension/repoManager";
+import type { WebviewBridge } from "@/old-extension/webviewBridge";
 import type { RequestMessage, ResponseMessage } from "@/types";
 
-import type { RepoManager } from "./repoManager";
-import type { WebviewBridge } from "./webviewBridge";
+/**
+ * Every sentence this module shows the user. The l10n bundle lists keys in the order the export
+ * first meets them, so the entries stay in this order and no other file of the module adds a key.
+ */
+const text = {
+  addedIn: (hash: string) => vscode.l10n.t("Added in {0}", hash),
+  deletedIn: (hash: string) => vscode.l10n.t("Deleted in {0}", hash),
+  busy: () =>
+    vscode.l10n.t("Another Git operation is running in this repository. Wait for it to finish."),
+  cancelled: () => vscode.l10n.t("The Git operation was cancelled."),
+  undoRestore: () => vscode.l10n.t("Undo Restore"),
+  restored: (file: string) =>
+    vscode.l10n.t(
+      "Restored {0}. Its previous contents are kept in Git until its next garbage collection.",
+      file
+    ),
+  unsavedBeforeRestore: (file: string) =>
+    vscode.l10n.t(
+      "Save or revert the unsaved changes to {0} in the editor first; saving them later would undo the restore.",
+      file
+    ),
+  unsavedInPreview: (file: string) =>
+    vscode.l10n.t(
+      "The preview shows unsaved changes to {0}. Save or revert them before restoring.",
+      file
+    ),
+  openItsGraph: () => vscode.l10n.t("Open Its Graph"),
+  nestedRepository: (folder: string) =>
+    vscode.l10n.t(
+      "{0} is a separate Git repository inside this one, so its files are not changes of this repository.",
+      folder
+    ),
+  stagedChanges: () => vscode.l10n.t("Staged Changes"),
+  workingTreeChanges: () => vscode.l10n.t("Working Tree Changes")
+};
 
-function viewDiff(
-  repo: string,
-  commitHash: string,
-  oldFilePath: string,
-  newFilePath: string,
-  type: GitFileChangeType
-): Promise<boolean> {
-  const abbrevHash = abbrevCommit(commitHash);
-  const pathComponents = newFilePath.split("/");
-  const title =
-    pathComponents[pathComponents.length - 1] +
-    " (" +
-    (type === "A"
-      ? vscode.l10n.t("Added in {0}", abbrevHash)
-      : type === "D"
-        ? vscode.l10n.t("Deleted in {0}", abbrevHash)
-        : abbrevCommit(commitHash) + "^ ↔ " + abbrevCommit(commitHash)) +
-    ")";
-  return Promise.resolve(
-    vscode.commands.executeCommand(
-      "vscode.diff",
-      encodeDiffDocUri(repo, oldFilePath, commitHash + "^"),
-      encodeDiffDocUri(repo, newFilePath, commitHash),
-      title,
-      { preview: true }
-    )
-  ).then(
-    () => true,
-    (error: unknown) => {
-      logger.error(`Unable to open the diff of ${newFilePath} at ${abbrevHash}`, error);
-      return false;
-    }
-  );
+type Request<C extends RequestMessage["command"]> = Extract<RequestMessage, { command: C }>;
+type PlainActionRequest = Exclude<ActionRequest, { command: "repositoryAction" }>;
+type RepositoryActionRequest = Request<"repositoryAction">;
+type GraphRequest = Request<GraphQueryCommand>;
+
+/** The actions that call one backend function of the same name. */
+const PLAIN_ACTIONS = [
+  "addTag",
+  "deleteTag",
+  "pushTag",
+  "createBranch",
+  "deleteBranch",
+  "renameBranch",
+  "checkoutBranch",
+  "checkoutCommit",
+  "cherrypickCommit",
+  "revertCommit",
+  "resetToCommit",
+  "mergeBranch",
+  "mergeCommit",
+  "pushBranch",
+  "pullBranch",
+  "fetchRemote"
+] as const satisfies readonly PlainActionRequest["command"][];
+
+/** Repository actions that only open an editor. They neither wait for other actions nor block them. */
+const VIEW_ONLY = new Set<RepositoryAction["kind"]>([
+  "viewWorkingTreeFile",
+  "viewRangeFile",
+  "viewHistoricalFile",
+  "previewFileRestore"
+]);
+
+/** Repository actions that may change the repositories below theirs as well. */
+const WHOLE_TREE = new Set<RepositoryAction["kind"]>(["submodule", "submodulePointer"]);
+
+/** How much of the file tree an action keeps to itself while it runs. */
+type LockScope = "none" | "repository" | "wholeTree";
+
+/** A repository an exclusive action is changing. */
+type Hold = { repo: string; wholeTree: boolean };
+
+/** A running request that the page can stop with its id. */
+type Cancellable = { repo: string; controller: AbortController };
+
+/** The commit id a diff URI names for a side that does not exist; its document is empty. */
+const NO_COMMIT = "0".repeat(40);
+
+function errorText(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }
 
-/** Actions that only open an editor, so file events during them come from the user. */
-/** Whether an editor holds unsaved changes to a repository file, which saving would write back. */
-function hasUnsavedChanges(repo: string, file: string) {
+/** Let `work` finish unobserved. Nobody waits for it, so a failure is only logged. */
+function detach(work: Thenable<unknown> | undefined, what: string) {
+  void Promise.resolve(work).catch((error: unknown) => {
+    logger.debug(`${what} failed`, error);
+  });
+}
+
+/** Stop the request recorded under `requestId`, but only when it runs in `repo`. */
+function cancel(running: Map<string | undefined, Cancellable>, repo: string, requestId: string) {
+  const entry = running.get(requestId);
+  if (entry !== undefined && entry.repo === repo) {
+    entry.controller.abort();
+  }
+}
+
+/** Whether two spellings of a repository path, such as `/repo` and `/repo/`, name one folder. */
+function sameRepository(a: string, b: string) {
+  return isRepoWithinPath(a, b) && isRepoWithinPath(b, a);
+}
+
+function scopeOf(action: RepositoryAction): LockScope {
+  if (VIEW_ONLY.has(action.kind)) {
+    return "none";
+  }
+  return WHOLE_TREE.has(action.kind) ? "wholeTree" : "repository";
+}
+
+/** Whether an editor holds unsaved changes to `file`, given relative to `repo`. */
+function hasUnsavedEditor(repo: string, file: string) {
   const target = normalizeRepoPath(path.join(repo, file));
   return vscode.workspace.textDocuments.some(
     (document) =>
@@ -92,517 +172,586 @@ function hasUnsavedChanges(repo: string, file: string) {
   );
 }
 
-function viewOnly(request: ActionRequest) {
-  return (
-    request.command === "repositoryAction" &&
-    (request.action.kind === "viewWorkingTreeFile" ||
-      request.action.kind === "viewRangeFile" ||
-      request.action.kind === "viewHistoricalFile" ||
-      request.action.kind === "previewFileRestore")
-  );
+/**
+ * Refuse to restore a file, or to undo a restore, over unsaved edits: saving them afterwards
+ * would silently replace what Git just wrote. A preview only warns.
+ */
+function checkUnsavedEditors(repo: string, action: RepositoryAction) {
+  if (action.kind === "restoreFile" || action.kind === "undoRestore") {
+    const file = action.kind === "restoreFile" ? action.plan.destination : action.backup.path;
+    if (hasUnsavedEditor(repo, file)) {
+      throw new Error(text.unsavedBeforeRestore(file));
+    }
+  } else if (action.kind === "previewFileRestore") {
+    const file = action.plan.destination;
+    if (hasUnsavedEditor(repo, file)) {
+      detach(vscode.window.showWarningMessage(text.unsavedInPreview(file)), "The preview warning");
+    }
+  }
 }
 
-export function registerMessageHandlers(
-  bridge: WebviewBridge,
-  deps: {
-    config: Config;
-    repoManager: RepoManager;
+/** A diff side in an editor title: the short commit, or `∅` for a side that does not exist. */
+function sideLabel(commit: string | null) {
+  return commit === null ? "∅" : abbrevCommit(commit);
+}
+
+async function showDiff(left: vscode.Uri, right: vscode.Uri, title: string) {
+  await vscode.commands.executeCommand("vscode.diff", left, right, title, { preview: true });
+}
+
+/** Explain that a folder is a repository of its own, and offer to open its graph. */
+function explainNestedRepository(folder: string) {
+  const open = text.openItsGraph();
+  const choice = Promise.resolve(
+    vscode.window.showInformationMessage(text.nestedRepository(folder), open)
+  ).then((picked) =>
+    picked === open
+      ? vscode.commands.executeCommand("branchwise.view", { rootUri: vscode.Uri.file(folder) })
+      : undefined
+  );
+  detach(choice, "Opening the nested repository");
+}
+
+/** Open whatever a repository action produced for the user to look at. */
+async function openEffect(repo: string, effect: RepositoryEffect) {
+  if (!effect) {
+    return;
   }
-) {
-  const { config, repoManager } = deps;
-
-  let currentRepo: string | null = null;
-  const busyRepos = new Map<string, boolean>();
-  const actionControllers = new Map<string, { repo: string; controller: AbortController }>();
-  const graphControllers = new Map<GraphQueryCommand, AbortController>();
-
-  function cancelGraphQueries() {
-    for (const controller of graphControllers.values()) {
-      controller.abort();
-    }
-    graphControllers.clear();
-  }
-
-  function setCurrentRepo(repo: string) {
-    if (repo === currentRepo) {
-      return;
-    }
-    cancelGraphQueries();
-    currentRepo = repo;
-    selectWatchedRepo(repo, config.gitPath());
-  }
-
-  async function workspaceRepos(selected: string) {
-    await repoManager.pruneMissing();
-    const repos = await listRepos(config.gitPath(), config.maxDepthOfRepoSearch());
-    return repos.includes(selected) ? repos : [selected, ...repos];
-  }
-
-  /**
-   * Run requests for `command` under the repository lock, and return the runner. A handler can
-   * return a follow-up, which runs once the lock is released.
-   */
-  function registerAction<T extends ActionRequest["command"]>(
-    command: T,
-    handler: (
-      git: SimpleGit,
-      msg: Extract<ActionRequest, { command: T }>
-    ) => Promise<void | (() => void)>
-  ) {
-    const run = async (message: unknown) => {
-      const msg = message as Extract<ActionRequest, { command: T }>;
-      let status: string | null = null;
-      let acquired = false;
-      let followUp: void | (() => void) = undefined;
-      try {
-        const request: ActionRequest = msg;
-        // Opening a diff or preview reads the repository, so it neither waits for nor blocks
-        // other actions.
-        const exclusive = !viewOnly(request);
-        const recursive =
-          request.command === "repositoryAction" &&
-          (request.action.kind === "submodule" || request.action.kind === "submodulePointer");
-        if (
-          exclusive &&
-          [...busyRepos].some(
-            ([repo, descendants]) =>
-              repo === msg.repo ||
-              (descendants && isRepoWithinPath(msg.repo, repo)) ||
-              (recursive && isRepoWithinPath(repo, msg.repo))
-          )
-        ) {
-          throw new Error(
-            vscode.l10n.t(
-              "Another Git operation is running in this repository. Wait for it to finish."
-            )
-          );
-        }
-        if (exclusive) {
-          busyRepos.set(msg.repo, recursive);
-          acquired = true;
-          muteGitRepoWatcher(msg.repo);
-        }
-        const controller = new AbortController();
-        if ("requestId" in msg) {
-          actionControllers.set(msg.requestId, { repo: msg.repo, controller });
-        }
-        followUp = await handler(
-          gitClientFactory(msg.repo, config.gitPath(), controller.signal).getInstance(),
-          msg
-        ).catch((error: unknown) => {
-          throw controller.signal.aborted
-            ? new Error(vscode.l10n.t("The Git operation was cancelled."))
-            : error;
-        });
-      } catch (e: unknown) {
-        status = e instanceof Error ? e.message : String(e);
-      } finally {
-        if ("requestId" in msg) {
-          actionControllers.delete(msg.requestId);
-        }
-        if (acquired) {
-          busyRepos.delete(msg.repo);
-          unmuteGitRepoWatcher(msg.repo);
-        }
-      }
-      bridge.post({
-        command,
-        status,
-        ...("requestId" in msg ? { requestId: msg.requestId, repo: msg.repo } : {})
-      } as ResponseMessage);
-      followUp?.();
-      return status;
-    };
-    bridge.onMessage(command, async (message) => {
-      await run(message);
-    });
-    return run;
-  }
-
-  // --- Action handlers ---
-
-  let undoRequests = 0;
-  /** Offer to put back what a restore replaced, through the lock like any other action. */
-  async function offerUndo(repo: string, backup: RestoreBackup) {
-    const undo = vscode.l10n.t("Undo Restore");
-    const choice = await vscode.window.showInformationMessage(
-      vscode.l10n.t(
-        "Restored {0}. Its previous contents are kept in Git until its next garbage collection.",
-        backup.path
-      ),
-      undo
-    );
-    if (choice !== undo) {
-      return;
-    }
-    const status = await runRepositoryActionRequest({
-      command: "repositoryAction",
-      repo,
-      requestId: `undo-restore-${++undoRequests}`,
-      action: { kind: "undoRestore", backup }
-    });
-    bridge.post({ command: "refresh" });
-    if (status !== null) {
-      void vscode.window.showErrorMessage(status);
-    }
-  }
-
-  const runRepositoryActionRequest = registerAction("repositoryAction", async (git, msg) => {
-    if (msg.action.kind === "restoreFile" || msg.action.kind === "undoRestore") {
-      const file =
-        msg.action.kind === "restoreFile" ? msg.action.plan.destination : msg.action.backup.path;
-      if (hasUnsavedChanges(msg.repo, file)) {
-        throw new Error(
-          vscode.l10n.t(
-            "Save or revert the unsaved changes to {0} in the editor first; saving them later would undo the restore.",
-            file
-          )
-        );
-      }
-    }
-    if (
-      msg.action.kind === "previewFileRestore" &&
-      hasUnsavedChanges(msg.repo, msg.action.plan.destination)
-    ) {
-      void vscode.window.showWarningMessage(
-        vscode.l10n.t(
-          "The preview shows unsaved changes to {0}. Save or revert them before restoring.",
-          msg.action.plan.destination
-        )
-      );
-    }
-    const effect = await runRepositoryAction(git, msg.action, config.gitPath());
-    if (msg.action.kind === "renameRemote" || msg.action.kind === "removeRemote") {
-      const action = msg.action;
-      const hidden = repoManager.getRepos()[msg.repo]?.hiddenRemotes ?? [];
-      const state = repoManager.updateHiddenRemotes(
-        msg.repo,
-        hidden.flatMap((name) =>
-          name !== action.name ? [name] : action.kind === "renameRemote" ? [action.newName] : []
-        )
-      );
-      if (state) {
-        bridge.post({ command: "repoState", repo: msg.repo, state });
-      }
-    }
-    if (effect?.kind === "worktree") {
+  switch (effect.kind) {
+    case "worktree":
       await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(effect.path), true);
-    } else if (effect?.kind === "conflict") {
+      return;
+    case "conflict":
       await openConflict(effect.path, effect.status);
-    } else if (effect?.kind === "nestedRepository") {
-      const { path: nested } = effect;
-      const open = vscode.l10n.t("Open Its Graph");
-      void vscode.window
-        .showInformationMessage(
-          vscode.l10n.t(
-            "{0} is a separate Git repository inside this one, so its files are not changes of this repository.",
-            nested
-          ),
-          open
-        )
-        .then((choice) => {
-          if (choice === open) {
-            void vscode.commands.executeCommand("branchwise.view", {
-              rootUri: vscode.Uri.file(nested)
-            });
-          }
-        });
-    } else if (effect?.kind === "document") {
+      return;
+    case "nestedRepository":
+      explainNestedRepository(effect.path);
+      return;
+    case "document": {
       const document = await vscode.workspace.openTextDocument({
         language: "diff",
         content: effect.text
       });
       await vscode.window.showTextDocument(document, { preview: true });
-    } else if (effect?.kind === "diff") {
-      const empty = "0".repeat(40);
-      await vscode.commands.executeCommand(
-        "vscode.diff",
-        encodeDiffDocUri(msg.repo, effect.before, effect.left ?? empty),
-        encodeDiffDocUri(msg.repo, effect.after, effect.right ?? empty),
-        effect.after +
-          " (" +
-          (effect.left?.slice(0, 8) ?? "∅") +
-          " ↔ " +
-          (effect.right?.slice(0, 8) ?? "∅") +
-          ")",
-        { preview: true }
+      return;
+    }
+    case "diff":
+      await showDiff(
+        encodeDiffDocUri(repo, effect.before, effect.left ?? NO_COMMIT),
+        encodeDiffDocUri(repo, effect.after, effect.right ?? NO_COMMIT),
+        `${effect.after} (${sideLabel(effect.left)} ↔ ${sideLabel(effect.right)})`
       );
-    } else if (effect?.kind === "workingTreeDiff") {
-      await vscode.commands.executeCommand(
-        "vscode.diff",
-        encodeDiffBlobUri(msg.repo, effect.before, effect.left),
-        effect.workingPath
-          ? vscode.Uri.file(effect.workingPath)
-          : encodeDiffBlobUri(msg.repo, effect.after, effect.right),
-        effect.after +
-          " (" +
-          (effect.staged
-            ? vscode.l10n.t("Staged Changes")
-            : vscode.l10n.t("Working Tree Changes")) +
-          ")",
-        { preview: true }
+      return;
+    case "workingTreeDiff": {
+      const group = effect.staged ? text.stagedChanges() : text.workingTreeChanges();
+      await showDiff(
+        encodeDiffBlobUri(repo, effect.before, effect.left),
+        effect.workingPath === null
+          ? encodeDiffBlobUri(repo, effect.after, effect.right)
+          : vscode.Uri.file(effect.workingPath),
+        `${effect.after} (${group})`
       );
-    } else if (effect?.kind === "historicalFile") {
+      return;
+    }
+    case "historicalFile":
       await vscode.commands.executeCommand(
         "vscode.open",
-        encodeDiffDocUri(msg.repo, effect.path, effect.hash),
+        encodeDiffDocUri(repo, effect.path, effect.hash),
         { preview: true }
       );
-    } else if (effect?.kind === "restoreDiff") {
-      await vscode.commands.executeCommand(
-        "vscode.diff",
+      return;
+    case "restoreDiff":
+      // `destination` is absolute here; a file that does not exist yet compares as empty.
+      await showDiff(
         effect.exists
           ? vscode.Uri.file(effect.destination)
-          : encodeDiffDocUri(msg.repo, effect.sourcePath, "0".repeat(40)),
-        encodeDiffDocUri(msg.repo, effect.sourcePath, effect.hash),
-        effect.destination + " ↔ " + effect.hash.slice(0, 12),
-        { preview: true }
+          : encodeDiffDocUri(repo, effect.sourcePath, NO_COMMIT),
+        encodeDiffDocUri(repo, effect.sourcePath, effect.hash),
+        `${effect.destination} ↔ ${effect.hash.slice(0, 12)}`
       );
-    }
-    if (msg.action.kind === "submodule") {
-      invalidateWorkspaceScan();
-    }
-    if (effect?.kind === "restored" && effect.backup !== null) {
-      const { backup } = effect;
-      return () => void offerUndo(msg.repo, backup);
-    }
-  });
+      return;
+    default:
+      // A restore offers its undo once it has been answered; anything else opens nothing.
+      return;
+  }
+}
 
-  registerAction("addTag", (git, msg) => addTag(git, msg));
-  registerAction("deleteTag", (git, msg) => deleteTag(git, msg));
-  registerAction("pushTag", (git, msg) => pushTag(git, msg));
-  registerAction("createBranch", (git, msg) => createBranch(git, msg));
-  registerAction("deleteBranch", (git, msg) => deleteBranch(git, msg));
-  registerAction("renameBranch", (git, msg) => renameBranch(git, msg));
-  registerAction("checkoutBranch", (git, msg) => checkoutBranch(git, msg));
-  registerAction("checkoutCommit", (git, msg) => checkoutCommit(git, msg));
-  registerAction("cherrypickCommit", (git, msg) => cherrypickCommit(git, msg));
-  registerAction("revertCommit", (git, msg) => revertCommit(git, msg));
-  registerAction("resetToCommit", (git, msg) => resetToCommit(git, msg));
-  registerAction("mergeBranch", (git, msg) => mergeBranch(git, msg, config.gitPath()));
-  registerAction("mergeCommit", (git, msg) => mergeCommit(git, msg, config.gitPath()));
+/** Run the backend function behind a plain action, which takes the whole request. */
+function runPlainAction(git: SimpleGit, request: PlainActionRequest, config: Config) {
+  switch (request.command) {
+    case "addTag":
+      return addTag(git, request);
+    case "deleteTag":
+      return deleteTag(git, request);
+    case "pushTag":
+      return pushTag(git, request);
+    case "createBranch":
+      return createBranch(git, request);
+    case "deleteBranch":
+      return deleteBranch(git, request);
+    case "renameBranch":
+      return renameBranch(git, request);
+    case "checkoutBranch":
+      return checkoutBranch(git, request);
+    case "checkoutCommit":
+      return checkoutCommit(git, request);
+    case "cherrypickCommit":
+      return cherrypickCommit(git, request);
+    case "revertCommit":
+      return revertCommit(git, request);
+    case "resetToCommit":
+      return resetToCommit(git, request);
+    case "mergeBranch":
+      return mergeBranch(git, request, config.gitPath());
+    case "mergeCommit":
+      return mergeCommit(git, request, config.gitPath());
+    case "pushBranch":
+      return pushBranch(git, request);
+    case "pullBranch":
+      return pullBranch(git, request);
+    case "fetchRemote":
+      return fetchRemote(git, request);
+  }
+}
 
-  registerAction("pushBranch", (git, msg) => pushBranch(git, msg));
-  registerAction("pullBranch", (git, msg) => pullBranch(git, msg));
-  registerAction("fetchRemote", (git, msg) => fetchRemote(git, msg));
+/**
+ * Answer the graph page's `{ command }` requests: Git actions, repository and graph reads, the
+ * selected repository, its saved view state and commit diffs. One registration serves one panel.
+ * Actions are serialized per repository, and a newer graph read cancels the one it replaces.
+ */
+export function registerMessageHandlers(
+  bridge: WebviewBridge,
+  deps: { config: Config; repoManager: RepoManager }
+): { dispose: () => void; onPanelShown: () => void } {
+  // Settings are read when a request needs them, so a changed setting applies to the next one.
+  const { config, repoManager } = deps;
 
-  // --- Query handlers ---
+  /** The repository the page shows, as far as the graph reads know. */
+  let shownRepo: string | undefined;
+  const held = new Set<Hold>();
+  /** Keyed by request id; a page may send an action with the property present but undefined. */
+  const cancellableActions = new Map<string | undefined, Cancellable>();
+  const repositoryReads = new Map<string | undefined, Cancellable>();
+  /** The running read of each graph command. */
+  const graphReads = new Map<GraphQueryCommand, AbortController>();
+  let undoRequests = 0;
 
-  const queryControllers = new Map<string, { repo: string; controller: AbortController }>();
-  // Stops the action's Git processes, such as a push waiting on an unresponsive server.
-  bridge.onMessage("cancelAction", (msg) => {
-    const pending = actionControllers.get(msg.requestId);
-    if (pending?.repo === msg.repo) {
-      pending.controller.abort();
-    }
-  });
-  bridge.onMessage("cancelRepositoryQuery", (msg) => {
-    const pending = queryControllers.get(msg.requestId);
-    if (pending?.repo === msg.repo) {
-      pending.controller.abort();
-    }
-  });
-  bridge.onMessage("repositoryQuery", async (msg) => {
-    const controller = new AbortController();
-    queryControllers.set(msg.requestId, { repo: msg.repo, controller });
-    let data: QueryResult<"repositoryQuery">["data"] = null;
-    let status: string | null = null;
-    const savedState = msg.query.kind === "state" ? repoManager.getRepos()[msg.repo] : undefined;
+  /** Post to the page. A page that is gone cannot receive anything, which is not an error here. */
+  function send(message: ResponseMessage) {
+    const lost = (error: unknown) => {
+      logger.debug(`The graph page did not receive a ${message.command} message`, error);
+    };
     try {
-      data = await repositoryQuery(
-        gitClientFactory(msg.repo, config.gitPath(), controller.signal).getInstance(),
-        msg.query,
-        {
-          // The rows the picker offers, not every repository whose state was ever saved.
-          repos: msg.query.kind === "workspace" ? await workspaceRepos(msg.repo) : [],
-          binary: config.gitPath(),
-          signal: controller.signal
-        }
-      );
-    } catch (error: unknown) {
-      status = error instanceof Error ? error.message : String(error);
-    } finally {
-      queryControllers.delete(msg.requestId);
+      void Promise.resolve(bridge.post(message)).catch(lost);
+    } catch (error) {
+      lost(error);
     }
+  }
+
+  function clientFor(repo: string, signal: AbortSignal) {
+    return gitClientFactory(repo, config.gitPath(), signal).getInstance();
+  }
+
+  /**
+   * Whether an exclusive action holds `repo`: the same repository, or one that holds its whole
+   * tree above `repo`. A whole-tree action also waits for every busy repository below its own.
+   */
+  function isBlocked(repo: string, wholeTree: boolean) {
+    return [...held].some(
+      (hold) =>
+        sameRepository(hold.repo, repo) ||
+        (hold.wholeTree && isRepoWithinPath(repo, hold.repo)) ||
+        (wholeTree && isRepoWithinPath(hold.repo, repo))
+    );
+  }
+
+  function answerAction(request: ActionRequest, status: string | null) {
+    const { command, repo } = request;
+    // The echoes go with the property, even when the page left its value undefined.
+    send(
+      Object.hasOwn(request, "requestId")
+        ? { command, status, requestId: request.requestId as string, repo }
+        : { command, status }
+    );
+  }
+
+  /**
+   * Take the repository as `scope` says, run `work` with a signal the page can fire through
+   * `cancelAction`, give the repository back and answer. Never rejects for a Git failure.
+   */
+  async function runAction<T>(
+    request: ActionRequest,
+    scope: LockScope,
+    work: (signal: AbortSignal) => Promise<T>
+  ): Promise<{ status: string | null; result: T | undefined }> {
+    const { repo } = request;
+    let hold: Hold | undefined;
+    if (scope !== "none") {
+      const wholeTree = scope === "wholeTree";
+      if (isBlocked(repo, wholeTree)) {
+        const status = text.busy();
+        answerAction(request, status);
+        return { status, result: undefined };
+      }
+      hold = { repo, wholeTree };
+      held.add(hold);
+      // The action's own writes must not make the graph reload halfway through.
+      muteGitRepoWatcher(repo);
+    }
+    const controller = new AbortController();
+    const cancellable = Object.hasOwn(request, "requestId");
+    if (cancellable) {
+      cancellableActions.set(request.requestId, { repo, controller });
+    }
+    let status: string | null = null;
+    let result: T | undefined;
+    try {
+      result = await work(controller.signal);
+    } catch (error) {
+      status = controller.signal.aborted ? text.cancelled() : errorText(error);
+    } finally {
+      if (cancellable) {
+        cancellableActions.delete(request.requestId);
+      }
+      if (hold !== undefined) {
+        held.delete(hold);
+        unmuteGitRepoWatcher(repo);
+      }
+    }
+    answerAction(request, status);
+    return { status, result };
+  }
+
+  /** Save `names` as the hidden remotes of `repo`, and tell the page if the record changed. */
+  function publishHiddenRemotes(repo: string, names: string[]) {
+    const record = repoManager.updateHiddenRemotes(repo, names);
+    if (record !== undefined) {
+      send({ command: "repoState", repo, state: record });
+    }
+  }
+
+  /** A hidden remote stays hidden under its new name, and is forgotten once removed. */
+  function followRemoteChange(repo: string, action: RepositoryAction) {
+    if (action.kind !== "renameRemote" && action.kind !== "removeRemote") {
+      return;
+    }
+    const hidden = repoManager.getRepos()[repo]?.hiddenRemotes ?? [];
+    const { name } = action;
+    const newName = action.kind === "renameRemote" ? action.newName : undefined;
+    publishHiddenRemotes(
+      repo,
+      newName === undefined
+        ? hidden.filter((hiddenName) => hiddenName !== name)
+        : hidden.map((hiddenName) => (hiddenName === name ? newName : hiddenName))
+    );
+  }
+
+  async function repositoryAction(request: RepositoryActionRequest) {
+    const { repo, action } = request;
+    const { status, result: effect } = await runAction(request, scopeOf(action), async (signal) => {
+      checkUnsavedEditors(repo, action);
+      const produced = await runRepositoryAction(clientFor(repo, signal), action, config.gitPath());
+      followRemoteChange(repo, action);
+      await openEffect(repo, produced);
+      if (action.kind === "submodule") {
+        // A submodule may have appeared or gone, so the picker scans again.
+        invalidateWorkspaceScan();
+      }
+      return produced;
+    });
+    if (effect?.kind === "restored" && effect.backup !== null) {
+      offerUndo(repo, effect.backup);
+    }
+    return status;
+  }
+
+  /**
+   * Offer to put back what a restore replaced. The undo runs as a request of its own, answered
+   * to the page like any other, after which the page reloads whatever the outcome.
+   */
+  function offerUndo(repo: string, backup: RestoreBackup) {
+    const undo = text.undoRestore();
+    const offer = Promise.resolve(
+      vscode.window.showInformationMessage(text.restored(backup.path), undo)
+    ).then(async (choice) => {
+      if (choice !== undo) {
+        return;
+      }
+      undoRequests += 1;
+      const status = await repositoryAction({
+        command: "repositoryAction",
+        repo,
+        requestId: `undo-restore-${undoRequests}`,
+        action: { kind: "undoRestore", backup }
+      });
+      send({ command: "refresh" });
+      if (status !== null) {
+        detach(vscode.window.showErrorMessage(status), "Reporting the failed undo");
+      }
+    });
+    detach(offer, "Undo Restore");
+  }
+
+  /** The picker's repositories, with the one the page asks from first when the scan missed it. */
+  async function workspaceRepos(current: string) {
+    await repoManager.pruneMissing();
+    const listed = await listRepos(config.gitPath(), config.maxDepthOfRepoSearch());
+    return listed.includes(current) ? listed : [current, ...listed];
+  }
+
+  /**
+   * Drop hidden remotes that no longer exist, such as one renamed outside Branchwise. A remote
+   * that is gone from the configuration but still has remote-tracking refs stays hidden.
+   */
+  function reconcileHiddenRemotes(repo: string, state: RepositoryState, hidden: string[]) {
+    const configured = state.remotes.map((remote) => remote.name);
+    const withRefs = new Set(state.remoteBranches.map((ref) => remoteForRef(ref.name, configured)));
+    publishHiddenRemotes(
+      repo,
+      hidden.filter((name) => configured.includes(name) || withRefs.has(name))
+    );
+  }
+
+  async function onRepositoryQuery(request: Request<"repositoryQuery">) {
+    const { repo, requestId, query } = request;
+    const controller = new AbortController();
+    repositoryReads.set(requestId, { repo, controller });
+    // Compared by identity afterwards: any save meanwhile means the page changed something.
+    const savedBefore = query.kind === "state" ? repoManager.getRepos()[repo] : undefined;
+    let data: RepositoryQueryData | null;
+    let status: string | null = null;
+    try {
+      const git = clientFor(repo, controller.signal);
+      const repos = query.kind === "workspace" ? await workspaceRepos(repo) : [];
+      data = await repositoryQuery(git, query, {
+        repos,
+        binary: config.gitPath(),
+        signal: controller.signal
+      });
+    } catch (error) {
+      data = null;
+      status = errorText(error);
+    }
+    repositoryReads.delete(requestId);
     if (controller.signal.aborted) {
       return;
     }
     if (
+      query.kind === "state" &&
       data?.kind === "state" &&
-      !busyRepos.has(msg.repo) &&
-      repoManager.getRepos()[msg.repo] === savedState
+      ![...held].some((hold) => sameRepository(hold.repo, repo)) &&
+      repoManager.getRepos()[repo] === savedBefore
     ) {
-      const names = data.state.remotes.map((remote) => remote.name);
-      // Keep orphan remote groups while their tracking refs still exist. External
-      // renames are new groups: Git does not retain a reliable rename mapping.
-      const groups = new Set([
-        ...names,
-        ...data.state.remoteBranches.map((ref) => remoteForRef(ref.name, names))
-      ]);
-      const state = repoManager.updateHiddenRemotes(
-        msg.repo,
-        (savedState?.hiddenRemotes ?? []).filter((name) => groups.has(name))
-      );
-      if (state) {
-        bridge.post({ command: "repoState", repo: msg.repo, state });
-      }
+      reconcileHiddenRemotes(repo, data.state, savedBefore?.hiddenRemotes ?? []);
     }
-    bridge.post({
-      command: "repositoryQuery",
-      repo: msg.repo,
-      requestId: msg.requestId,
-      data,
-      status
-    });
-  });
-
-  bridge.onMessage("loadRemotes", async (msg) => {
-    let settings: Pick<QueryResult<"loadRemotes">, "remotes" | "upstream" | "pushRemote"> = {
-      remotes: [],
-      upstream: null,
-      pushRemote: null
-    };
-    let status: string | null = null;
-    try {
-      settings = await loadRemotes(
-        gitClientFactory(msg.repo, config.gitPath()).getInstance(),
-        msg.branchName
-      );
-    } catch (error: unknown) {
-      status = error instanceof Error ? error.message : String(error);
-    }
-    bridge.post({
-      command: "loadRemotes",
-      repo: msg.repo,
-      requestId: msg.requestId,
-      ...settings,
-      status
-    });
-  });
-
-  function registerGraphQuery<K extends GraphQueryCommand>(
-    command: K,
-    query: (
-      git: SimpleGit,
-      message: Extract<RequestMessage, { command: K }>
-    ) => Promise<QueryResult<K>>
-  ) {
-    bridge.onMessage(command, async (message) => {
-      const { repo, requestId } = message as Extract<
-        RequestMessage,
-        { command: GraphQueryCommand }
-      >;
-      const controller = new AbortController();
-      try {
-        setCurrentRepo(repo);
-        graphControllers.get(command)?.abort();
-        graphControllers.set(command, controller);
-        const data = await query(
-          gitClientFactory(repo, config.gitPath(), controller.signal).getInstance(),
-          message
-        );
-        if (!controller.signal.aborted) {
-          bridge.post({
-            command,
-            ...data,
-            repo,
-            requestId
-          } as ResponseMessage);
-        }
-      } catch (error: unknown) {
-        if (!controller.signal.aborted) {
-          bridge.post({
-            command: "graphQueryError",
-            query: command,
-            repo,
-            requestId,
-            message: error instanceof Error ? error.message : String(error)
-          });
-        }
-      } finally {
-        if (graphControllers.get(command) === controller) {
-          graphControllers.delete(command);
-        }
-      }
-    });
+    send({ command: "repositoryQuery", repo, requestId, data, status });
   }
 
-  registerGraphQuery("loadCommits", async (git, msg) => {
-    return {
-      repo: msg.repo,
-      branchName: msg.branchName,
-      visibilityKey: msg.visibilityKey,
-      ...(await loadCommits(git, {
-        branchName: msg.branchName,
-        maxCommits: msg.maxCommits,
-        hiddenRemotes: msg.hiddenRemotes ?? [],
-        showRemoteBranches: msg.showRemoteBranches,
-        hard: msg.hard,
+  async function onLoadRemotes({ repo, requestId, branchName }: Request<"loadRemotes">) {
+    let message: ResponseMessage;
+    try {
+      const git = gitClientFactory(repo, config.gitPath()).getInstance();
+      const settings = await loadRemotes(git, branchName);
+      message = { ...settings, command: "loadRemotes", repo, requestId, status: null };
+    } catch (error) {
+      message = {
+        command: "loadRemotes",
+        repo,
+        requestId,
+        remotes: [],
+        upstream: null,
+        pushRemote: null,
+        status: errorText(error)
+      };
+    }
+    send(message);
+  }
+
+  function abortGraphReads() {
+    for (const controller of graphReads.values()) {
+      controller.abort();
+    }
+    graphReads.clear();
+  }
+
+  /**
+   * Make `repo` the shown repository: stop the reads of the previous one and watch this one. A
+   * watcher that cannot start costs refreshes, not the read, so its failure is only logged.
+   */
+  function showRepo(repo: string) {
+    if (repo === shownRepo) {
+      return;
+    }
+    abortGraphReads();
+    shownRepo = repo;
+    try {
+      selectWatchedRepo(repo, config.gitPath());
+    } catch (error) {
+      logger.debug(`Unable to select repository: ${repo}`, error);
+    }
+  }
+
+  /** Run a graph read latest-wins. A read that was cancelled answers nothing at all. */
+  async function graphRead(
+    request: GraphRequest,
+    read: (git: SimpleGit) => Promise<ResponseMessage>
+  ) {
+    const { command, repo, requestId } = request;
+    showRepo(repo);
+    graphReads.get(command)?.abort();
+    const controller = new AbortController();
+    graphReads.set(command, controller);
+    let message: ResponseMessage;
+    try {
+      message = await read(clientFor(repo, controller.signal));
+    } catch (error) {
+      message = {
+        command: "graphQueryError",
+        query: command,
+        repo,
+        requestId,
+        message: errorText(error)
+      };
+    } finally {
+      if (graphReads.get(command) === controller) {
+        graphReads.delete(command);
+      }
+    }
+    if (!controller.signal.aborted) {
+      send(message);
+    }
+  }
+
+  async function onViewDiff(request: Request<"viewDiff">) {
+    const { repo, commitHash, oldFilePath, newFilePath, type } = request;
+    const short = abbrevCommit(commitHash);
+    const name = newFilePath.slice(newFilePath.lastIndexOf("/") + 1);
+    const change =
+      type === "A"
+        ? text.addedIn(short)
+        : type === "D"
+          ? text.deletedIn(short)
+          : `${short}^ ↔ ${short}`;
+    let success = true;
+    try {
+      // The left side is the old path at the first parent, so an added file compares with nothing.
+      await showDiff(
+        encodeDiffDocUri(repo, oldFilePath, `${commitHash}^`),
+        encodeDiffDocUri(repo, newFilePath, commitHash),
+        `${name} (${change})`
+      );
+    } catch (error) {
+      logger.error(`Unable to open the diff of ${newFilePath} at ${short}`, error);
+      success = false;
+    }
+    send({ command: "viewDiff", success });
+  }
+
+  for (const command of PLAIN_ACTIONS) {
+    bridge.onMessage(command, async (request) => {
+      await runAction(request, "repository", (signal) =>
+        runPlainAction(clientFor(request.repo, signal), request, config)
+      );
+    });
+  }
+  bridge.onMessage("repositoryAction", async (request) => {
+    await repositoryAction(request);
+  });
+
+  bridge.onMessage("cancelAction", ({ repo, requestId }) => {
+    cancel(cancellableActions, repo, requestId);
+  });
+  bridge.onMessage("cancelRepositoryQuery", ({ repo, requestId }) => {
+    cancel(repositoryReads, repo, requestId);
+  });
+
+  bridge.onMessage("repositoryQuery", onRepositoryQuery);
+  bridge.onMessage("loadRemotes", onLoadRemotes);
+
+  bridge.onMessage("loadCommits", (request) =>
+    graphRead(request, async (git) => {
+      const result = await loadCommits(git, {
+        branchName: request.branchName,
+        maxCommits: request.maxCommits,
+        hiddenRemotes: request.hiddenRemotes ?? [],
+        showRemoteBranches: request.showRemoteBranches,
+        hard: request.hard,
         dateType: config.dateType(),
         showUncommittedChanges: config.showUncommittedChanges()
-      }))
-    };
-  });
-
-  registerGraphQuery("loadBranches", async (git, msg) => {
-    return {
-      visibilityKey: msg.visibilityKey,
-      ...(await loadBranches(git, {
-        showRemoteBranches: msg.showRemoteBranches,
-        hiddenRemotes: msg.hiddenRemotes ?? [],
-        hard: msg.hard,
-        repo: msg.repo,
+      });
+      return {
+        ...result,
+        command: "loadCommits",
+        repo: request.repo,
+        requestId: request.requestId,
+        branchName: request.branchName,
+        visibilityKey: request.visibilityKey
+      };
+    })
+  );
+  bridge.onMessage("loadBranches", (request) =>
+    graphRead(request, async (git) => {
+      const result = await loadBranches(git, {
+        showRemoteBranches: request.showRemoteBranches,
+        hiddenRemotes: request.hiddenRemotes ?? [],
+        hard: request.hard,
+        repo: request.repo,
         gitPath: config.gitPath()
-      }))
-    };
-  });
-
-  registerGraphQuery("commitDetails", (git, msg) =>
-    commitDetails(git, { commitHash: msg.commitHash, dateType: config.dateType() })
+      });
+      return {
+        ...result,
+        command: "loadBranches",
+        visibilityKey: request.visibilityKey,
+        repo: request.repo,
+        requestId: request.requestId
+      };
+    })
+  );
+  bridge.onMessage("commitDetails", (request) =>
+    graphRead(request, async (git) => {
+      const result = await commitDetails(git, {
+        commitHash: request.commitHash,
+        dateType: config.dateType()
+      });
+      return {
+        ...result,
+        command: "commitDetails",
+        repo: request.repo,
+        requestId: request.requestId
+      };
+    })
   );
 
-  // --- Infrastructure handlers ---
-
-  bridge.onMessage("selectRepo", (msg) => {
-    bridge.post({
+  bridge.onMessage("selectRepo", ({ repo }) => {
+    send({
       command: "repoState",
-      repo: msg.repo,
-      state: repoManager.getRepos()[msg.repo] ?? { columnWidths: null }
+      repo,
+      state: repoManager.getRepos()[repo] ?? { columnWidths: null }
     });
-    // Graph queries report failures to the view, including a repository that has
-    // disappeared. Selecting it alone must not leave an unhandled rejection.
-    try {
-      setCurrentRepo(msg.repo);
-    } catch (error: unknown) {
-      logger.debug(`Unable to select repository: ${msg.repo}`, error);
-    }
+    showRepo(repo);
   });
-
-  bridge.onMessage("saveRepoState", (msg) => {
-    repoManager.setRepoState(msg.repo, {
+  bridge.onMessage("saveRepoState", ({ repo, state }) => {
+    // Fields the page sends replace the saved ones; the others stay.
+    repoManager.setRepoState(repo, {
       columnWidths: null,
-      ...repoManager.getRepos()[msg.repo],
-      ...msg.state
+      ...repoManager.getRepos()[repo],
+      ...state
     });
   });
-
-  bridge.onMessage("viewDiff", async (msg) => {
-    bridge.post({
-      command: "viewDiff",
-      success: await viewDiff(msg.repo, msg.commitHash, msg.oldFilePath, msg.newFilePath, msg.type)
-    });
-  });
+  bridge.onMessage("viewDiff", onViewDiff);
 
   return {
-    dispose: () => {
-      cancelGraphQueries();
-      for (const { controller } of queryControllers.values()) {
+    // Actions, their Undo offers and remote reads are left to finish: stopping a push or a
+    // rebase halfway would do more harm than an answer nobody reads.
+    dispose() {
+      abortGraphReads();
+      for (const { controller } of repositoryReads.values()) {
         controller.abort();
       }
-      queryControllers.clear();
+      repositoryReads.clear();
     },
-    onPanelShown: () => {
-      currentRepo = null;
+    onPanelShown() {
+      shownRepo = undefined;
     }
   };
 }
