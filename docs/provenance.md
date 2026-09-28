@@ -86,3 +86,7 @@ the code came from and how it was replaced.
 | `src/webview/components/ui/ContextMenu.tsx`        | [context-menu.md](clean-room/context-menu.md)     | `16805dd`    |
 | `src/webview/components/ui/Dropdown.tsx`           | [dropdown.md](clean-room/dropdown.md)             | `9cd9e07`    |
 | `src/webview/components/ui/Dialog.tsx`             | [dialog.md](clean-room/dialog.md)                 | `2871b92`    |
+| `src/webview/graph/strokes.ts`                     | [strokes.md](clean-room/strokes.md)               | `871abc3`    |
+| `src/webview/components/commit/FileTree.tsx`       | [file-tree-view.md](clean-room/file-tree-view.md) | `6ee2bfb`    |
+| `src/webview/lib/actions.ts`                       | [actions.md](clean-room/actions.md)               | `b3f9f2f`    |
+| `src/webview/graph/layout.ts`                      | [layout.md](clean-room/layout.md)                 | `f8d9359`    |

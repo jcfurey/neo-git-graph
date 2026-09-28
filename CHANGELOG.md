@@ -23,6 +23,9 @@ Branchwise was named (neo) Git Graph, `jcfurey.neo-git-graph`, through its 0.9.6
 
 ### Fixed
 
+- Draw and lay out long histories much faster: a graph of 50,000 commits takes milliseconds instead of seconds, and one with thousands of branches no longer slows down out of proportion. The line from Uncommitted Changes to the checked-out commit stays grey all the way down.
+- Open a file's diff once on a double-click in the commit details, show renamed paths in full in their tooltip even when they contain `$`, render folders nested thousands deep, toggle folders in a large commit quickly, and mark binary files as unavailable to assistive technology.
+- Close an open context menu when the repository changes, and do nothing when showing or hiding a remote that is already in that state, when loading more commits with no branch selected, or when opening commit details with no repository.
 - Offer only what applies on a remote's default-branch label, such as `origin/HEAD`: no Checkout, Delete Remote Branch or Focus entry, and double-clicking it does nothing. Renaming a branch to its own name sends nothing.
 - Keep context menus inside the window near any edge, close them with Tab, and make ArrowUp from nothing go to the last item. Space never scrolls the page behind an open menu, a menu opened again starts without a highlight, and no divider appears at a menu's edge or twice in a row.
 - A dropdown disabled while open, such as the branch list during a refresh, stays closed when it is enabled again. Its panel is placed again whenever its options change, arrow keys on its button no longer close it, closing it with its button keeps focus there, pointing at an option no longer scrolls the list, and its filter is named after the dropdown.
