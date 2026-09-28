@@ -15,6 +15,12 @@ import {
 
 import { makeRepo } from "@tests/backend/helpers";
 
+/**
+ * A file name that needs escaping in a URI. Git for Windows refuses `?` and control characters in
+ * index paths, since NTFS cannot store them, so Windows gets other awkward characters.
+ */
+const ODD_NAME = process.platform === "win32" ? "odd #%&[] {x}.txt" : "odd #?\tname.txt";
+
 vi.mock("vscode", () => ({
   Uri: {
     from: (parts: { scheme: string; path: string; query: string }) => ({
@@ -86,7 +92,7 @@ beforeAll(() => {
     "empty.txt": "",
     "conv.txt": "raw text\n",
     "x.eol": "e1\ne2\n",
-    "odd #?\tname.txt": "odd",
+    [ODD_NAME]: "odd",
     link: { link: "dir/a.txt" }
   });
   // Both drivers would shout; `git show` must use neither.
@@ -138,7 +144,7 @@ describe("files at a commit", () => {
     ["empty.txt", ""],
     ["conv.txt", "raw text\n"],
     ["x.eol", "e1\ne2\n"],
-    ["odd #?\tname.txt", "odd"],
+    [ODD_NAME, "odd"],
     ["link", "dir/a.txt"],
     ["dir/b.txt", "B"]
   ])("shows %j exactly as stored", async (file, text) => {
