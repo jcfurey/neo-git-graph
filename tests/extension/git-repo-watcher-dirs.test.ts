@@ -89,7 +89,8 @@ let wrapper: string;
 let gitCalls: string;
 
 beforeAll(() => {
-  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "bw-repo-watch-")));
+  // The watcher resolves paths as the system does, which on Windows expands short folder names.
+  root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "bw-repo-watch-")));
   repos.main = createRepo(path.join(root, "main"));
   fs.mkdirSync(path.join(repos.main, "sub"));
   repos.linked = path.join(root, "linked");
@@ -204,7 +205,7 @@ describe("the Git directory lookup", () => {
   });
 });
 
-const real = (file: string) => fs.realpathSync(file);
+const real = (file: string) => fs.realpathSync.native(file);
 
 describe("watched directories", () => {
   it("watches each directory recursively, for every kind of event", async () => {
@@ -284,7 +285,7 @@ describe("which files count", () => {
     selectWatchedRepo(repos.main, "git");
     await lookupDone();
     vi.useFakeTimers();
-    const gitDir = fs.realpathSync(path.join(repos.main, ".git"));
+    const gitDir = fs.realpathSync.native(path.join(repos.main, ".git"));
 
     expectCounted(
       repos.main,
@@ -361,8 +362,8 @@ describe("which files count", () => {
     selectWatchedRepo(repos.linked, "git");
     await lookupDone();
     vi.useFakeTimers();
-    const ownDir = fs.realpathSync(path.join(repos.main, ".git", "worktrees", "linked"));
-    const commonDir = fs.realpathSync(path.join(repos.main, ".git"));
+    const ownDir = fs.realpathSync.native(path.join(repos.main, ".git", "worktrees", "linked"));
+    const commonDir = fs.realpathSync.native(path.join(repos.main, ".git"));
 
     expectCounted(
       ownDir,
