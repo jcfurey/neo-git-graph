@@ -168,8 +168,10 @@ export class DiffDocProvider implements vscode.TextDocumentContentProvider {
     if (revision === undefined || repo === undefined || !isAbsolute(repo) || !this.knows(repo)) {
       return "";
     }
-    // `--end-of-options` keeps even a path that looks like an option inside the revision.
-    const output = this.forRepo(repo).show(["--end-of-options", revision]);
+    // `--end-of-options` keeps even a path that looks like an option inside the revision. The
+    // final `--` stops Git from taking a revision it cannot resolve as a path to a file that
+    // exists, and showing HEAD instead; on Windows `<id>:dir/../f` names the file `f`.
+    const output = this.forRepo(repo).show(["--end-of-options", revision, "--"]);
     const run: Promise<string> = Promise.resolve(output).then(
       (text) => this.finish(key, run, text),
       () => this.finish(key, run, undefined)

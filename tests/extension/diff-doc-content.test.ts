@@ -167,6 +167,21 @@ describe("files at a commit", () => {
     expect(await fileAt(file, commit())).toBe("");
   });
 
+  // Git takes a revision it cannot resolve for a path when a file of that name exists, and then
+  // shows HEAD. Windows cannot name a file with `:`; there `dir/../f` above reaches `f` instead.
+  test.skipIf(process.platform === "win32")(
+    "shows an empty document when the revision also names a file in the working tree",
+    async () => {
+      const decoy = path.join(repo, `${second}:nope.txt`);
+      fs.writeFileSync(decoy, "decoy");
+      try {
+        expect(await fileAt("nope.txt", second)).toBe("");
+      } finally {
+        fs.rmSync(decoy);
+      }
+    }
+  );
+
   test("resolves ./ from the repository root, and lists a folder", async () => {
     expect(await fileAt("./f", second)).toBe("x");
     expect(await fileAt("dir", second)).toBe(`tree ${second}:dir\n\na.txt\nb.txt\n`);

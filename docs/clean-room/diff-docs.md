@@ -196,7 +196,7 @@ It decides in this order. The first step that applies determines the result.
 5. **Git client.** It calls `forRepo(repo)` with the decoded, un-normalized string.
    - If that throws, the result is `""`, returned directly and **not** cached. The next request calls `forRepo` again.
    - With the product factory this happens, for example, when the folder does not exist.
-6. **Git.** It calls the client's `show` with `["--end-of-options", <revision>]` (§3.7) and returns a **promise**.
+6. **Git.** It calls the client's `show` with `["--end-of-options", <revision>, "--"]` (§3.7) and returns a **promise**.
    - The promise resolves with Git's standard output (§3.7).
    - If `show` rejects, for any reason, the promise resolves with `""`. It never rejects.
    - In both cases the resolved string is cached under `uri.toString()` before the promise resolves.
@@ -221,12 +221,12 @@ The revision passed to Git is one of these:
 
 `<filePath>` is `uri.path` exactly as decoded, without validation. It is always inside a single argument that starts with a validated object ID and comes after `--end-of-options`, so nothing in the path can become a Git option.
 
-The module calls the client's `show(["--end-of-options", revision])`. With the product client (`createGit` or `gitClientFactory` from `@/backend/gitClient`), the observed process has these properties:
+The module calls the client's `show(["--end-of-options", revision, "--"])`. With the product client (`createGit` or `gitClientFactory` from `@/backend/gitClient`), the observed process has these properties:
 
 - It runs in the repository folder, with this argument vector:
 
   ```
-  <git path> --no-optional-locks -c log.showSignature=false -c status.showUntrackedFiles=all -c color.ui=never -c color.branch=never -c color.diff=never -c color.status=never -c color.showBranch=never -c color.grep=never show --end-of-options <revision>
+  <git path> --no-optional-locks -c log.showSignature=false -c status.showUntrackedFiles=all -c color.ui=never -c color.branch=never -c color.diff=never -c color.status=never -c color.showBranch=never -c color.grep=never show --end-of-options <revision> --
   ```
 
   Everything before `show` comes from the client, not from this module.
@@ -514,3 +514,4 @@ These decisions are the maintainer's answers to the questions above. Where they 
 - **Q8.** Nothing escapes to VS Code: an exception from `isSavedRepo`, a synchronous throw from `show`, or any other failure while serving a URI resolves to `""` (and, per Q1, is not cached).
 - **Q13.** `dispose()` is idempotent: the close listener and the event emitter are released once, however often it is called. After disposal, every request resolves to `""` without running Git or caching anything.
 - **Q14.** Concurrent requests for the same URI share one Git run: while a request is in flight, a second request for the same `uri.toString()` receives the same result.
+- **After review: the revision is followed by `--`.** Without it, Git takes a revision it cannot resolve as a path when a file of that name exists in the working tree, and `git show` then shows HEAD. On Windows the path `<id>:dir/../f` resolves to the file `f`, so a path with `..` showed HEAD's commit instead of failing. The `--` makes Git treat the argument only as a revision, so each failure listed in §3.7 gives `""` on every platform.

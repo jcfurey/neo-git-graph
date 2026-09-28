@@ -108,7 +108,7 @@ describe("constructing", () => {
 });
 
 describe("asking Git", () => {
-  test("passes the revision after --end-of-options, and only the ID for objects", async () => {
+  test("passes the revision between --end-of-options and --, and only the ID for objects", async () => {
     const folder = freshFolder();
     const { provider, show } = setup(undefined, () => true);
     const repo = encodeURIComponent(folder);
@@ -120,8 +120,8 @@ describe("asking Git", () => {
       handMade("object", `commit=${id}&repo=${repo}&blob=1`, "a b/c.txt")
     );
     expect(show.mock.calls).toEqual([
-      [["--end-of-options", `${id}^:a b/c.txt`]],
-      [["--end-of-options", id]]
+      [["--end-of-options", `${id}^:a b/c.txt`, "--"]],
+      [["--end-of-options", id, "--"]]
     ]);
   });
 
@@ -129,7 +129,11 @@ describe("asking Git", () => {
     const folder = freshFolder();
     const { provider, show } = setup();
     await provider.provideTextDocumentContent(encodeDiffDocUri(folder, "--output=/tmp/x", id));
-    expect(show).toHaveBeenCalledExactlyOnceWith(["--end-of-options", `${id}:--output=/tmp/x`]);
+    expect(show).toHaveBeenCalledExactlyOnceWith([
+      "--end-of-options",
+      `${id}:--output=/tmp/x`,
+      "--"
+    ]);
   });
 
   test.each([
@@ -162,7 +166,7 @@ describe("asking Git", () => {
 
     const object = handMade("object", `commit=${id}&repo=${encodeURIComponent(folder)}&blob=1`, "");
     expect(await provider.provideTextDocumentContent(object)).toBe("text");
-    expect(show).toHaveBeenCalledExactlyOnceWith(["--end-of-options", id]);
+    expect(show).toHaveBeenCalledExactlyOnceWith(["--end-of-options", id, "--"]);
   });
 
   test("accepts SHA-256 IDs", async () => {
@@ -171,7 +175,7 @@ describe("asking Git", () => {
     expect(
       await provider.provideTextDocumentContent(encodeDiffDocUri(freshFolder(), "f", long))
     ).toBe("text");
-    expect(show).toHaveBeenCalledExactlyOnceWith(["--end-of-options", `${long}:f`]);
+    expect(show).toHaveBeenCalledExactlyOnceWith(["--end-of-options", `${long}:f`, "--"]);
   });
 });
 
