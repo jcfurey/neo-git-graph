@@ -9,10 +9,12 @@ export function getRepositoryLocalizedStrings() {
     removeRemote: vscode.l10n.t("Remove Remote"),
     fetchUrls: vscode.l10n.t("Fetch URLs (one per line)"),
     pushUrls: vscode.l10n.t("Push URLs (blank uses fetch URLs)"),
+    remotePushUrls: vscode.l10n.t("Push URLs"),
     defaultPushRemote: vscode.l10n.t("Default Push Remote"),
     defaultSetting: vscode.l10n.t("Use Git default"),
     none: vscode.l10n.t("None"),
     save: vscode.l10n.t("Save"),
+    remoteName: vscode.l10n.t("Remote name"),
     remoteUrl: vscode.l10n.t("URL"),
     fetchAfterAdding: vscode.l10n.t("Fetch after adding"),
     removeRemoteConfirm: vscode.l10n.t(
