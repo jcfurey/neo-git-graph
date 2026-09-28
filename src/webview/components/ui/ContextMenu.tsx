@@ -1,134 +1,209 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import { closeContextMenu } from "@/webview/lib/actions";
 import { contextMenu } from "@/webview/lib/stores";
 import type { ContextMenuEntry, ContextMenuState } from "@/webview/types";
 
-/** Pull the menu under the pointer, so the first item is already hovered. */
-const POINTER_OVERLAP = 2;
+type Item = NonNullable<ContextMenuEntry>;
 
-function run(entry: NonNullable<ContextMenuEntry>) {
-  closeContextMenu();
-  entry.onClick();
+/** A row of the menu: an item with its position among the items, or `null` for a separator. */
+type Row = { item: Item; index: number } | null;
+
+/** How far inside the menu's corner the anchor lies, so the pointer rests on the menu's frame. */
+const ANCHOR_INSET = 2;
+
+const MENU_CLASS = [
+  "fixed z-20 w-max max-w-[calc(100vw-1rem)] max-h-[calc(100vh-1rem)] overflow-auto py-1",
+  "rounded-md border border-line bg-menu text-menu-fg shadow-md outline-none"
+].join(" ");
+const ITEM_CLASS = "cursor-pointer px-5 py-1.5 break-words";
+const SEPARATOR_CLASS = "mx-2.5 my-1 border-t border-line";
+
+/**
+ * Where a menu `size` long starts on one axis of a window `limit` long. It opens after the
+ * anchor where it fits, before it otherwise, and then moves just enough to stay inside the window.
+ */
+function place(anchor: number, size: number, limit: number) {
+  const start = anchor + size < limit ? anchor - ANCHOR_INSET : anchor + ANCHOR_INSET - size;
+  return Math.max(0, Math.min(start, limit - size));
 }
 
-/** Pairs each entry with its position among the clickable items. Dividers get -1. */
-function numberItems(entries: ContextMenuState["entries"]) {
-  let item = -1;
-  const rows = entries.map((entry) => {
+/**
+ * The rows to draw. Separators at either end are dropped and a run of them is drawn as one, so a
+ * menu built from optional groups never shows a stray line.
+ */
+function rowsOf(entries: Array<ContextMenuEntry>) {
+  const items: Array<Item> = [];
+  const rows: Array<Row> = [];
+  for (const entry of entries) {
     if (entry === null) {
-      return { entry, item: -1 };
+      if (rows.length > 0 && rows.at(-1) !== null) {
+        rows.push(null);
+      }
+      continue;
     }
-    item += 1;
-    return { entry, item };
-  });
-
-  return { rows, count: item + 1 };
+    rows.push({ item: entry, index: items.length });
+    items.push(entry);
+  }
+  if (rows.at(-1) === null) {
+    rows.pop();
+  }
+  return { items, rows };
 }
 
-function Menu({ state }: { state: ContextMenuState }) {
-  const ref = useRef<HTMLUListElement>(null);
+/**
+ * Scroll the menu by the least amount that shows `item` whole. Only the menu moves: a scroll of
+ * anything around it would close it.
+ */
+function reveal(menu: HTMLElement, item: HTMLElement) {
+  const top = menu.getBoundingClientRect().top + menu.clientTop;
+  const bottom = top + menu.clientHeight;
+  const box = item.getBoundingClientRect();
+  if (box.top < top) {
+    menu.scrollTop -= top - box.top;
+  } else if (box.bottom > bottom) {
+    menu.scrollTop += box.bottom - bottom;
+  }
+}
+
+/**
+ * Run an item's action once the menu has closed, so an action that opens a dialog or another menu
+ * takes over from this one and keeps the control to return focus to.
+ */
+function choose(item: Item) {
+  closeContextMenu();
+  item.onClick();
+}
+
+/** A number per menu state shown. It tells one menu from the next and keeps item ids unique. */
+const serials = new WeakMap<ContextMenuState, number>();
+let lastSerial = 0;
+
+function serialOf(state: ContextMenuState) {
+  let serial = serials.get(state);
+  if (serial === undefined) {
+    serial = ++lastSerial;
+    serials.set(state, serial);
+  }
+  return serial;
+}
+
+function Menu({ state, serial }: { state: ContextMenuState; serial: number }) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  // A menu shows one state for its whole life; a new state mounts a new menu.
+  const [{ items, rows }] = useState(() => rowsOf(state.entries));
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
-  const [active, setActive] = useState(-1);
+  const [active, setActive] = useState<number | null>(null);
+  // Handlers read the highlight here, as events may follow each other before a render.
+  const activeRef = useRef<number | null>(null);
 
-  const id = useId();
-  const { rows, count } = numberItems(state.entries);
+  const itemId = (index: number) => `context-menu-${serial}-${index}`;
 
+  // Measure and place the menu before the browser paints it, then take the keyboard.
   useLayoutEffect(() => {
-    const menu = ref.current;
+    const menu = menuRef.current;
     if (menu === null) {
       return;
     }
-
     const { width, height } = menu.getBoundingClientRect();
     setPosition({
-      left: Math.max(
-        0,
-        state.x + width < window.innerWidth
-          ? state.x - POINTER_OVERLAP
-          : state.x - width + POINTER_OVERLAP
-      ),
-      top: Math.max(
-        0,
-        state.y + height < window.innerHeight
-          ? state.y - POINTER_OVERLAP
-          : state.y - height + POINTER_OVERLAP
-      )
+      left: place(state.x, width, window.innerWidth),
+      top: place(state.y, height, window.innerHeight)
     });
-    menu.focus();
-  }, [state]);
+    menu.focus({ preventScroll: true });
+  }, []);
 
-  useEffect(() => {
-    const dismissOutside = (event: Event) => {
-      if (!ref.current?.contains(event.target as Node)) {
+  // Anything the user does elsewhere dismisses the menu. Scroll events do not bubble, and a press
+  // may stop its own propagation, so both are seen on the way down.
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    if (menu === null) {
+      return;
+    }
+    const onOutside = (event: Event) => {
+      if (!(event.target instanceof Node && menu.contains(event.target))) {
         closeContextMenu();
       }
     };
-    const dismiss = () => closeContextMenu();
-    const dismissScroll = (event: Event) => {
-      if (!ref.current?.contains(event.target as Node)) {
-        dismiss();
-      }
-    };
+    const onWindow = () => closeContextMenu();
 
-    document.addEventListener("pointerdown", dismissOutside, true);
-    document.addEventListener("contextmenu", dismissOutside, true);
-    window.addEventListener("scroll", dismissScroll, true);
-    window.addEventListener("resize", dismiss);
-    window.addEventListener("blur", dismiss);
-
+    document.addEventListener("pointerdown", onOutside, true);
+    document.addEventListener("contextmenu", onOutside, true);
+    window.addEventListener("scroll", onOutside, true);
+    window.addEventListener("resize", onWindow);
+    window.addEventListener("blur", onWindow);
     return () => {
-      document.removeEventListener("pointerdown", dismissOutside, true);
-      document.removeEventListener("contextmenu", dismissOutside, true);
-      window.removeEventListener("scroll", dismissScroll, true);
-      window.removeEventListener("resize", dismiss);
-      window.removeEventListener("blur", dismiss);
+      document.removeEventListener("pointerdown", onOutside, true);
+      document.removeEventListener("contextmenu", onOutside, true);
+      window.removeEventListener("scroll", onOutside, true);
+      window.removeEventListener("resize", onWindow);
+      window.removeEventListener("blur", onWindow);
     };
   }, []);
 
   useLayoutEffect(() => {
-    if (active >= 0) {
-      document.getElementById(`${id}-item-${active}`)?.scrollIntoView({ block: "nearest" });
+    const menu = menuRef.current;
+    if (menu === null || active === null) {
+      return;
     }
-  }, [active, id]);
+    const item = menu.querySelectorAll<HTMLElement>('[role="menuitem"]')[active];
+    if (item !== undefined) {
+      reveal(menu, item);
+    }
+  }, [active]);
 
-  function move(step: number) {
-    setActive((current) => (current + step + count) % count);
+  /** Highlight the item at `index`. A menu without items keeps its highlight empty. */
+  function highlight(index: number) {
+    if (index < 0 || index >= items.length) {
+      return;
+    }
+    activeRef.current = index;
+    setActive(index);
+  }
+
+  /** A held key repeats its keydown. Only a fresh Enter or Space chooses the highlighted item. */
+  function activate(event: KeyboardEvent) {
+    if (event.repeat) {
+      event.preventDefault();
+      return;
+    }
+    const item = activeRef.current === null ? undefined : items[activeRef.current];
+    if (item !== undefined) {
+      event.preventDefault();
+      choose(item);
+    }
   }
 
   function onKeyDown(event: KeyboardEvent) {
+    const current = activeRef.current;
+    const last = items.length - 1;
     switch (event.key) {
       case "ArrowDown":
         event.preventDefault();
-        move(1);
+        highlight(current === null || current === last ? 0 : current + 1);
         break;
       case "ArrowUp":
         event.preventDefault();
-        move(-1);
+        highlight(current === null || current === 0 ? last : current - 1);
         break;
       case "Home":
         event.preventDefault();
-        setActive(0);
+        highlight(0);
         break;
       case "End":
         event.preventDefault();
-        setActive(count - 1);
+        highlight(last);
+        break;
+      case " ":
+        // Space would otherwise scroll the page behind the menu, and that scroll closes it.
+        event.preventDefault();
+        activate(event);
         break;
       case "Enter":
-      case " ": {
-        // A key held down on the menu's button would otherwise run the item it lands on.
-        if (event.repeat) {
-          event.preventDefault();
-          break;
-        }
-        const entry = rows.find((row) => row.item === active)?.entry;
-        if (entry !== undefined && entry !== null) {
-          event.preventDefault();
-          run(entry);
-        }
+        activate(event);
         break;
-      }
       case "Escape":
+      case "Tab":
         event.preventDefault();
         closeContextMenu();
         break;
@@ -136,47 +211,51 @@ function Menu({ state }: { state: ContextMenuState }) {
   }
 
   return (
-    <ul
-      ref={ref}
+    <div
+      ref={menuRef}
       role="menu"
       tabIndex={-1}
-      aria-activedescendant={active === -1 ? undefined : `${id}-item-${active}`}
-      class="fixed z-20 max-h-[calc(100vh-1rem)] w-max max-w-[calc(100vw-1rem)] overflow-auto rounded-md border border-line bg-menu py-1 text-menu-fg shadow-md outline-none"
+      aria-activedescendant={active === null ? undefined : itemId(active)}
+      class={MENU_CLASS}
+      // Until it is placed, the menu is measured where it cannot be seen.
       style={
         position === null
-          ? "opacity: 0; left: 0; top: 0"
-          : `left: ${position.left}px; top: ${position.top}px`
+          ? { left: "0px", top: "0px", opacity: 0 }
+          : { left: `${position.left}px`, top: `${position.top}px` }
       }
       onKeyDown={onKeyDown}
+      // The host's own menu would open on top of this one.
       onContextMenu={(event) => event.preventDefault()}
     >
-      {rows.map(({ entry, item }, index) =>
-        entry === null ? (
-          <li key={`divider-${index}`} role="separator" class="mx-2.5 my-1 border-t border-line" />
+      {rows.map((row, order) =>
+        row === null ? (
+          <div key={order} role="separator" class={SEPARATOR_CLASS} />
         ) : (
-          <li
-            key={entry.title}
-            id={`${id}-item-${item}`}
+          <div
+            key={order}
+            id={itemId(row.index)}
             role="menuitem"
-            class={`cursor-pointer break-words px-5 py-1.5 ${
-              item === active ? "bg-menu-active text-menu-active-fg" : ""
-            }`}
-            onPointerMove={() => setActive(item)}
-            onClick={() => run(entry)}
+            class={
+              row.index === active ? `${ITEM_CLASS} bg-menu-active text-menu-active-fg` : ITEM_CLASS
+            }
+            onPointerMove={() => highlight(row.index)}
+            onClick={() => choose(row.item)}
           >
-            {entry.title}
-          </li>
+            {row.item.title}
+          </div>
         )
       )}
-    </ul>
+    </div>
   );
 }
 
+/** The open context menu, if any. Callers open one by setting the store through the actions. */
 export function ContextMenu() {
   const state = contextMenu.value;
   if (state === null) {
     return null;
   }
 
-  return <Menu key={`${state.source}-${state.x}-${state.y}`} state={state} />;
+  const serial = serialOf(state);
+  return <Menu key={serial} state={state} serial={serial} />;
 }
