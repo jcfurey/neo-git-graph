@@ -167,3 +167,8 @@ the code came from and how it was replaced.
 | `src/webview/graph/palette.ts`                        | [shared-types.md](clean-room/shared-types.md)             | `1d982f3`    |
 | `src/webview/utils/format.ts`                         | [shared-types.md](clean-room/shared-types.md)             | `1d982f3`    |
 | `src/webview/utils/ref.ts`                            | [shared-types.md](clean-room/shared-types.md)             | `1d982f3`    |
+| `src/old-extension/diffDocProvider.ts`                | [diff-docs.md](clean-room/diff-docs.md)                   | `7645b5c`    |
+| `src/old-extension/messageHandler.ts`                 | [legacy-host.md](clean-room/legacy-host.md)               | `727d4a0`    |
+| `src/old-extension/webviewBridge.ts`                  | [legacy-host.md](clean-room/legacy-host.md)               | `727d4a0`    |
+| `src/old-extension/repoManager.ts`                    | [legacy-host.md](clean-room/legacy-host.md)               | `727d4a0`    |
+| `src/old-extension/extensionState.ts`                 | [legacy-host.md](clean-room/legacy-host.md)               | `727d4a0`    |
