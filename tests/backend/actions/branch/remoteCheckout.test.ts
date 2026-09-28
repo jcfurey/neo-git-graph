@@ -125,7 +125,10 @@ describe("checking out a remote branch with a fetch", () => {
     run(origin, "push", "-q", longRemote, "main");
     run(local, "remote", "add", "up", shortRemote);
     run(local, "config", "remote.up.fetch", "+refs/heads/*:refs/remotes/up-only/*");
-    run(local, "remote", "add", "up/stream", longRemote);
+    // Git 2.55 and later refuse to add a remote named inside another one, but repositories
+    // that have one still work, so write the configuration `remote add` would have written.
+    run(local, "config", "remote.up/stream.url", longRemote);
+    run(local, "config", "remote.up/stream.fetch", "+refs/heads/*:refs/remotes/up/stream/*");
 
     await checkoutBranch(createGit(local, "git"), {
       branchName: "y",

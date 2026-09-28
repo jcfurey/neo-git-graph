@@ -112,7 +112,10 @@ describe("getSubmodulePaths", () => {
 
   it("is empty when any initialized submodule is broken", async () => {
     const { parent } = superproject();
-    fs.writeFileSync(path.join(parent, "zz", ".git"), "gitdir: /nonexistent/modules/zz\n");
+    const link = path.join(parent, "zz", ".git");
+    // Git for Windows hides this file, and Windows refuses to overwrite a hidden file.
+    fs.rmSync(link);
+    fs.writeFileSync(link, "gitdir: /nonexistent/modules/zz\n");
     expect(await getSubmodulePaths(parent, "git")).toEqual([]);
   });
 });

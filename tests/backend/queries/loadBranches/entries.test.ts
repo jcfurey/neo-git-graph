@@ -106,7 +106,13 @@ describe("the head", () => {
 describe("remote-tracking branches", () => {
   it("hides a remote without hiding a configured remote named below it", async () => {
     git(["remote", "add", "team", "."], repo());
-    git(["remote", "add", "team/upstream", "."], repo());
+    // Git 2.55 and later refuse to add a remote named inside another one, but repositories
+    // that have one still work, so write the configuration `remote add` would have written.
+    git(["config", "remote.team/upstream.url", "."], repo());
+    git(
+      ["config", "remote.team/upstream.fetch", "+refs/heads/*:refs/remotes/team/upstream/*"],
+      repo()
+    );
     trackRefs("team/topic", "team/upstream/topic");
 
     const hideTeam = await branchList({ showRemoteBranches: true, hiddenRemotes: ["team"] });
