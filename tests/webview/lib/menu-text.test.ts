@@ -33,15 +33,17 @@ async function englishStrings() {
 let menus: typeof import("@/webview/lib/menus");
 let stores: typeof import("@/webview/lib/stores");
 
+type Refusal = RpcResponse<"clipboard.copy">;
+
 const hash = "0123456789abcdef0123456789abcdef01234567";
 const commit: GitCommitNode = {
   hash,
   parentHashes: ["a".repeat(40)],
-  author: "Author",
-  email: "author@example.com",
-  date: 0,
-  message: "Message",
-  refs: []
+  refs: [],
+  author: "Ada Lovelace",
+  email: "ada@example.org",
+  date: 1_700_000_000,
+  message: "Add the parser"
 };
 const topic: GitRef = { type: "head", name: "topic", hash };
 const main: GitRef = { type: "head", name: "main", hash };
@@ -215,17 +217,12 @@ describe("English copy failures", () => {
     entries()
       .find((entry) => entry?.title === title)!
       .onClick();
-    const request = vscodeApi.postMessage.mock.calls[0]?.[0] as RpcRequest<"clipboard.copy">;
-    const response = {
-      kind: "rpc.response",
-      id: request.id,
-      success: true,
-      result: false
-    } satisfies RpcResponse<"clipboard.copy">;
-    window.dispatchEvent(new MessageEvent("message", { data: response }));
+    const [request] = vscodeApi.postMessage.mock.lastCall as [RpcRequest<"clipboard.copy">];
+    // The host answers false when the clipboard refuses the text.
+    const refusal: Refusal = { kind: "rpc.response", id: request.id, success: true, result: false };
+    window.dispatchEvent(new MessageEvent("message", { data: refusal }));
 
-    await vi.waitFor(() => {
-      expect(stores.dialog.value).toMatchObject({ kind: "error", message });
-    });
+    await vi.waitFor(() => expect(stores.dialog.value?.kind).toBe("error"));
+    expect(stores.dialog.value).toMatchObject({ message });
   });
 });

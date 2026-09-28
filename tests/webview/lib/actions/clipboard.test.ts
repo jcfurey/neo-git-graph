@@ -10,6 +10,8 @@ import * as stores from "@/webview/lib/stores";
 import { vscodeApi } from "@tests/webview/setup";
 import { setupWebviewTest } from "@tests/webview/test-utils";
 
+type Refusal = RpcResponse<"clipboard.copy">;
+
 const commit: GitCommitNode = {
   hash: "commit",
   parentHashes: [],
@@ -71,27 +73,15 @@ it.each<[GitRef, string, string]>([
     .find((item) => item?.title === title)!
     .onClick();
 
-  const request = vscodeApi.postMessage.mock.calls[0]?.[0] as RpcRequest<"clipboard.copy">;
   expect(vscodeApi.postMessage).toHaveBeenCalledOnce();
-  expect(request).toEqual({
-    kind: "rpc.request",
-    id: expect.any(String),
-    method: "clipboard.copy",
-    params: name
-  });
+  const [request] = vscodeApi.postMessage.mock.lastCall as [RpcRequest<"clipboard.copy">];
+  expect(request).toMatchObject({ kind: "rpc.request", method: "clipboard.copy", params: name });
+  expect(typeof request.id).toBe("string");
 
-  const response = {
-    kind: "rpc.response",
-    id: request.id,
-    success: true,
-    result: false
-  } satisfies RpcResponse<"clipboard.copy">;
-  window.dispatchEvent(new MessageEvent("message", { data: response }));
+  // The host answers false when the clipboard refuses the text.
+  const refusal: Refusal = { kind: "rpc.response", id: request.id, success: true, result: false };
+  window.dispatchEvent(new MessageEvent("message", { data: refusal }));
 
-  await vi.waitFor(() => {
-    expect(stores.dialog.value).toMatchObject({
-      kind: "error",
-      message: "unableToCopyToClipboard"
-    });
-  });
+  await vi.waitFor(() => expect(stores.dialog.value?.kind).toBe("error"));
+  expect(stores.dialog.value).toMatchObject({ message: "unableToCopyToClipboard" });
 });

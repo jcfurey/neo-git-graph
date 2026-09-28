@@ -150,11 +150,19 @@ function chooseForm(entries: Array<ContextMenuEntry>, title: string) {
   const entry = entries.find((item) => item?.title === title);
   expect(entry, title).toBeDefined();
   entry!.onClick();
-  const open = stores.dialog.value;
-  if (open?.kind !== "form") {
+  const shown = stores.dialog.value;
+  if (shown?.kind !== "form") {
     throw new Error(`${title} did not open a form`);
   }
-  return open;
+  return shown;
+}
+
+/** The last message sent to the extension, less the repository and request id every one has. */
+function lastSent() {
+  const { repo, requestId, ...rest } = vscodeApi.postMessage.mock.lastCall![0];
+  expect(repo).toBe("repo");
+  expect(requestId).toEqual(expect.any(String));
+  return rest;
 }
 
 const commitTitles = [
@@ -336,10 +344,8 @@ describe("commit menu forms", () => {
       "lightweight",
       "typed anyway"
     ]);
-    expect(vscodeApi.postMessage).toHaveBeenLastCalledWith({
+    expect(lastSent()).toEqual({
       command: "addTag",
-      repo: "repo",
-      requestId: expect.any(String),
       tagName: "v3",
       commitHash: hash,
       lightweight: true,
@@ -351,10 +357,8 @@ describe("commit menu forms", () => {
       "annotated",
       "  Release notes  "
     ]);
-    expect(vscodeApi.postMessage).toHaveBeenLastCalledWith({
+    expect(lastSent()).toEqual({
       command: "addTag",
-      repo: "repo",
-      requestId: expect.any(String),
       tagName: "v2",
       commitHash: hash,
       lightweight: false,
@@ -369,25 +373,17 @@ describe("commit menu forms", () => {
 
   it("offers the three reset modes in an unlabelled choice, mixed by default", () => {
     const form = chooseForm(commitMenu(node, new Map()), "reset…");
-    expect(form.inputs).toEqual([
-      {
-        kind: "select",
-        value: "mixed",
-        options: [
-          { label: "dialogResetSoft", value: "soft" },
-          { label: "dialogResetMixed", value: "mixed" },
-          { label: "dialogResetHard", value: "hard" }
-        ]
-      }
+    const [mode, ...others] = form.inputs;
+    expect(others).toHaveLength(0);
+    expect(mode).not.toHaveProperty("label");
+    expect(mode).toMatchObject({ kind: "select", value: "mixed" });
+    expect(mode).toHaveProperty("options", [
+      { label: "dialogResetSoft", value: "soft" },
+      { label: "dialogResetMixed", value: "mixed" },
+      { label: "dialogResetHard", value: "hard" }
     ]);
     form.onSubmit(["mixed"]);
-    expect(vscodeApi.postMessage).toHaveBeenLastCalledWith({
-      command: "resetToCommit",
-      repo: "repo",
-      requestId: expect.any(String),
-      commitHash: hash,
-      resetMode: "mixed"
-    });
+    expect(lastSent()).toEqual({ command: "resetToCommit", commitHash: hash, resetMode: "mixed" });
   });
 
   it.each(["cherryPick…", "revert…"])(
@@ -399,16 +395,14 @@ describe("commit menu forms", () => {
         [parents[2]!, "Third: x"]
       ]);
       const form = chooseForm(commitMenu({ ...node, parentHashes: parents }, messages), title);
-      expect(form.inputs).toEqual([
-        {
-          kind: "select",
-          value: "1",
-          options: [
-            { label: "11111111: First", value: "1" },
-            { label: "22222222", value: "2" },
-            { label: "33333333: Third: x", value: "3" }
-          ]
-        }
+      const [parent, ...others] = form.inputs;
+      expect(others).toHaveLength(0);
+      expect(parent).not.toHaveProperty("label");
+      expect(parent).toMatchObject({ kind: "select", value: "1" });
+      expect(parent).toHaveProperty("options", [
+        { label: "11111111: First", value: "1" },
+        { label: "22222222", value: "2" },
+        { label: "33333333: Third: x", value: "3" }
       ]);
       form.onSubmit(["3"]);
       expect(vscodeApi.postMessage).toHaveBeenLastCalledWith(
@@ -458,13 +452,7 @@ describe("ref menu forms", () => {
 
     chooseForm(refMenu(topic, head), "renameBranch…").onSubmit(["Topic"]);
     expect(vscodeApi.postMessage).toHaveBeenCalledOnce();
-    expect(vscodeApi.postMessage).toHaveBeenCalledWith({
-      command: "renameBranch",
-      repo: "repo",
-      requestId: expect.any(String),
-      oldName: "topic",
-      newName: "Topic"
-    });
+    expect(lastSent()).toEqual({ command: "renameBranch", oldName: "topic", newName: "Topic" });
   });
 });
 
@@ -500,15 +488,12 @@ describe("checkoutBranchAction", () => {
   it("checks out a local branch at once, without a fetch", () => {
     checkoutBranchAction(topic);
     expect(vscodeApi.postMessage).toHaveBeenCalledOnce();
-    const message = vscodeApi.postMessage.mock.calls[0]![0];
-    expect(message).toEqual({
+    // No fetch field at all: a local checkout never fetches.
+    expect(lastSent()).toStrictEqual({
       command: "checkoutBranch",
-      repo: "repo",
-      requestId: expect.any(String),
       branchName: "topic",
       remoteBranch: null
     });
-    expect(message).not.toHaveProperty("fetch");
   });
 
   it.each<[string, GitRef]>([
