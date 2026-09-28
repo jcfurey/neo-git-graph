@@ -47,6 +47,17 @@ function lastAction() {
   return { repo: request.repo, requestId: request.requestId };
 }
 
+/** Which repository each graph read since the test started was for. */
+const reloadedRepos = () => reloads().map((message) => message.repo);
+
+/** An action sent to a parent repository that changes the submodule shown, `/r`. */
+function submoduleUpdate() {
+  sendRepositoryAction(
+    { kind: "submodule", operation: "update", path: "child", recorded: "a".repeat(40) },
+    "/parent"
+  );
+}
+
 describe("the failure title", () => {
   it.each<[ActionResponse["command"], string]>([
     ["repositoryAction", "unableToRunGitAction"],
@@ -134,8 +145,31 @@ describe("a view that changes nothing", () => {
   });
 });
 
-describe("the repository the action ran in", () => {
-  it("is not reloaded, nor is any other, once another repository is shown", () => {
+describe("the reload after a mutating action", () => {
+  it("happens for an action sent to another repository while this one is shown", () => {
+    submoduleUpdate();
+    const request = lastAction();
+    expect(request.repo).toBe("/parent");
+    vscodeApi.postMessage.mockClear();
+
+    handleActionResult({ command: "repositoryAction", status: null, ...request });
+
+    expect(reloadedRepos()).toEqual(["/r", "/r", "/r"]);
+    expect(stores.dialog.value).toBeNull();
+  });
+
+  it("is skipped for that action once another repository is shown", () => {
+    submoduleUpdate();
+    const request = lastAction();
+    selectRepo("/other");
+    vscodeApi.postMessage.mockClear();
+
+    handleActionResult({ command: "repositoryAction", status: null, ...request });
+
+    expect(reloads()).toEqual([]);
+  });
+
+  it("is skipped for an action in this repository once another is shown", () => {
     runAction({ command: "deleteTag", tagName: "v1" });
     const request = lastAction();
     selectRepo("/other");
@@ -149,7 +183,7 @@ describe("the repository the action ran in", () => {
     expect(stores.dialog.value).toBeNull();
   });
 
-  it("is reloaded when it is the one shown again by the time the answer comes", () => {
+  it("happens when that repository is shown again by the time the answer comes", () => {
     runAction({ command: "deleteTag", tagName: "v1" });
     const request = lastAction();
     selectRepo("/other");
@@ -159,10 +193,15 @@ describe("the repository the action ran in", () => {
 
     handleActionResult({ command: "deleteTag", status: null, ...request });
 
-    expect(reloads().map((message) => message.repo)).toEqual(["/r", "/r", "/r"]);
+    expect(reloadedRepos()).toEqual(["/r", "/r", "/r"]);
   });
 
-  it("decides for a background action in another repository too", async () => {
+  it("happens for an answer without a request id", () => {
+    handleActionResult({ command: "fetchRemote", status: null });
+    expect(reloadedRepos()).toEqual(["/r", "/r", "/r"]);
+  });
+
+  it("happens for a background action in another repository while this one is shown", async () => {
     const done = backgroundAction("/elsewhere", { kind: "fetch", remote: null });
     const request = lastAction();
     vscodeApi.postMessage.mockClear();
@@ -170,23 +209,20 @@ describe("the repository the action ran in", () => {
     handleActionResult({ command: "repositoryAction", status: "offline", ...request });
 
     await expect(done).resolves.toBe("offline");
-    expect(reloads()).toEqual([]);
+    expect(reloadedRepos()).toEqual(["/r", "/r", "/r"]);
+    expect(stores.dialog.value).toBeNull();
   });
 
-  it("reloads the graph after a background action in the repository shown", async () => {
-    const done = backgroundAction("/r", { kind: "fetch", remote: null });
+  it("is skipped for a background action once another repository is shown", async () => {
+    const done = backgroundAction("/elsewhere", { kind: "fetch", remote: null });
     const request = lastAction();
+    selectRepo("/other");
     vscodeApi.postMessage.mockClear();
 
     handleActionResult({ command: "repositoryAction", status: null, ...request });
 
     await expect(done).resolves.toBeNull();
-    expect(reloads().map((message) => message.command)).toEqual([
-      "loadBranches",
-      "repositoryQuery",
-      "loadCommits"
-    ]);
-    expect(stores.dialog.value).toBeNull();
+    expect(reloads()).toEqual([]);
   });
 });
 
