@@ -1246,5 +1246,383 @@
     "specification": "docs/clean-room/webview-state.md",
     "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
     "lines": ["refresh();"]
+  },
+  "src/webview/components/ui/Loading.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": [
+      "type LoadingProps = {",
+      "class?: string;",
+      "variant?: \"inline\" | \"page\";",
+      "return (",
+      "<svg",
+      "viewBox=\"0 0 40 40\"",
+      "fill=\"none\"",
+      "stroke-width=\"2\"",
+      "stroke-linecap=\"round\"",
+      "aria-hidden=\"true\"",
+      "return (",
+      "<div class=\"absolute inset-0 animate-spin rounded-full border-2 border-line-soft border-t-focus motion-reduce:animate-none\" />",
+      "<div class=\"h-full w-1/2 animate-pulse bg-focus motion-reduce:animate-none\" />"
+    ]
+  },
+  "src/webview/components/ui/Select.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": [
+      "type SelectProps = {",
+      "options: Array<{ label: string; value: string }>;",
+      "value: string;",
+      "onChange: (value: string) => void;",
+      "id?: string;",
+      "\"aria-label\"?: string;",
+      "return (",
+      "<select",
+      "value={value}",
+      "onChange={(event) => onChange(event.currentTarget.value)}",
+      "{option.label}"
+    ]
+  },
+  "src/webview/components/ui/Button.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": ["return ("]
+  },
+  "src/webview/components/ui/Icons.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": [
+      "type IconProps = Omit<SVGAttributes<SVGSVGElement>, \"children\">;",
+      "return (",
+      "<svg",
+      "width=\"16\"",
+      "height=\"16\"",
+      "viewBox=\"0 0 16 16\"",
+      "fill=\"currentColor\"",
+      "aria-hidden=\"true\"",
+      "focusable=\"false\"",
+      "{children}"
+    ]
+  },
+  "src/webview/components/ui/Checkbox.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": [
+      "type CheckboxProps = Omit<ComponentProps<\"input\">, \"class\" | \"type\" | \"children\"> & {",
+      "label: string;",
+      "return (",
+      "fill=\"none\"",
+      "stroke=\"currentColor\"",
+      "stroke-width=\"2\"",
+      "stroke-linecap=\"round\"",
+      "{label}"
+    ]
+  },
+  "src/webview/components/ui/ScrollShadow.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": ["export function ScrollShadow() {"]
+  },
+  "src/webview/pages/NoRepoPage.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": [
+      "return (",
+      "<svg",
+      "fill=\"none\"",
+      "stroke-width=\"2\"",
+      "aria-hidden=\"true\"",
+      "export function NoRepoPage() {",
+      "await rpcClient.request(\"git.init\", null);",
+      "const message = reason instanceof Error ? reason.message : String(reason);",
+      "<h1 id=\"no-repo-title\" class=\"text-xl font-semibold\">",
+      "fill=\"none\"",
+      "stroke=\"currentColor\"",
+      "{error}"
+    ]
+  },
+  "src/webview/pages/NoCommitsPage.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": [
+      "export function NoCommitsPage() {",
+      "return (",
+      "<div class=\"max-w-md text-center\">",
+      "<svg",
+      "fill=\"none\"",
+      "stroke-width=\"2\"",
+      "aria-hidden=\"true\""
+    ]
+  },
+  "src/webview/pages/LoadingPage.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": ["export function LoadingPage() {", "return (", "<Loading variant=\"page\" />"]
+  },
+  "src/webview/styles.css": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": [
+      "@import \"tailwindcss\" source(\"./\");",
+      "@theme {",
+      "--default-font-family: var(--vscode-font-family);",
+      "--default-mono-font-family: var(--vscode-editor-font-family);",
+      "--text-ui: 13px;",
+      "--radius-md: 5px;",
+      "--grid-template-columns-labelled: auto 1fr;",
+      "--shadow-head: inset 2px 0 0 var(--color-graph);",
+      "--shadow-dialog: 0 0 30px 5px var(--vscode-widget-shadow);",
+      "--shadow-scroll: 0 -6px 6px 6px var(--vscode-scrollbar-shadow);",
+      "--color-fg: var(--vscode-foreground);",
+      "--color-focus: var(--vscode-focusBorder);",
+      "--color-editor: var(--vscode-editor-background);",
+      "--color-dropdown: var(--vscode-dropdown-background);",
+      "--color-dropdown-fg: var(--vscode-dropdown-foreground);",
+      "--color-menu: var(--vscode-menu-background, var(--vscode-dropdown-background));",
+      "--color-menu-fg: var(--vscode-menu-foreground, var(--vscode-dropdown-foreground));",
+      "--color-menu-active: var(",
+      "--vscode-menu-selectionBackground,",
+      "var(--vscode-list-activeSelectionBackground)",
+      "--color-menu-active-fg: var(",
+      "--vscode-menu-selectionForeground,",
+      "var(--vscode-list-activeSelectionForeground)",
+      "--color-input: var(--vscode-input-background);",
+      "--color-input-fg: var(--vscode-input-foreground);",
+      "--color-checkbox: var(--vscode-checkbox-background);",
+      "--color-checkbox-checked: var(--vscode-button-background);",
+      "--color-checkbox-check: var(--vscode-button-foreground);",
+      "--color-line: rgba(128, 128, 128, 0.5);",
+      "--color-line-soft: rgba(128, 128, 128, 0.25);",
+      "--color-btn: rgba(128, 128, 128, 0.1);",
+      "--color-btn-hover: rgba(128, 128, 128, 0.2);",
+      "--color-action: var(--vscode-button-background);",
+      "--color-action-fg: var(--vscode-button-foreground);",
+      "--color-action-hover: var(--vscode-button-hoverBackground);",
+      "--color-git-added: var(--vscode-gitDecoration-addedResourceForeground);",
+      "--color-git-modified: var(--vscode-gitDecoration-modifiedResourceForeground);",
+      "--color-git-deleted: var(--vscode-gitDecoration-deletedResourceForeground);",
+      "--color-row-head: var(--vscode-list-inactiveSelectionBackground);",
+      "--color-row-hover: var(--vscode-list-hoverBackground);",
+      "--color-row-selected: rgba(128, 128, 128, 0.25);",
+      "--color-row-selected-hover: rgba(128, 128, 128, 0.35);",
+      "--color-graph: var(--vscode-focusBorder);",
+      "@layer components {",
+      ".animate-scroll-shadow {",
+      "animation: scroll-shadow linear both;",
+      "animation-timeline: scroll(root block);",
+      "@keyframes scroll-shadow {",
+      "from {",
+      "opacity: 0;"
+    ]
+  },
+  "src/types/rpc.types.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export type RpcMethodMap = {",
+      "export type RpcMethod = keyof RpcMethodMap;",
+      "export type RpcNotificationMap = {",
+      "\"repo.rescan\": null;",
+      "\"repo.updated\": RepoUpdate;",
+      "export type RpcNotificationName = keyof RpcNotificationMap;",
+      "export type RpcNotification<N extends RpcNotificationName = RpcNotificationName> =",
+      "N extends RpcNotificationName",
+      ": never;",
+      "export type RpcRequest<M extends RpcMethod = RpcMethod> = M extends RpcMethod",
+      ": never;",
+      "export type RpcResponse<M extends RpcMethod = RpcMethod> ="
+    ]
+  },
+  "src/types/legacy.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export type GitRepoState = {",
+      "columnWidths: number[] | null;",
+      "export type GitRepoSet = { [repo: string]: GitRepoState };",
+      "export type RequestSaveRepoState = {",
+      "command: \"saveRepoState\";",
+      "repo: string;",
+      "export type RequestViewDiff = {",
+      "command: \"viewDiff\";",
+      "repo: string;",
+      "commitHash: string;",
+      "oldFilePath: string;",
+      "newFilePath: string;",
+      "type: GitFileChangeType;",
+      "export type RequestMessage =",
+      "| ActionRequest",
+      "| QueryRequest",
+      "| RequestSelectRepo",
+      "| RequestSaveRepoState",
+      "| RequestViewDiff;",
+      "export type ResponseMessage =",
+      "| ActionResponse",
+      "| QueryResponse",
+      "| ResponseViewDiff",
+      "| ResponseRefresh;"
+    ]
+  },
+  "src/types/config.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export type DateFormat = \"Date & Time\" | \"Date Only\" | \"Relative\";",
+      "export type GraphStyle = \"rounded\" | \"angular\";",
+      "export type WebviewConfig = Readonly<{",
+      "autoCenterCommitDetailsView: boolean;",
+      "dateFormat: DateFormat;",
+      "graphColours: readonly string[];",
+      "graphStyle: GraphStyle;",
+      "initialLoadCommits: number;",
+      "loadMoreCommits: number;",
+      "locale: string;",
+      "showCurrentBranchByDefault: boolean;"
+    ]
+  },
+  "src/webview/types.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export type ContextMenuEntry = { title: string; onClick: () => void } | null;",
+      "export type ContextMenuState = {",
+      "x: number;",
+      "y: number;",
+      "entries: Array<ContextMenuEntry>;",
+      "source: string;",
+      "export type DialogInput =",
+      "| { kind: \"text\"; label?: string; value: string; placeholder?: string }",
+      "| { kind: \"ref\"; label?: string; value: string }",
+      "kind: \"select\";",
+      "label?: string;",
+      "value: string;",
+      "options: Array<{ label: string; value: string }>;",
+      "| { kind: \"checkbox\"; label: string; value: boolean };",
+      "export type DialogValues<T extends ReadonlyArray<DialogInput>> = {",
+      "export type DialogBody =",
+      "kind: \"form\";",
+      "message: ComponentChildren;",
+      "inputs: Array<DialogInput>;",
+      "action: string;",
+      "onSubmit: (values: Array<string | boolean>) => void;",
+      "source: string | null;",
+      "| { kind: \"error\"; message: string; reason: string | null };"
+    ]
+  },
+  "src/webview/constants.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export const SHOW_ALL_BRANCHES = \"*\";",
+      "export const UNCOMMITTED_CHANGES = \"*\";",
+      "export const ROW_HEIGHT = 24;",
+      "export const TABLE_HEADER_HEIGHT = 32;",
+      "export const COMMIT_DETAILS_HEIGHT = 250;",
+      "export const DESCRIPTION_COLUMN = 1;"
+    ]
+  },
+  "src/webview/global.d.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "declare module \"*.css\";",
+      "declare function acquireVsCodeApi(): {",
+      "getState(): unknown;",
+      "setState(state: unknown): void;",
+      "postMessage(message: import(\"@/types\").RequestMessage | import(\"@/types\").RpcRequest): void;",
+      "interface Window {",
+      "l10n: import(\"@/old-extension/l10n/webviewL10n\").LocalizedStrings;"
+    ]
+  },
+  "src/webview/tsconfig.json": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "\"extends\": \"../../tsconfig.base.json\",",
+      "\"compilerOptions\": {",
+      "\"jsx\": \"react-jsx\","
+    ]
+  },
+  "src/webview/graph/types.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export type GraphPoint = { x: number; y: number };",
+      "export type GraphLine = {",
+      "p1: GraphPoint;",
+      "p2: GraphPoint;",
+      "isCommitted: boolean;",
+      "lockedFirst: boolean;",
+      "export type GraphVertex = {",
+      "x: number;",
+      "y: number;",
+      "colour: number;",
+      "isCommitted: boolean;",
+      "isCurrent: boolean;",
+      "export type GraphLayout = {",
+      "branches: Array<GraphBranch>;",
+      "vertices: Array<GraphVertex>;",
+      "lanes: number;",
+      "export type GraphStroke = {",
+      "path: string;",
+      "colour: number;",
+      "isCommitted: boolean;"
+    ]
+  },
+  "src/webview/graph/constants.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export const LANE_WIDTH = 16;",
+      "export const LANE_OFFSET = 8;",
+      "export const VERTEX_RADIUS = 4;",
+      "export const GRAPH_PADDING = 16;"
+    ]
+  },
+  "src/webview/graph/branchColours.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": ["return {", "claim(startAt: number): number {"]
+  },
+  "src/webview/graph/palette.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export const UNCOMMITTED_COLOUR = \"#808080\";",
+      "export function branchColour(index: number): string | undefined {",
+      "const palette = getWebviewConfig().graphColours;"
+    ]
+  },
+  "src/webview/utils/format.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export function format(",
+      "template: string,",
+      "...parts: Array<ComponentChildren>",
+      "): Array<ComponentChildren> {"
+    ]
   }
 }
