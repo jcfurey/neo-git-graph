@@ -5,20 +5,36 @@ import { VERTEX_RADIUS } from "@/webview/graph/constants";
 import { focusColour } from "@/webview/graph/focus";
 import { branchColour, UNCOMMITTED_COLOUR } from "@/webview/graph/palette";
 import { branchStrokes } from "@/webview/graph/strokes";
-import type { BranchRelation, GraphExpansion, GraphLayout, GraphLine } from "@/webview/graph/types";
+import type {
+  BranchRelation,
+  GraphExpansion,
+  GraphLayout,
+  GraphLine,
+  GraphVertex
+} from "@/webview/graph/types";
 import { expandOffset, graphHeight, graphWidth, laneX, rowY } from "@/webview/graph/utils";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
 import type { FocusDimming } from "@/webview/types";
 
-const SHADOW_CLASS = "fill-none stroke-editor/75 stroke-4";
-const LINE_CLASS = "fill-none stroke-2";
-const HEAD_DOT_CLASS = "fill-editor stroke-2";
-const DOT_CLASS = "stroke-editor/75 stroke-1";
+type CommitGraphProps = {
+  layout: GraphLayout;
+  /** The open details, which push the rows after theirs down. */
+  expansion: GraphExpansion | null;
+  /** Each row's relation to the focused branch, by row index. */
+  relations: Array<BranchRelation>;
+  relationForLine: (line: GraphLine) => BranchRelation;
+  keepMergedBright: boolean;
+  dimming: FocusDimming;
+  /** Rows whose dot keeps its full colour whatever their relation. */
+  revealed: ReadonlySet<number>;
+  /** Hash of the row under the pointer. Only this component reads it. */
+  hovered: ReadonlySignal<string | null>;
+  commitRows: ReadonlyMap<string, number>;
+};
 
 /**
- * The branch lines and commit dots, drawn behind the first column of the commit
- * table. The table rows set the scale: a row is `ROW_HEIGHT` high. The caller
- * places the graph, and cuts it off when the column is too narrow for it.
+ * The lanes and dots drawn behind the commit table's first column. Lines come first so that the
+ * dots paint over them, and the dots follow in row order.
  */
 export function CommitGraph({
   layout,
@@ -30,18 +46,9 @@ export function CommitGraph({
   revealed,
   hovered,
   commitRows
-}: {
-  layout: GraphLayout;
-  expansion: GraphExpansion | null;
-  relations: BranchRelation[];
-  relationForLine: (line: GraphLine) => BranchRelation;
-  keepMergedBright: boolean;
-  dimming: FocusDimming;
-  revealed: ReadonlySet<number>;
-  hovered: ReadonlySignal<string | null>;
-  commitRows: ReadonlyMap<string, number>;
-}) {
+}: CommitGraphProps) {
   const angular = getWebviewConfig().graphStyle === "angular";
+  // Building the paths walks every line of the layout, so a hover or a colour change reuses them.
   const strokes = useMemo(
     () =>
       layout.branches.flatMap((branch) =>
@@ -49,7 +56,20 @@ export function CommitGraph({
       ),
     [layout, angular, expansion, relationForLine]
   );
-  const hoveredRow = hovered.value === null ? undefined : commitRows.get(hovered.value);
+
+  const hoveredHash = hovered.value;
+  const hoveredRow = hoveredHash === null ? undefined : commitRows.get(hoveredHash);
+  const paint = (colour: number, relation: BranchRelation) =>
+    focusColour(branchColour(colour), relation, keepMergedBright, dimming);
+
+  /** The colour of a dot. A dot the user is looking at is drawn as if nothing were focused. */
+  const dotColour = (vertex: GraphVertex, relation: BranchRelation) => {
+    if (!vertex.isCommitted) {
+      return UNCOMMITTED_COLOUR;
+    }
+    const plain = vertex.isCurrent || vertex.y === hoveredRow || revealed.has(vertex.y);
+    return paint(vertex.colour, plain ? "normal" : relation);
+  };
 
   return (
     <svg
@@ -60,47 +80,43 @@ export function CommitGraph({
     >
       {strokes.map((stroke, index) => (
         <g key={index}>
-          <path class={SHADOW_CLASS} d={stroke.path} />
+          {/* A band of background under each line keeps crossing lines and dots apart. */}
+          <path d={stroke.path} fill="none" stroke-width="4" class="stroke-editor/75" />
           <path
-            class={LINE_CLASS}
             d={stroke.path}
+            fill="none"
+            stroke-width="2"
             data-branch-relation={stroke.relation}
-            stroke={
-              stroke.isCommitted
-                ? focusColour(
-                    branchColour(stroke.colour),
-                    stroke.relation,
-                    keepMergedBright,
-                    dimming
-                  )
-                : UNCOMMITTED_COLOUR
-            }
+            stroke={stroke.isCommitted ? paint(stroke.colour, stroke.relation) : UNCOMMITTED_COLOUR}
           />
         </g>
       ))}
       {layout.vertices.map((vertex) => {
         const relation = relations[vertex.y] ?? "normal";
-        const colour = vertex.isCommitted
-          ? focusColour(
-              branchColour(vertex.colour),
-              revealed.has(vertex.y) || hoveredRow === vertex.y || vertex.isCurrent
-                ? "normal"
-                : relation,
-              keepMergedBright,
-              dimming
-            )
-          : UNCOMMITTED_COLOUR;
-
-        return (
+        const colour = dotColour(vertex, relation);
+        const centre = {
+          cx: laneX(vertex.x),
+          cy: rowY(vertex.y) + expandOffset(vertex.y, expansion),
+          r: VERTEX_RADIUS
+        };
+        // HEAD is an open ring; every other commit a filled dot.
+        return vertex.isCurrent ? (
           <circle
             key={vertex.y}
+            {...centre}
             data-branch-relation={relation}
-            cx={laneX(vertex.x)}
-            cy={rowY(vertex.y) + expandOffset(vertex.y, expansion)}
-            r={VERTEX_RADIUS}
-            class={vertex.isCurrent ? HEAD_DOT_CLASS : DOT_CLASS}
-            stroke={vertex.isCurrent ? colour : undefined}
-            fill={vertex.isCurrent ? undefined : colour}
+            stroke={colour}
+            stroke-width="2"
+            class="fill-editor"
+          />
+        ) : (
+          <circle
+            key={vertex.y}
+            {...centre}
+            data-branch-relation={relation}
+            fill={colour}
+            stroke-width="1"
+            class="stroke-editor/75"
           />
         );
       })}
