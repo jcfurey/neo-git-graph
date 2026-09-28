@@ -102,6 +102,7 @@ export function getHistoryLocalizedStrings() {
     activityFailed: vscode.l10n.t("Failed"),
     elapsedSeconds: vscode.l10n.t("{0} elapsed"),
     copyError: vscode.l10n.t("Copy Error Details"),
+    errorDetails: vscode.l10n.t("Error Details"),
     clearActivity: vscode.l10n.t("Clear Completed Activity"),
     unseenFailures: vscode.l10n.t("Failed Git operations: {0}"),
     hideOperation: vscode.l10n.t("Hide"),

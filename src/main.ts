@@ -1,43 +1,48 @@
 import * as l10n from "@vscode/l10n";
 import * as vscode from "vscode";
 
-import { resolveBuiltInGitPath } from "./extension/config";
-import { EXTENSION_NAME } from "./extension/constants";
-import { openDocumentation, openWalkthrough } from "./extension/handlers/onboarding";
-import { migrateSettings } from "./extension/migrate-settings";
-import { logger } from "./extension/util/logger";
-import { createViewCommand } from "./extension/view-command";
-import { registerFileHistoryCommand } from "./old-extension/fileHistoryCommand";
+import { resolveBuiltInGitPath } from "@/extension/config";
+import { EXTENSION_NAME } from "@/extension/constants";
+import { openDocumentation, openWalkthrough } from "@/extension/handlers/onboarding";
+import { migrateSettings } from "@/extension/migrate-settings";
+import { logger } from "@/extension/util/logger";
+import { createViewCommand } from "@/extension/view-command";
+import { registerFileHistoryCommand } from "@/old-extension/fileHistoryCommand";
 
 /**
- * Register every contributed command, even without a workspace folder: the walkthrough links to
- * them, and the graph then shows its no-repository page. Activation runs no Git and reads no
- * saved repository paths, so a deleted repository cannot stop it.
+ * Set the extension up for this window. Everything here is synchronous: the settings copy and the
+ * Git lookup run in the background, and no Git process starts until the graph is opened. VS Code
+ * disposes what is pushed to `ctx.subscriptions` when the extension deactivates.
  */
-export function activate(ctx: vscode.ExtensionContext) {
+export function activate(ctx: vscode.ExtensionContext): void {
+  // The log comes first so that every later step can write to it.
   logger.init(ctx);
+
+  // Neither rejects, and nothing below needs their results.
   void migrateSettings(ctx);
   void resolveBuiltInGitPath();
-  // Backend messages are marked with the standalone l10n package, which cannot
-  // see VS Code's API. Hand it the bundle VS Code loaded for the display language.
+
+  // Backend messages are translated by the standalone library, which needs VS Code's bundle.
   l10n.config({ contents: vscode.l10n.bundle ?? {} });
 
-  const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-  statusBarItem.name = EXTENSION_NAME;
-  statusBarItem.command = "branchwise.view";
-  statusBarItem.text = `$(type-hierarchy) ${EXTENSION_NAME}`;
-  statusBarItem.tooltip = vscode.l10n.t("View Graph");
-  statusBarItem.show();
-
-  ctx.subscriptions.push(statusBarItem);
+  const statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+  statusItem.name = EXTENSION_NAME;
+  statusItem.command = "branchwise.view";
+  statusItem.text = `$(type-hierarchy) ${EXTENSION_NAME}`;
+  statusItem.tooltip = vscode.l10n.t("View Graph");
+  statusItem.show();
+  ctx.subscriptions.push(statusItem);
 
   const view = createViewCommand(ctx);
   ctx.subscriptions.push(
+    // Source Control passes itself as the first argument, which selects its repository.
     vscode.commands.registerCommand("branchwise.view", view),
     vscode.commands.registerCommand("branchwise.showBranches", () => view.showPane("refs")),
+    // Returning the promises lets `executeCommand` settle once the page has opened.
     vscode.commands.registerCommand("branchwise.openDocumentation", () => openDocumentation(ctx)),
     vscode.commands.registerCommand("branchwise.openWalkthrough", () => openWalkthrough(ctx))
   );
+
   registerFileHistoryCommand(ctx, (repo, file) => view({ rootUri: vscode.Uri.file(repo) }, file));
 
   logger.info("Extension activated");

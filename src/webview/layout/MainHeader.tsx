@@ -21,12 +21,13 @@ import {
   openFormDialog,
   refresh,
   selectBranch,
-  setBranchDisplay,
   selectRepo,
+  setBranchDisplay,
   setShowRemoteBranch
 } from "@/webview/lib/actions";
 import { focusSearch } from "@/webview/lib/focus";
 import {
+  historyActive,
   refsVisible,
   searchVisible,
   selectedCommits,
@@ -40,165 +41,212 @@ import { rpcClient } from "@/webview/lib/rpc/rpc-client";
 import {
   branchDisplay,
   branchList,
+  contextMenu,
   selectedBranch,
   selectedRepo,
   showRemoteBranch
 } from "@/webview/lib/stores";
-import type { BranchDisplay } from "@/webview/types";
+import type { BranchDisplay, ContextMenuEntry } from "@/webview/types";
 
-export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
-  const headerRef = useRef<HTMLElement>(null);
+/** The context menu key of the Settings & Tools button. */
+const TOOLS_MENU = "repository-tools";
+
+/** Where the sticky parts of the page read the header's height. */
+const HEIGHT_PROPERTY = "--main-header-height";
+
+/** Long repository and branch names are cut short rather than widening the header. */
+const PICKER_CLASS = "max-w-56";
+
+/** The background of a toggle whose pane or row is open. */
+const pressed = (open: boolean) => (open ? "bg-row-selected" : undefined);
+
+/** A name for a selected repository the scan did not list: its last path segment. */
+function repoLabel(path: string) {
+  return path.split(/[/\\]/).findLast((segment) => segment !== "") ?? path;
+}
+
+function repoOptions(repos: Array<GitRepo>, selected: string | undefined) {
+  const options = repos.map((repo) => ({ label: repo.name, value: repo.path }));
+  if (selected !== undefined && !repos.some((repo) => repo.path === selected)) {
+    options.push({ label: repoLabel(selected), value: selected });
+  }
+  return options;
+}
+
+function askForFileHistory() {
+  const l10n = window.l10n;
+  openFormDialog({
+    message: l10n.fileHistory,
+    inputs: [{ kind: "text", label: l10n.historyPath, value: "" }],
+    action: l10n.fileHistory,
+    source: null,
+    onSubmit: ([path]) => {
+      // A blank path would only clear the current search.
+      if (path.trim() !== "") {
+        openFileHistory(path);
+      }
+    }
+  });
+}
+
+/** The Settings & Tools entries, built when the menu opens so the check mark is current. */
+function toolsMenu(): Array<ContextMenuEntry> {
+  const l10n = window.l10n;
+  const remotesShown = showRemoteBranch.value;
+  return [
+    { title: l10n.manageRemotes, onClick: openRemotes },
+    { title: l10n.stashes, onClick: openStashes },
+    { title: l10n.worktrees, onClick: openWorktrees },
+    { title: l10n.workspaceSync, onClick: openWorkspaceSync },
+    { title: l10n.cleanupBranches, onClick: openCleanup },
+    { title: l10n.bisectTitle, onClick: openBisect },
+    null,
+    { title: l10n.reflog, onClick: openReflog },
+    { title: l10n.fileHistory, onClick: askForFileHistory },
+    { title: l10n.operationActivity, onClick: openActivity },
+    null,
+    {
+      title: (remotesShown ? "✓ " : "") + l10n.showRemoteBranches,
+      onClick: () => setShowRemoteBranch(!remotesShown)
+    },
+    {
+      title: l10n.gettingStarted,
+      onClick: () => void rpcClient.request("walkthrough.open", null)
+    },
+    { title: l10n.learnMore, onClick: () => void rpcClient.request("docs.open", null) },
+    { title: l10n.openSettings, onClick: () => void rpcClient.request("settings.open", null) }
+  ];
+}
+
+/** Compare the first two selected commits, standing in HEAD for any that are missing. */
+function compareSelection() {
+  const [left, right] = selectedCommits.value;
+  openCompare(left?.hash ?? "HEAD", right?.hash ?? "HEAD");
+}
+
+/** Publish the header's height while it is mounted, including every time it wraps. */
+function useHeightProperty(header: { current: HTMLElement | null }) {
   useLayoutEffect(() => {
-    const header = headerRef.current;
-    if (!header) {
+    const element = header.current;
+    if (element === null) {
       return;
     }
-    // The controls wrap on narrow windows; sticky table headers must follow that height.
-    const measure = () =>
-      document.documentElement.style.setProperty(
-        "--main-header-height",
-        `${header.getBoundingClientRect().height}px`
-      );
-    measure();
+    const style = document.documentElement.style;
+    const measure = () => {
+      style.setProperty(HEIGHT_PROPERTY, `${element.getBoundingClientRect().height}px`);
+    };
     const observer = new ResizeObserver(measure);
-    observer.observe(header);
+    observer.observe(element);
+    measure();
     return () => {
       observer.disconnect();
-      document.documentElement.style.removeProperty("--main-header-height");
+      style.removeProperty(HEIGHT_PROPERTY);
     };
   }, []);
+}
+
+/**
+ * The toolbar pinned to the top of the page: the pane toggles, the repository, branch and view
+ * pickers, and the tools that act on the whole repository.
+ */
+export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
+  const header = useRef<HTMLElement>(null);
+  useHeightProperty(header);
+
+  const l10n = window.l10n;
   const repo = selectedRepo.value;
-  const choices =
-    repo && !repos.some((entry) => entry.path === repo)
-      ? [...repos, { path: repo, name: repo.split("/").at(-1) ?? repo }]
-      : repos;
+  const branches = branchList.value;
+  const noRepo = repo === undefined;
+  const refsOpen = refsVisible.value;
+  const workspaceOpen = workspaceVisible.value;
+  // A filter keeps the search row open even when its own toggle is off.
+  const searchOpen = searchVisible.value || historyActive.value;
+  const toolsOpen = contextMenu.value?.source === TOOLS_MENU;
+
   return (
     <header
-      ref={headerRef}
+      ref={header}
       class="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-line-soft bg-editor px-3 py-2 text-ui"
     >
-      <Button
-        aria-expanded={refsVisible.value}
-        onClick={toggleRefs}
-        class={refsVisible.value ? "bg-row-selected" : ""}
-      >
-        {window.l10n.branchesPane}
+      <Button aria-expanded={refsOpen} class={pressed(refsOpen)} onClick={toggleRefs}>
+        {l10n.branchesPane}
       </Button>
       <Button
-        aria-expanded={workspaceVisible.value}
+        aria-expanded={workspaceOpen}
+        class={pressed(workspaceOpen)}
         onClick={toggleWorkspace}
-        class={workspaceVisible.value ? "bg-row-selected" : ""}
       >
-        {window.l10n.workspaceOverview}
+        {l10n.workspaceOverview}
       </Button>
       <Dropdown
-        label={window.l10n.repo}
-        class="max-w-56"
-        options={choices.map((entry) => ({ label: entry.name, value: entry.path }))}
+        label={l10n.repo}
+        class={PICKER_CLASS}
+        options={repoOptions(repos, repo)}
         value={repo}
         onChange={selectRepo}
       />
       <Dropdown
-        label={window.l10n.branch}
-        class="max-w-56"
+        label={l10n.branch}
+        class={PICKER_CLASS}
+        disabled={branches === undefined}
         options={[
-          { label: window.l10n.showAll, value: SHOW_ALL_BRANCHES },
-          ...(branchList.value ?? []).map((value) => ({
-            label: value.replace(/^remotes\//, ""),
-            value
+          { label: l10n.showAll, value: SHOW_ALL_BRANCHES },
+          ...(branches ?? []).map((branch) => ({
+            label: branch.replace(/^remotes\//, ""),
+            value: branch
           }))
         ]}
         value={selectedBranch.value}
         onChange={selectBranch}
-        disabled={branchList.value === undefined}
       />
       <Dropdown
-        label={window.l10n.branchDisplay}
-        class="max-w-56"
+        label={l10n.branchDisplay}
+        class={PICKER_CLASS}
+        // Emphasis needs a branch, so the modes wait for a list with one in it.
+        disabled={branches === undefined || branches.length === 0}
         options={[
-          { label: window.l10n.filterToBranch, value: "filter" },
-          { label: window.l10n.focusDirectHistory, value: "focus" },
-          { label: window.l10n.focusAllAncestors, value: "ancestors" }
+          { label: l10n.filterToBranch, value: "filter" },
+          { label: l10n.focusDirectHistory, value: "focus" },
+          { label: l10n.focusAllAncestors, value: "ancestors" }
         ]}
         value={branchDisplay.value}
         onChange={(value) => setBranchDisplay(value as BranchDisplay)}
-        disabled={branchList.value === undefined}
       />
       <div class="ml-auto flex flex-wrap items-center gap-2">
         <ActivityIndicator />
         <Button
-          aria-label={window.l10n.historySearch}
-          title={window.l10n.historySearch}
-          aria-expanded={searchVisible.value}
-          class={searchVisible.value ? "bg-row-selected" : ""}
-          onClick={() => (searchVisible.value ? toggleSearch() : focusSearch())}
+          aria-label={l10n.historySearch}
+          title={l10n.historySearch}
+          aria-expanded={searchOpen}
+          class={pressed(searchOpen)}
+          onClick={() => {
+            // Only a row opened by its toggle can be closed by it; a filter keeps it open.
+            if (searchVisible.value && !historyActive.value) {
+              toggleSearch();
+            } else {
+              focusSearch();
+            }
+          }}
         >
           <SearchIcon class="size-4" />
         </Button>
         <Button onClick={refresh}>
           <RefreshIcon class="size-3.5" />
-          {window.l10n.refresh}
+          {l10n.refresh}
         </Button>
-        <Button disabled={!repo} onClick={() => openRemoteAction("fetch")}>
-          {window.l10n.fetch}
+        <Button disabled={noRepo} onClick={() => openRemoteAction("fetch")}>
+          {l10n.fetch}
         </Button>
-        <Button
-          disabled={!repo}
-          onClick={() =>
-            openCompare(
-              selectedCommits.value[0]?.hash ?? "HEAD",
-              selectedCommits.value[1]?.hash ?? "HEAD"
-            )
-          }
-        >
-          {window.l10n.compareSubmit}
+        <Button disabled={noRepo} onClick={compareSelection}>
+          {l10n.compareSubmit}
         </Button>
         <Button
-          disabled={!repo}
-          aria-label={window.l10n.settingsTools}
-          title={window.l10n.settingsTools}
+          aria-label={l10n.settingsTools}
+          title={l10n.settingsTools}
           aria-haspopup="menu"
-          onClick={(event) =>
-            openContextMenu(event, "repository-tools", [
-              { title: window.l10n.manageRemotes, onClick: openRemotes },
-              { title: window.l10n.stashes, onClick: openStashes },
-              { title: window.l10n.worktrees, onClick: openWorktrees },
-              { title: window.l10n.workspaceSync, onClick: openWorkspaceSync },
-              { title: window.l10n.cleanupBranches, onClick: openCleanup },
-              { title: window.l10n.bisectTitle, onClick: openBisect },
-              null,
-              { title: window.l10n.reflog, onClick: openReflog },
-              {
-                title: window.l10n.fileHistory,
-                onClick: () =>
-                  openFormDialog({
-                    message: window.l10n.fileHistory,
-                    inputs: [{ kind: "text", label: window.l10n.historyPath, value: "" }],
-                    action: window.l10n.fileHistory,
-                    source: null,
-                    onSubmit: ([file]) => openFileHistory(file)
-                  })
-              },
-              { title: window.l10n.operationActivity, onClick: openActivity },
-              null,
-              {
-                title: (showRemoteBranch.value ? "✓ " : "") + window.l10n.showRemoteBranches,
-                onClick: () => setShowRemoteBranch(!showRemoteBranch.value)
-              },
-              {
-                title: window.l10n.gettingStarted,
-                onClick: () => void rpcClient.request("walkthrough.open", null)
-              },
-              {
-                title: window.l10n.learnMore,
-                onClick: () => void rpcClient.request("docs.open", null)
-              },
-              {
-                title: window.l10n.openSettings,
-                onClick: () => void rpcClient.request("settings.open", null)
-              }
-            ])
-          }
+          aria-expanded={toolsOpen}
+          disabled={noRepo}
+          onClick={(event) => openContextMenu(event, TOOLS_MENU, toolsMenu())}
         >
           <GearIcon class="size-4" />
         </Button>

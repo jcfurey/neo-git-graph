@@ -560,6 +560,7 @@ describe("structure", () => {
     expect(buttons()).toHaveLength(1);
   });
 
+  // Thousands of rows take a few seconds under coverage instrumentation on a busy runner.
   it("renders a large commit and toggles one of its folders", () => {
     const changes = Array.from({ length: 5000 }, (_, index) =>
       changed(`top${index % 50}/sub${index % 400}/file${index}.ts`)
@@ -570,7 +571,7 @@ describe("structure", () => {
 
     act(() => entry("top0").click());
     expect(buttons()).toHaveLength(5450 - 108);
-  });
+  }, 30_000);
 });
 
 describe("inside the commit table", () => {

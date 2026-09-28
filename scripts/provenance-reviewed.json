@@ -905,5 +905,724 @@
       "export type QueryRequest = {",
       "export type QueryResponse = {"
     ]
+  },
+  "src/main.ts": {
+    "commit": "78dba459049abad2346a4f7a872071eb3c050c18",
+    "specification": "docs/clean-room/app-shell.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": ["logger.init(ctx);", "logger.info(\"Extension activated\");"]
+  },
+  "src/webview/App.tsx": {
+    "commit": "78dba459049abad2346a4f7a872071eb3c050c18",
+    "specification": "docs/clean-room/app-shell.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "export function App({ repos }: { repos: Array<GitRepo> }) {",
+      "return (",
+      "<MainHeader repos={repos} />",
+      "<GraphView />",
+      "<ScrollShadow />",
+      "<ContextMenu />",
+      "<Dialog />"
+    ]
+  },
+  "src/webview/layout/GraphView.tsx": {
+    "commit": "78dba459049abad2346a4f7a872071eb3c050c18",
+    "specification": "docs/clean-room/app-shell.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "return (",
+      "return (",
+      "<main class=\"grid flex-1 place-items-center\">",
+      "<Loading />",
+      "return (",
+      "<main class=\"relative\">",
+      "<Loading />",
+      "<div class=\"flex justify-center py-4\">"
+    ]
+  },
+  "src/webview/layout/MainHeader.tsx": {
+    "commit": "78dba459049abad2346a4f7a872071eb3c050c18",
+    "specification": "docs/clean-room/app-shell.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "export function MainHeader({ repos }: { repos: Array<GitRepo> }) {",
+      "return (",
+      "<Dropdown",
+      "onChange={selectRepo}",
+      "<Dropdown",
+      "options={[",
+      "value={selectedBranch.value}",
+      "onChange={selectBranch}"
+    ]
+  },
+  "src/webview/main.tsx": {
+    "commit": "78dba459049abad2346a4f7a872071eb3c050c18",
+    "specification": "docs/clean-room/app-shell.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "selectedRepo.value = undefined;",
+      "const repos = repoListStore.get();",
+      "const error = repoListError.value;",
+      "if (error !== undefined) {",
+      "return (",
+      "if (repos === undefined) {",
+      "return <LoadingPage />;",
+      "const { l10n, config } = await rpcClient.request(\"webview.initialize\", null);",
+      "window.l10n = l10n;",
+      "initializeWebviewConfig(config);",
+      "initializeStores(config.initialLoadCommits);",
+      "const root = document.getElementById(\"app\")!;",
+      "rpcClient.init();",
+      "initDispatcher();",
+      "render(<LoadingPage />, root);"
+    ]
+  },
+  "src/webview/components/commit/CommitDetails.tsx": {
+    "commit": "40aaca2c7b356725c075c6306c5f918fd8aa4fdb",
+    "specification": "docs/clean-room/commit-view.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them. Class lists follow the look the specification describes property by property.",
+    "lines": [
+      "if (getWebviewConfig().autoCenterCommitDetailsView) {",
+      "const row = useRef<HTMLTableRowElement>(null);",
+      "<td />",
+      "colSpan={4}",
+      "class=\"relative bg-btn p-0 align-top text-ui leading-4.5 whitespace-normal after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-line\"",
+      "<button",
+      "type=\"button\"",
+      "class=\"absolute top-1 right-1 cursor-pointer opacity-60 hover:opacity-100\"",
+      "return (",
+      "<div class=\"truncate\">",
+      "<b>{label}</b>",
+      "{children}",
+      "{after}",
+      "export function CommitDetails({ details }: { details: GitCommitDetails | null }) {"
+    ]
+  },
+  "src/webview/components/commit/CommitTable.tsx": {
+    "commit": "40aaca2c7b356725c075c6306c5f918fd8aa4fdb",
+    "specification": "docs/clean-room/commit-view.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them. Class lists follow the look the specification describes property by property.",
+    "lines": [
+      "type CommitTableProps = {",
+      "head: string | null;",
+      "headBranch: string | null;",
+      "boundary,",
+      "side,",
+      "resize",
+      "boundary: number;",
+      "side: \"left\" | \"right\";",
+      "resize: ColumnResize;",
+      "return (",
+      "<span",
+      "role=\"separator\"",
+      "aria-orientation=\"vertical\"",
+      "onMouseDown={(event) => resize.startResize(boundary, event)}",
+      "onKeyDown={(event) => resize.nudge(boundary, event)}",
+      "const layout = useMemo(() => computeGraphLayout(commits, head), [commits, head]);",
+      "const expandedHash = expandedCommit.value;",
+      "return (",
+      "<table",
+      "class={`w-full cursor-default border-collapse text-ui select-none ${",
+      "<colgroup>",
+      "<col style=\"width: var(--col-graph)\" />",
+      "<col />",
+      "<col style=\"width: var(--col-date)\" />",
+      "<col style=\"width: var(--col-author)\" />",
+      "<col style=\"width: var(--col-commit)\" />",
+      "<tbody>",
+      "{commits.map((commit, index) => (",
+      "<Fragment key={commit.hash}>",
+      "<CommitRow",
+      "commit={commit}",
+      "isHead={commit.hash === head}",
+      "headBranch={headBranch}",
+      "messages={messages}",
+      "colour={branchColour(layout.vertices[index]?.colour ?? 0)}",
+      "expanded={index === expandedRow}"
+    ]
+  },
+  "src/webview/components/commit/CommitRow.tsx": {
+    "commit": "40aaca2c7b356725c075c6306c5f918fd8aa4fdb",
+    "specification": "docs/clean-room/commit-view.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them. Class lists follow the look the specification describes property by property.",
+    "lines": [
+      "type CommitRowProps = {",
+      "isHead: boolean;",
+      "headBranch: string | null;",
+      "messages: CommitMessages;",
+      "colour: string | undefined;",
+      "expanded: boolean;",
+      "onSelect: (() => void) | undefined;",
+      "function orderRefs(refs: Array<GitRef>, headBranch: string | null) {",
+      "export function CommitRow({",
+      "commit,",
+      "isHead,",
+      "headBranch,",
+      "messages,",
+      "colour,",
+      "expanded,",
+      "}: CommitRowProps) {",
+      "const message = uncommitted",
+      ": commit.message;",
+      "<div class=\"flex min-w-0 items-center\">",
+      "<RefLabel",
+      "{isHead || uncommitted ? <b>{message}</b> : message}"
+    ]
+  },
+  "src/webview/components/commit/CommitGraph.tsx": {
+    "commit": "40aaca2c7b356725c075c6306c5f918fd8aa4fdb",
+    "specification": "docs/clean-room/commit-view.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them. Class lists follow the look the specification describes property by property.",
+    "lines": [
+      "expansion: GraphExpansion | null;",
+      "export function CommitGraph({",
+      "layout,",
+      "const angular = getWebviewConfig().graphStyle === \"angular\";",
+      "return (",
+      "<svg",
+      "class=\"block\"",
+      "width={graphWidth(layout)}",
+      "height={graphHeight(layout, expansion)}",
+      "aria-hidden=\"true\"",
+      "{strokes.map((stroke, index) => (",
+      "<g key={index}>",
+      "<path",
+      "d={stroke.path}",
+      "{layout.vertices.map((vertex) => {",
+      "<circle",
+      "key={vertex.y}"
+    ]
+  },
+  "src/webview/components/commit/RefLabel.tsx": {
+    "commit": "40aaca2c7b356725c075c6306c5f918fd8aa4fdb",
+    "specification": "docs/clean-room/commit-view.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them. Class lists follow the look the specification describes property by property.",
+    "lines": [
+      "export function RefLabel({ gitRef, active }: { gitRef: GitRef; active: boolean }) {",
+      "const source = refMenuSource(gitRef);",
+      "return (",
+      "<span",
+      "active ? \"border-graph\" : \"border-line\"",
+      "} ${menuOpen ? \"bg-btn-hover\" : \"bg-btn\"}`}",
+      "onContextMenu={(event) => openContextMenu(event, source, refMenu(gitRef, active))}",
+      "onClick={(event) => event.stopPropagation()}",
+      "onDblClick={(event) => {",
+      "event.stopPropagation();",
+      "checkoutBranchAction(gitRef);",
+      "<span class={`truncate ${active ? \"font-bold\" : \"\"}`}>{gitRef.name}</span>"
+    ]
+  },
+  "src/webview/lib/dispatcher.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "type Command = ResponseMessage[\"command\"];",
+      "// eslint-disable-next-line no-console"
+    ]
+  },
+  "src/webview/lib/stores.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "export const selectedRepo = signal<string | undefined>(undefined);",
+      "export const branchList = signal<Array<string> | undefined>(undefined);",
+      "export const headBranch = signal<string | null>(null);",
+      "export const commitList = signal<Array<GitCommitNode> | undefined>(undefined);",
+      "export const commitHead = signal<string | null>(null);",
+      "export const expandedCommit = signal<string | null>(null);",
+      "export const commitDetails = signal<GitCommitDetails | null>(null);",
+      "export const contextMenu = signal<ContextMenuState | null>(null);",
+      "export const dialog = signal<DialogState | null>(null);",
+      "export const repoStates = signal<GitRepoSet>({});",
+      "export const selectedBranch = signal<CommitBranchType | undefined>(undefined);",
+      "const menu = contextMenu.value;",
+      "if (menu !== null) {",
+      "return menu.source;",
+      "const open = dialog.value;",
+      "const repo = selectedRepo.value;",
+      "const repo = selectedRepo.value;",
+      "export function initializeStores(initialLoadCommits: number): void {",
+      "maxCommits.value = initialLoadCommits;"
+    ]
+  },
+  "src/webview/lib/stores/repo-list.store.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": ["export const repoListStore = {"]
+  },
+  "src/webview/lib/load-repos.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "export const repoListError = signal<string | undefined>(undefined);",
+      "export async function loadRepoList(): Promise<void> {",
+      "repoListError.value = undefined;",
+      "await repoListStore.load();",
+      "repoListError.value = error instanceof Error ? error.message : String(error);"
+    ]
+  },
+  "src/webview/lib/webview-config.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "export function initializeWebviewConfig(value: WebviewConfig): void {",
+      "throw new Error(\"Webview configuration is already initialized\");",
+      "export function getWebviewConfig(): WebviewConfig {",
+      "throw new Error(\"Webview configuration is not initialized\");"
+    ]
+  },
+  "src/webview/lib/vscode.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": ["export const vscode = acquireVsCodeApi();"]
+  },
+  "src/webview/lib/handler/action-result.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "addTag: \"unableToAddTag\",",
+      "checkoutBranch: \"unableToCheckoutBranch\",",
+      "checkoutCommit: \"unableToCheckoutCommit\",",
+      "cherrypickCommit: \"unableToCherryPick\",",
+      "createBranch: \"unableToCreateBranch\",",
+      "deleteBranch: \"unableToDeleteBranch\",",
+      "deleteTag: \"unableToDeleteTag\",",
+      "mergeBranch: \"unableToMergeBranch\",",
+      "mergeCommit: \"unableToMergeCommit\",",
+      "pushTag: \"unableToPushTag\",",
+      "renameBranch: \"unableToRenameBranch\",",
+      "resetToCommit: \"unableToReset\",",
+      "revertCommit: \"unableToRevert\"",
+      "if (msg.status === null) {",
+      "closeDialog();"
+    ]
+  },
+  "src/webview/lib/handler/load-branches.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": ["batch(() => {"]
+  },
+  "src/webview/lib/handler/load-commits.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "const expanded = expandedCommit.value;",
+      "batch(() => {",
+      "commitHead.value = msg.head;",
+      "moreCommitsAvailable.value = msg.moreCommitsAvailable;",
+      "uncommittedChanges.value = msg.uncommittedChanges;",
+      "closeCommitDetails();"
+    ]
+  },
+  "src/webview/lib/handler/commit-details.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "if (msg.commitDetails === null) {",
+      "closeCommitDetails();",
+      "openErrorDialog(window.l10n.unableToLoadCommitDetails);",
+      "commitDetails.value = msg.commitDetails;"
+    ]
+  },
+  "src/webview/lib/handler/view-diff.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": ["openErrorDialog(window.l10n.unableToViewDiff);"]
+  },
+  "src/webview/lib/handler/refresh.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": ["refresh();"]
+  },
+  "src/webview/components/ui/Loading.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": [
+      "type LoadingProps = {",
+      "class?: string;",
+      "variant?: \"inline\" | \"page\";",
+      "return (",
+      "<svg",
+      "viewBox=\"0 0 40 40\"",
+      "fill=\"none\"",
+      "stroke-width=\"2\"",
+      "stroke-linecap=\"round\"",
+      "aria-hidden=\"true\"",
+      "return (",
+      "<div class=\"absolute inset-0 animate-spin rounded-full border-2 border-line-soft border-t-focus motion-reduce:animate-none\" />",
+      "<div class=\"h-full w-1/2 animate-pulse bg-focus motion-reduce:animate-none\" />"
+    ]
+  },
+  "src/webview/components/ui/Select.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": [
+      "type SelectProps = {",
+      "options: Array<{ label: string; value: string }>;",
+      "value: string;",
+      "onChange: (value: string) => void;",
+      "id?: string;",
+      "\"aria-label\"?: string;",
+      "return (",
+      "<select",
+      "value={value}",
+      "onChange={(event) => onChange(event.currentTarget.value)}",
+      "{option.label}"
+    ]
+  },
+  "src/webview/components/ui/Button.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": ["return ("]
+  },
+  "src/webview/components/ui/Icons.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": [
+      "type IconProps = Omit<SVGAttributes<SVGSVGElement>, \"children\">;",
+      "return (",
+      "<svg",
+      "width=\"16\"",
+      "height=\"16\"",
+      "viewBox=\"0 0 16 16\"",
+      "fill=\"currentColor\"",
+      "aria-hidden=\"true\"",
+      "focusable=\"false\"",
+      "{children}"
+    ]
+  },
+  "src/webview/components/ui/Checkbox.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": [
+      "type CheckboxProps = Omit<ComponentProps<\"input\">, \"class\" | \"type\" | \"children\"> & {",
+      "label: string;",
+      "return (",
+      "fill=\"none\"",
+      "stroke=\"currentColor\"",
+      "stroke-width=\"2\"",
+      "stroke-linecap=\"round\"",
+      "{label}"
+    ]
+  },
+  "src/webview/components/ui/ScrollShadow.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": ["export function ScrollShadow() {"]
+  },
+  "src/webview/pages/NoRepoPage.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": [
+      "return (",
+      "<svg",
+      "fill=\"none\"",
+      "stroke-width=\"2\"",
+      "aria-hidden=\"true\"",
+      "export function NoRepoPage() {",
+      "await rpcClient.request(\"git.init\", null);",
+      "const message = reason instanceof Error ? reason.message : String(reason);",
+      "<h1 id=\"no-repo-title\" class=\"text-xl font-semibold\">",
+      "fill=\"none\"",
+      "stroke=\"currentColor\"",
+      "{error}"
+    ]
+  },
+  "src/webview/pages/NoCommitsPage.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": [
+      "export function NoCommitsPage() {",
+      "return (",
+      "<div class=\"max-w-md text-center\">",
+      "<svg",
+      "fill=\"none\"",
+      "stroke-width=\"2\"",
+      "aria-hidden=\"true\""
+    ]
+  },
+  "src/webview/pages/LoadingPage.tsx": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": ["export function LoadingPage() {", "return (", "<Loading variant=\"page\" />"]
+  },
+  "src/webview/styles.css": {
+    "commit": "d15bfb34d3f2733ab857ec279ee66f12e8d86424",
+    "specification": "docs/clean-room/ui-kit.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the prop types callers depend on, the design tokens and their values, the standard SVG attributes, the scroll animation rule or the look the specification describes property by property leave little other way to write them.",
+    "lines": [
+      "@import \"tailwindcss\" source(\"./\");",
+      "@theme {",
+      "--default-font-family: var(--vscode-font-family);",
+      "--default-mono-font-family: var(--vscode-editor-font-family);",
+      "--text-ui: 13px;",
+      "--radius-md: 5px;",
+      "--grid-template-columns-labelled: auto 1fr;",
+      "--shadow-head: inset 2px 0 0 var(--color-graph);",
+      "--shadow-dialog: 0 0 30px 5px var(--vscode-widget-shadow);",
+      "--shadow-scroll: 0 -6px 6px 6px var(--vscode-scrollbar-shadow);",
+      "--color-fg: var(--vscode-foreground);",
+      "--color-focus: var(--vscode-focusBorder);",
+      "--color-editor: var(--vscode-editor-background);",
+      "--color-dropdown: var(--vscode-dropdown-background);",
+      "--color-dropdown-fg: var(--vscode-dropdown-foreground);",
+      "--color-menu: var(--vscode-menu-background, var(--vscode-dropdown-background));",
+      "--color-menu-fg: var(--vscode-menu-foreground, var(--vscode-dropdown-foreground));",
+      "--color-menu-active: var(",
+      "--vscode-menu-selectionBackground,",
+      "var(--vscode-list-activeSelectionBackground)",
+      "--color-menu-active-fg: var(",
+      "--vscode-menu-selectionForeground,",
+      "var(--vscode-list-activeSelectionForeground)",
+      "--color-input: var(--vscode-input-background);",
+      "--color-input-fg: var(--vscode-input-foreground);",
+      "--color-checkbox: var(--vscode-checkbox-background);",
+      "--color-checkbox-checked: var(--vscode-button-background);",
+      "--color-checkbox-check: var(--vscode-button-foreground);",
+      "--color-line: rgba(128, 128, 128, 0.5);",
+      "--color-line-soft: rgba(128, 128, 128, 0.25);",
+      "--color-btn: rgba(128, 128, 128, 0.1);",
+      "--color-btn-hover: rgba(128, 128, 128, 0.2);",
+      "--color-action: var(--vscode-button-background);",
+      "--color-action-fg: var(--vscode-button-foreground);",
+      "--color-action-hover: var(--vscode-button-hoverBackground);",
+      "--color-git-added: var(--vscode-gitDecoration-addedResourceForeground);",
+      "--color-git-modified: var(--vscode-gitDecoration-modifiedResourceForeground);",
+      "--color-git-deleted: var(--vscode-gitDecoration-deletedResourceForeground);",
+      "--color-row-head: var(--vscode-list-inactiveSelectionBackground);",
+      "--color-row-hover: var(--vscode-list-hoverBackground);",
+      "--color-row-selected: rgba(128, 128, 128, 0.25);",
+      "--color-row-selected-hover: rgba(128, 128, 128, 0.35);",
+      "--color-graph: var(--vscode-focusBorder);",
+      "@layer components {",
+      ".animate-scroll-shadow {",
+      "animation: scroll-shadow linear both;",
+      "animation-timeline: scroll(root block);",
+      "@keyframes scroll-shadow {",
+      "from {",
+      "opacity: 0;"
+    ]
+  },
+  "src/types/rpc.types.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export type RpcMethodMap = {",
+      "export type RpcMethod = keyof RpcMethodMap;",
+      "export type RpcNotificationMap = {",
+      "\"repo.rescan\": null;",
+      "\"repo.updated\": RepoUpdate;",
+      "export type RpcNotificationName = keyof RpcNotificationMap;",
+      "export type RpcNotification<N extends RpcNotificationName = RpcNotificationName> =",
+      "N extends RpcNotificationName",
+      ": never;",
+      "export type RpcRequest<M extends RpcMethod = RpcMethod> = M extends RpcMethod",
+      ": never;",
+      "export type RpcResponse<M extends RpcMethod = RpcMethod> ="
+    ]
+  },
+  "src/types/legacy.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export type GitRepoState = {",
+      "columnWidths: number[] | null;",
+      "export type GitRepoSet = { [repo: string]: GitRepoState };",
+      "export type RequestSaveRepoState = {",
+      "command: \"saveRepoState\";",
+      "repo: string;",
+      "export type RequestViewDiff = {",
+      "command: \"viewDiff\";",
+      "repo: string;",
+      "commitHash: string;",
+      "oldFilePath: string;",
+      "newFilePath: string;",
+      "type: GitFileChangeType;",
+      "export type RequestMessage =",
+      "| ActionRequest",
+      "| QueryRequest",
+      "| RequestSelectRepo",
+      "| RequestSaveRepoState",
+      "| RequestViewDiff;",
+      "export type ResponseMessage =",
+      "| ActionResponse",
+      "| QueryResponse",
+      "| ResponseViewDiff",
+      "| ResponseRefresh;"
+    ]
+  },
+  "src/types/config.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export type DateFormat = \"Date & Time\" | \"Date Only\" | \"Relative\";",
+      "export type GraphStyle = \"rounded\" | \"angular\";",
+      "export type WebviewConfig = Readonly<{",
+      "autoCenterCommitDetailsView: boolean;",
+      "dateFormat: DateFormat;",
+      "graphColours: readonly string[];",
+      "graphStyle: GraphStyle;",
+      "initialLoadCommits: number;",
+      "loadMoreCommits: number;",
+      "locale: string;",
+      "showCurrentBranchByDefault: boolean;"
+    ]
+  },
+  "src/webview/types.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export type ContextMenuEntry = { title: string; onClick: () => void } | null;",
+      "export type ContextMenuState = {",
+      "x: number;",
+      "y: number;",
+      "entries: Array<ContextMenuEntry>;",
+      "source: string;",
+      "export type DialogInput =",
+      "| { kind: \"text\"; label?: string; value: string; placeholder?: string }",
+      "| { kind: \"ref\"; label?: string; value: string }",
+      "kind: \"select\";",
+      "label?: string;",
+      "value: string;",
+      "options: Array<{ label: string; value: string }>;",
+      "| { kind: \"checkbox\"; label: string; value: boolean };",
+      "export type DialogValues<T extends ReadonlyArray<DialogInput>> = {",
+      "export type DialogBody =",
+      "kind: \"form\";",
+      "message: ComponentChildren;",
+      "inputs: Array<DialogInput>;",
+      "action: string;",
+      "onSubmit: (values: Array<string | boolean>) => void;",
+      "source: string | null;",
+      "| { kind: \"error\"; message: string; reason: string | null };"
+    ]
+  },
+  "src/webview/constants.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export const SHOW_ALL_BRANCHES = \"*\";",
+      "export const UNCOMMITTED_CHANGES = \"*\";",
+      "export const ROW_HEIGHT = 24;",
+      "export const TABLE_HEADER_HEIGHT = 32;",
+      "export const COMMIT_DETAILS_HEIGHT = 250;",
+      "export const DESCRIPTION_COLUMN = 1;"
+    ]
+  },
+  "src/webview/global.d.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "declare module \"*.css\";",
+      "declare function acquireVsCodeApi(): {",
+      "getState(): unknown;",
+      "setState(state: unknown): void;",
+      "postMessage(message: import(\"@/types\").RequestMessage | import(\"@/types\").RpcRequest): void;",
+      "interface Window {",
+      "l10n: import(\"@/old-extension/l10n/webviewL10n\").LocalizedStrings;"
+    ]
+  },
+  "src/webview/tsconfig.json": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "\"extends\": \"../../tsconfig.base.json\",",
+      "\"compilerOptions\": {",
+      "\"jsx\": \"react-jsx\","
+    ]
+  },
+  "src/webview/graph/types.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export type GraphPoint = { x: number; y: number };",
+      "export type GraphLine = {",
+      "p1: GraphPoint;",
+      "p2: GraphPoint;",
+      "isCommitted: boolean;",
+      "lockedFirst: boolean;",
+      "export type GraphVertex = {",
+      "x: number;",
+      "y: number;",
+      "colour: number;",
+      "isCommitted: boolean;",
+      "isCurrent: boolean;",
+      "export type GraphLayout = {",
+      "branches: Array<GraphBranch>;",
+      "vertices: Array<GraphVertex>;",
+      "lanes: number;",
+      "export type GraphStroke = {",
+      "path: string;",
+      "colour: number;",
+      "isCommitted: boolean;"
+    ]
+  },
+  "src/webview/graph/constants.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export const LANE_WIDTH = 16;",
+      "export const LANE_OFFSET = 8;",
+      "export const VERTEX_RADIUS = 4;",
+      "export const GRAPH_PADDING = 16;"
+    ]
+  },
+  "src/webview/graph/branchColours.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": ["return {", "claim(startAt: number): number {"]
+  },
+  "src/webview/graph/palette.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export const UNCOMMITTED_COLOUR = \"#808080\";",
+      "export function branchColour(index: number): string | undefined {",
+      "const palette = getWebviewConfig().graphColours;"
+    ]
+  },
+  "src/webview/utils/format.ts": {
+    "commit": "1d982f3bc98fa94a035f0a28790ae5a907c30bcb",
+    "specification": "docs/clean-room/shared-types.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported types, fields, constants, signatures and compiler options the specification gives in full as interface, which callers depend on and which leave no other way to write them.",
+    "lines": [
+      "export function format(",
+      "template: string,",
+      "...parts: Array<ComponentChildren>",
+      "): Array<ComponentChildren> {"
+    ]
   }
 }

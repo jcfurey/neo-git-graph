@@ -131,6 +131,13 @@ export function actionMutates(message: ActionResponse) {
   );
 }
 
+/** The repository shown when the action behind an answer was sent, while it is still in flight. */
+export function actionViewRepo(message: ActionResponse): string | undefined {
+  return message.requestId === undefined
+    ? undefined
+    : pendingActions.get(message.requestId)?.viewRepo;
+}
+
 /** Ignore a late result after the user changes repositories or opens another dialog. */
 export function acceptRemoteActionResult(message: ActionResponse): boolean {
   if (message.requestId === undefined) {

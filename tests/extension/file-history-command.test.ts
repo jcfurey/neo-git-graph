@@ -37,8 +37,9 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  fs.rmSync(outside, { recursive: true, force: true });
-  fs.rmSync(repo, { recursive: true, force: true });
+  // Windows can briefly keep a folder busy after a Git process in it exits.
+  fs.rmSync(outside, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  fs.rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 it.each([

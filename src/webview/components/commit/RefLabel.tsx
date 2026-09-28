@@ -1,3 +1,6 @@
+import { computed } from "@preact/signals";
+import { useMemo } from "preact/hooks";
+
 import type { GitRef } from "@/backend/types";
 import { BranchFocusBadge } from "@/webview/components/commit/BranchFocusBadge";
 import { BranchIcon, TagIcon } from "@/webview/components/ui/Icons";
@@ -6,56 +9,78 @@ import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menu
 import { repositoryState } from "@/webview/lib/repository-actions";
 import { activeSource } from "@/webview/lib/stores";
 
-const ICON_CLASS = "mr-1.25 size-4.5 shrink-0 rounded-l-sm bg-graph fill-editor p-0.5";
+/** What the repository state says about a local branch: its tracking and where it is checked out. */
+function localBranchFacts(gitRef: GitRef) {
+  const state = repositoryState.value;
+  if (gitRef.type !== "head" || state === null) {
+    return { branch: undefined, worktree: undefined };
+  }
+  return {
+    branch: state.branches.find((entry) => entry.name === gitRef.name),
+    worktree: state.worktrees.find((entry) => entry.branch === gitRef.name)
+  };
+}
 
+/**
+ * A branch or tag on a commit row. The tooltip starts with the ref's name, then adds what the
+ * repository state knows about a local branch: its upstream and the worktree holding it.
+ */
 export function RefLabel({ gitRef, active }: { gitRef: GitRef; active: boolean }) {
   const source = refMenuSource(gitRef);
-  const menuOpen = activeSource.value === source;
-  const state = repositoryState.value;
+  // Every label of the ref shares the key, so all of them light up while its menu is open.
+  const menuOpen = useMemo(() => computed(() => activeSource.value === source), [source]).value;
+  const { branch, worktree } = localBranchFacts(gitRef);
+  const l10n = window.l10n;
+
+  const lines = [gitRef.name];
+  if (active) {
+    lines.push(l10n.labelCurrentBranch);
+  }
+  if (branch !== undefined && branch.upstream !== "") {
+    lines.push(branch.upstream);
+  }
+  if (branch?.gone === true) {
+    lines.push(l10n.upstreamGone);
+  }
+  if (worktree !== undefined) {
+    // A function replacement keeps `$` sequences in the path as they are.
+    lines.push(l10n.worktreeAt.replace("{0}", () => worktree.path));
+  }
+
   const tracking =
-    gitRef.type === "head"
-      ? state?.branches.find((branch) => branch.name === gitRef.name)
-      : undefined;
-  const worktree =
-    gitRef.type === "head"
-      ? state?.worktrees.find((entry) => entry.branch === gitRef.name)
-      : undefined;
-  const title = [
-    gitRef.name,
-    active ? window.l10n.labelCurrentBranch : null,
-    tracking?.upstream,
-    tracking?.gone ? window.l10n.upstreamGone : null,
-    worktree ? window.l10n.worktreeAt.replace("{0}", worktree.path) : null
-  ]
-    .filter(Boolean)
-    .join("\n");
+    branch !== undefined &&
+    branch.upstream !== "" &&
+    !branch.gone &&
+    (branch.ahead > 0 || branch.behind > 0);
+  const Glyph = gitRef.type === "tag" ? TagIcon : BranchIcon;
 
   return (
     <span
-      class={`mt-0.5 mr-1.25 inline-flex h-4.5 max-w-full items-center overflow-hidden rounded-md border pr-1.25 align-top text-xs box-content ${
+      class={`mt-0.5 mr-1.25 box-content inline-flex h-4.5 max-w-full items-center overflow-hidden rounded-md border pr-1.25 align-top text-xs ${
         active ? "border-graph" : "border-line"
       } ${menuOpen ? "bg-btn-hover" : "bg-btn"}`}
-      title={title}
+      title={lines.join("\n")}
       onContextMenu={(event) => openContextMenu(event, source, refMenu(gitRef, active))}
       onClick={(event) => event.stopPropagation()}
       onDblClick={(event) => {
         event.stopPropagation();
-        checkoutBranchAction(gitRef);
+        // The checked-out branch is where it should be already.
+        if (!active) {
+          checkoutBranchAction(gitRef);
+        }
       }}
     >
-      {gitRef.type === "tag" ? <TagIcon class={ICON_CLASS} /> : <BranchIcon class={ICON_CLASS} />}
+      <Glyph class="mr-1.25 size-4.5 shrink-0 rounded-l-sm bg-graph p-0.5 text-editor" />
       <span class={`truncate ${active ? "font-bold" : ""}`}>{gitRef.name}</span>
       {gitRef.type !== "tag" && (
         <BranchFocusBadge
-          branch={gitRef.type === "remote" ? "remotes/" + gitRef.name : gitRef.name}
+          branch={gitRef.type === "remote" ? `remotes/${gitRef.name}` : gitRef.name}
         />
       )}
-      {tracking?.upstream && !tracking.gone && (tracking.ahead > 0 || tracking.behind > 0) && (
-        <span class="ml-1 whitespace-nowrap">
-          ↑{tracking.ahead} ↓{tracking.behind}
-        </span>
+      {tracking && (
+        <span class="ml-1 whitespace-nowrap">{`↑${branch.ahead} ↓${branch.behind}`}</span>
       )}
-      {worktree && !active && <span class="ml-1">↗</span>}
+      {worktree !== undefined && !active && <span class="ml-1">↗</span>}
     </span>
   );
 }

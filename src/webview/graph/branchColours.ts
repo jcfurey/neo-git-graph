@@ -1,25 +1,35 @@
 /**
- * Hands out branch colours. A colour is free again once the branch holding it
- * ends, so a long list of commits stays inside a small palette. The number is
- * an index: the palette wraps it, see `palette.ts`.
+ * Hands out palette indexes to the tracks of one layout, reusing an index once its last track has
+ * ended. A track that ended on row `r` gives up its index to tracks starting on row `r + 1` or
+ * later, never to one starting on row `r` itself, so two tracks sharing a row never share a colour.
+ *
+ * The layout claims an index for each track, walks the track, and releases the index with the last
+ * row it reached before claiming the next one. A claim is not a reservation: until the index is
+ * released, another claim may return it too.
  */
-export function createBranchColours() {
-  /** Index of the last commit each colour is taken up to. */
-  const takenUntil: Array<number> = [];
+export function createBranchColours(): {
+  claim(startAt: number): number;
+  release(colour: number, end: number): void;
+} {
+  // The last row each index was released at, by index. An index enters at row 0 when first handed
+  // out. Indexes that were skipped by a release beyond the end are holes, and are never offered.
+  const lastRows: Array<number> = [];
 
   return {
+    /** The lowest index whose track ended above `startAt`, or else a new one. */
     claim(startAt: number): number {
-      const free = takenUntil.findIndex((end) => startAt > end);
-      if (free !== -1) {
-        return free;
+      for (let colour = 0; colour < lastRows.length; colour++) {
+        const lastRow = lastRows[colour];
+        if (lastRow !== undefined && lastRow < startAt) {
+          return colour;
+        }
       }
-
-      takenUntil.push(0);
-      return takenUntil.length - 1;
+      return lastRows.push(0) - 1;
     },
 
-    release(colour: number, end: number) {
-      takenUntil[colour] = end;
+    /** Record that the track holding `colour` ended on row `end`, replacing any earlier record. */
+    release(colour: number, end: number): void {
+      lastRows[colour] = end;
     }
   };
 }

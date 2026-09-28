@@ -1,50 +1,136 @@
-import type { ComponentChildren, RefObject } from "preact";
+import type { ComponentChildren } from "preact";
 import { useEffect, useMemo, useRef } from "preact/hooks";
 
 import type { GitCommitDetails } from "@/backend/types";
 import { FileTree } from "@/webview/components/commit/FileTree";
 import { Icon } from "@/webview/components/ui/Icons";
 import { Loading } from "@/webview/components/ui/Loading";
-import { COMMIT_DETAILS_HEIGHT, ROW_HEIGHT } from "@/webview/constants";
+import { COMMIT_DETAILS_HEIGHT, ROW_HEIGHT, TABLE_HEADER_HEIGHT } from "@/webview/constants";
 import { closeCommitDetails } from "@/webview/lib/actions";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
 import { getFullDate } from "@/webview/utils/date";
 import { buildFileTree } from "@/webview/utils/fileTree";
 
-/** Gap kept between the details view and the edge of the window, in pixels. */
-const SCROLL_GAP = 8;
+/** Thickness of the line that closes off the details at the bottom, in pixels. */
+const BOTTOM_LINE = 2;
 
-/** Height of the line that closes the view off, in pixels. */
-const SEPARATOR_HEIGHT = 2;
+/** Room kept below the details when they are scrolled into view without centring, in pixels. */
+const MARGIN_BELOW = 8;
 
-/** Scroll the details view into view, the way the user configured it. */
-function useScrollIntoView(row: RefObject<HTMLTableRowElement>) {
-  useEffect(() => {
-    if (row.current === null) {
-      return;
-    }
-
-    const box = row.current.getBoundingClientRect();
-
-    if (getWebviewConfig().autoCenterCommitDetailsView) {
-      window.scrollBy({ top: box.top + box.height / 2 - window.innerHeight / 2 });
-      return;
-    }
-
-    // Keep the commit row above the details view visible as well.
-    const above = box.top - ROW_HEIGHT - SCROLL_GAP;
-    if (above < 0) {
-      window.scrollBy({ top: above });
-    } else if (box.bottom + SCROLL_GAP > window.innerHeight) {
-      window.scrollBy({ top: box.bottom + SCROLL_GAP - window.innerHeight });
-    }
-  }, [row]);
+/**
+ * How much of the top of the window the sticky headings cover: the page header, whose height
+ * `MainHeader` keeps on the root element, and the heading row of the table the details are in.
+ */
+function stickyHeadings(row: HTMLElement) {
+  const page = parseFloat(document.documentElement.style.getPropertyValue("--main-header-height"));
+  const heading = row.closest("table")?.tHead;
+  const table = heading ? heading.getBoundingClientRect().height : TABLE_HEADER_HEIGHT;
+  return (Number.isFinite(page) ? page : 0) + table;
 }
 
-/** One "Label: {0}" row of the summary, with the label in bold. */
-function DetailRow({ template, children }: { template: string; children: ComponentChildren }) {
-  const [label, after = ""] = template.split("{0}");
+/**
+ * Scroll the window so the details just opened can be read. By default they are centred;
+ * otherwise the window moves as little as it can so the commit row above them stays clear of
+ * the sticky headings and the details end a little above the bottom edge.
+ */
+function bringIntoView(row: HTMLElement) {
+  const box = row.getBoundingClientRect();
+  const view = window.innerHeight;
+  if (getWebviewConfig().autoCenterCommitDetailsView) {
+    window.scrollBy({ top: box.top + box.height / 2 - view / 2 });
+    return;
+  }
+  const above = stickyHeadings(row) + ROW_HEIGHT;
+  if (box.top < above) {
+    window.scrollBy({ top: box.top - above });
+  } else if (box.bottom + MARGIN_BELOW > view) {
+    window.scrollBy({ top: box.bottom + MARGIN_BELOW - view });
+  }
+}
 
+/**
+ * The frame that opens under a table row: a fixed-height cell with a close button. The graph is
+ * stretched by exactly its height, so the height never follows the content.
+ */
+export function DetailsRow({ children }: { children: ComponentChildren }) {
+  const row = useRef<HTMLTableRowElement>(null);
+
+  // Once per opening. Content arriving later, such as loaded details, does not scroll again.
+  useEffect(() => {
+    if (row.current !== null) {
+      bringIntoView(row.current);
+    }
+  }, []);
+
+  /** Close, and hand focus back to the row the details belong to without scrolling to it. */
+  function close() {
+    const owner = row.current?.previousElementSibling;
+    closeCommitDetails();
+    if (owner instanceof HTMLElement) {
+      owner.focus({ preventScroll: true });
+    }
+  }
+
+  const label = window.l10n.close;
+  return (
+    <tr
+      ref={row}
+      data-details-row
+      style={{ height: `${COMMIT_DETAILS_HEIGHT}px` }}
+      onKeyDown={(event) => {
+        // Escape belongs to the details, not to whatever listens further up, such as a dialog.
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          close();
+        }
+      }}
+    >
+      {/* Under the graph column, left empty so the lanes show through. */}
+      <td />
+      <td
+        colSpan={4}
+        class="relative bg-btn p-0 align-top text-ui leading-4.5 whitespace-normal after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-line"
+      >
+        <div class="overflow-hidden" style={{ height: `${COMMIT_DETAILS_HEIGHT - BOTTOM_LINE}px` }}>
+          {children}
+        </div>
+        <button
+          type="button"
+          class="absolute top-1 right-1 cursor-pointer opacity-60 hover:opacity-100"
+          title={label}
+          aria-label={label}
+          onClick={close}
+        >
+          <Icon width="24" height="24">
+            <path d="M4.2 3.5 8 7.3l3.8-3.8.7.7L8.7 8l3.8 3.8-.7.7L8 8.7l-3.8 3.8-.7-.7L7.3 8 3.5 4.2z" />
+          </Icon>
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * The address for a `mailto:` link. The parts either side of the last `@` are encoded on their
+ * own, so the `@` itself stays readable to mail clients.
+ */
+function mailto(email: string) {
+  const at = email.lastIndexOf("@");
+  if (at < 0) {
+    return `mailto:${encodeURIComponent(email)}`;
+  }
+  const local = encodeURIComponent(email.slice(0, at));
+  return `mailto:${local}@${encodeURIComponent(email.slice(at + 1))}`;
+}
+
+/**
+ * One line of commit facts. The template's text up to its first `{0}` is the bold label, the
+ * value takes the placeholder's place, and the text up to the next `{0}` follows it. Each piece
+ * is a separate node, so nothing in the template or the value is interpreted.
+ */
+function Fact({ template, children }: { template: string; children: ComponentChildren }) {
+  const [label, after = ""] = template.split("{0}");
   return (
     <div class="truncate">
       <b>{label}</b>
@@ -54,96 +140,55 @@ function DetailRow({ template, children }: { template: string; children: Compone
   );
 }
 
-function Summary({ details }: { details: GitCommitDetails }) {
+function Author({ name, email }: { name: string; email: string }) {
+  if (email === "") {
+    return <>{name}</>;
+  }
   return (
-    <div class="w-9/20 shrink-0 overflow-auto border-x border-line p-2.5 select-text">
-      <DetailRow template={window.l10n.detailCommit}>{details.hash}</DetailRow>
-      <DetailRow template={window.l10n.detailParents}>{details.parents.join(", ")}</DetailRow>
-      <DetailRow template={window.l10n.detailAuthor}>
-        {details.author} &lt;
-        <a class="text-inherit underline" href={`mailto:${encodeURIComponent(details.email)}`}>
-          {details.email}
-        </a>
-        &gt;
-      </DetailRow>
-      <DetailRow template={window.l10n.detailDate}>{getFullDate(details.date)}</DetailRow>
-      <DetailRow template={window.l10n.detailCommitter}>{details.committer}</DetailRow>
-      <p class="mt-4 whitespace-pre-wrap">{details.body}</p>
-    </div>
+    <>
+      {`${name} <`}
+      <a class="text-inherit underline" href={mailto(email)}>
+        {email}
+      </a>
+      {">"}
+    </>
   );
 }
 
-/**
- * The details of one commit, shown as a row of the commit table under the
- * commit it belongs to. Its height is fixed, because the graph is drawn to it.
- */
+/** A commit's facts and message beside the tree of the files it changed. */
 export function CommitDetails({ details }: { details: GitCommitDetails | null }) {
+  // A new reply for the same commit builds the tree again; the tree keeps its folders by hash.
   const nodes = useMemo(
-    () => (details === null ? [] : buildFileTree(details.fileChanges)),
+    () => (details === null ? null : buildFileTree(details.fileChanges)),
     [details]
   );
 
+  if (details === null || nodes === null) {
+    return (
+      <DetailsRow>
+        <Loading class="h-full" />
+      </DetailsRow>
+    );
+  }
+
+  const l10n = window.l10n;
   return (
     <DetailsRow>
-      {details === null ? (
-        <Loading class="h-full" />
-      ) : (
-        <div class="flex h-full">
-          <Summary details={details} />
-          <div class="mr-8 grow overflow-x-hidden overflow-y-scroll border-r border-line py-1">
-            <FileTree nodes={nodes} commitHash={details.hash} />
-          </div>
+      <div class="flex h-full">
+        <div class="w-9/20 shrink-0 overflow-auto border-x border-line p-2.5 select-text">
+          <Fact template={l10n.detailCommit}>{details.hash}</Fact>
+          <Fact template={l10n.detailParents}>{details.parents.join(", ")}</Fact>
+          <Fact template={l10n.detailAuthor}>
+            <Author name={details.author} email={details.email} />
+          </Fact>
+          <Fact template={l10n.detailDate}>{getFullDate(details.date)}</Fact>
+          <Fact template={l10n.detailCommitter}>{details.committer}</Fact>
+          <p class="mt-4 break-words whitespace-pre-wrap">{details.body}</p>
         </div>
-      )}
+        <div class="mr-8 min-w-0 flex-1 overflow-x-hidden overflow-y-scroll border-r border-line py-1">
+          <FileTree nodes={nodes} commitHash={details.hash} />
+        </div>
+      </div>
     </DetailsRow>
-  );
-}
-
-/** Shared fixed-height frame keeps the graph aligned with either details panel. */
-export function DetailsRow({ children }: { children: ComponentChildren }) {
-  const row = useRef<HTMLTableRowElement>(null);
-  useScrollIntoView(row);
-  function close() {
-    const owner = row.current?.previousElementSibling as HTMLElement | null;
-    closeCommitDetails();
-    owner?.focus({ preventScroll: true });
-  }
-  return (
-    <tr
-      ref={row}
-      data-details-row
-      style={`height: ${COMMIT_DETAILS_HEIGHT}px`}
-      onKeyDown={(event) => {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          event.stopPropagation();
-          close();
-        }
-      }}
-    >
-      <td />
-      <td
-        colSpan={4}
-        class="relative bg-btn p-0 align-top text-ui leading-4.5 whitespace-normal after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-line"
-      >
-        <div
-          class="overflow-hidden"
-          style={`height: ${COMMIT_DETAILS_HEIGHT - SEPARATOR_HEIGHT}px`}
-        >
-          {children}
-        </div>
-        <button
-          type="button"
-          class="absolute top-1 right-1 cursor-pointer opacity-60 hover:opacity-100"
-          title={window.l10n.close}
-          aria-label={window.l10n.close}
-          onClick={close}
-        >
-          <Icon class="size-6" viewBox="0 0 12 16">
-            <path d="M7.48 8l3.75 3.75-1.48 1.48L6 9.48l-3.75 3.75-1.48-1.48L4.52 8 .77 4.25l1.48-1.48L6 6.52l3.75-3.75 1.48 1.48L7.48 8z" />
-          </Icon>
-        </button>
-      </td>
-    </tr>
   );
 }
