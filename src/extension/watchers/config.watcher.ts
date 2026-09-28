@@ -4,17 +4,20 @@ import { webviewConfig } from "@/extension/handlers/initialize";
 import { rpcNotify } from "@/extension/rpc/rpc-notify";
 import { logger } from "@/extension/util/logger";
 
+/** Settings that decide which repositories the workspace scan finds. */
+const REPO_SEARCH_SETTINGS = ["git.path", "branchwise.maxDepthOfRepoSearch"];
+
+/**
+ * Tell the graph when settings change: a new repository search asks it to scan again, and any
+ * Branchwise setting sends it the current display settings. Disposing the result stops both.
+ */
 export function initConfigWatcher(): vscode.Disposable {
-  return vscode.workspace.onDidChangeConfiguration((e) => {
-    if (
-      e.affectsConfiguration("git.path") ||
-      e.affectsConfiguration("branchwise.maxDepthOfRepoSearch")
-    ) {
+  return vscode.workspace.onDidChangeConfiguration((event) => {
+    if (REPO_SEARCH_SETTINGS.some((setting) => event.affectsConfiguration(setting))) {
       logger.info("Configuration changed");
       void rpcNotify.notify("repo.rescan", null);
     }
-    // An open graph applies display settings at once instead of on its next start.
-    if (e.affectsConfiguration("branchwise")) {
+    if (event.affectsConfiguration("branchwise")) {
       void rpcNotify.notify("config.changed", webviewConfig());
     }
   });
