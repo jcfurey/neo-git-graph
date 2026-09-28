@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { Fragment, h, render } from "preact";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { GitCommitNode, GitRef } from "@/backend/types";
@@ -10,6 +11,7 @@ import { setupWebviewTest } from "@tests/webview/test-utils";
 
 let menus: typeof import("@/webview/lib/menus");
 let stores: typeof import("@/webview/lib/stores");
+let remoteActions: typeof import("@/webview/lib/remote-actions");
 
 const hash = "c".repeat(40);
 const commit: GitCommitNode = {
@@ -33,6 +35,7 @@ beforeAll(async () => {
   });
   menus = await import("@/webview/lib/menus");
   stores = await import("@/webview/lib/stores");
+  remoteActions = await import("@/webview/lib/remote-actions");
 });
 
 beforeEach(() => {
@@ -259,5 +262,154 @@ describe("remote branch menu", () => {
         title
       ).toBe(true);
     }
+  });
+});
+
+/** Choose an entry that hands over to another tool. */
+function choose(entries: Entries, title: string) {
+  const entry = entries.find((item) => item?.title === title);
+  expect(entry, title).toBeDefined();
+  entry!.onClick();
+}
+
+describe("tool arguments", () => {
+  const moved = "d".repeat(40);
+  const headCommit = "e".repeat(40);
+
+  it("plans an interactive rebase and a fixup against the commit's full hash", () => {
+    choose(menus.commitMenu(commit, new Map()), "interactiveRebase…");
+    expect(lastRequest()).toMatchObject({
+      command: "repositoryQuery",
+      repo: "/repo",
+      query: { kind: "rebasePlan", base: hash, autosquash: false }
+    });
+    choose(menus.commitMenu(commit, new Map()), "createFixupMenu…");
+    expect(lastRequest()).toMatchObject({
+      command: "repositoryQuery",
+      repo: "/repo",
+      query: { kind: "stagedPlan", target: hash }
+    });
+  });
+
+  it("compares HEAD with the commit, or with the hash a ref points at", () => {
+    const compared = () => {
+      const shown = stores.dialog.value;
+      if (shown?.kind !== "content") {
+        throw new Error("Expected the comparison");
+      }
+      return (shown.content as { props: { left: string; right: string } }).props;
+    };
+    choose(menus.commitMenu(commit, new Map()), "compareWith");
+    expect(compared()).toMatchObject({ left: "HEAD", right: hash });
+    for (const gitRef of [branch, remote, tag]) {
+      choose(menus.refMenu({ ...gitRef, hash: moved }, false), "compareWith");
+      expect(compared(), gitRef.type).toMatchObject({ left: "HEAD", right: moved });
+    }
+  });
+
+  it("chooses the commit for bisect without asking the extension", () => {
+    for (const title of ["bisectChooseGood", "bisectChooseBad"]) {
+      stores.dialog.value = null;
+      choose(menus.commitMenu(commit, new Map()), title);
+      expect(stores.dialog.value, title).toMatchObject({ kind: "content", message: "bisectTitle" });
+    }
+    expect(vscodeApi.postMessage).not.toHaveBeenCalled();
+  });
+
+  it("loads the repository state to configure a branch's upstream", () => {
+    choose(menus.refMenu(branch, false), "configureUpstream…");
+    expect(lastRequest()).toMatchObject({
+      command: "repositoryQuery",
+      repo: "/repo",
+      query: { kind: "state" }
+    });
+  });
+
+  it("starts a worktree from the branch's full ref name", () => {
+    expect(open(menus.refMenu(branch, false), "addWorktree…").inputs[3]).toMatchObject({
+      value: "refs/heads/topic"
+    });
+    expect(open(menus.refMenu(remote, false), "addWorktree…").inputs[3]).toMatchObject({
+      value: "refs/remotes/origin/topic"
+    });
+  });
+
+  it("rebases the current branch onto the full ref name", () => {
+    stores.headBranch.value = "main";
+    stores.commitHead.value = headCommit;
+    for (const [gitRef, onto] of [
+      [branch, "refs/heads/topic"],
+      [remote, "refs/remotes/origin/topic"]
+    ] as const) {
+      open(menus.refMenu(gitRef, false), "rebaseOnto…").onSubmit([]);
+      expect(lastRequest()).toMatchObject({
+        command: "repositoryAction",
+        repo: "/repo",
+        action: { kind: "rebase", branch: "main", onto, expectedHead: headCommit }
+      });
+    }
+    stores.headBranch.value = null;
+    stores.commitHead.value = null;
+  });
+});
+
+describe("remote flows", () => {
+  /** Answer the pending request for the remotes, as the extension would. */
+  function answerRemotes() {
+    const request = vscodeApi.postMessage.mock.lastCall![0];
+    remoteActions.handleLoadRemotes({
+      ...request,
+      remotes: ["origin", "upstream"],
+      upstream: null,
+      pushRemote: null,
+      status: null
+    });
+    const form = stores.dialog.value;
+    if (form?.kind !== "form") {
+      throw new Error("Expected a remote form");
+    }
+    return form;
+  }
+
+  it("names the local branch to push or pull", () => {
+    choose(menus.refMenu(branch, false), "pushBranch…");
+    expect(lastRequest()).toMatchObject({ command: "loadRemotes", branchName: "topic" });
+    choose(menus.refMenu({ ...branch, name: "main" }, true), "pullBranch…");
+    expect(lastRequest()).toMatchObject({ command: "loadRemotes", branchName: "main" });
+  });
+
+  it("fetches from the remote of a remote branch", () => {
+    choose(menus.refMenu(remote, false), "fetch…");
+    expect(lastRequest()).toMatchObject({ command: "loadRemotes", branchName: null });
+    const form = answerRemotes();
+    expect(form.inputs[0]).toMatchObject({ kind: "select", value: "origin" });
+    expect(form.source).toBeNull();
+  });
+
+  it.each(["pushTag…", "deleteRemoteTag…"])("names the tag when %s asks for a remote", (title) => {
+    choose(menus.refMenu(tag, false), title);
+    expect(lastRequest()).toMatchObject({ command: "loadRemotes", branchName: null });
+    const container = document.createElement("div");
+    render(h(Fragment, null, answerRemotes().message), container);
+    expect(container.textContent).toContain("v1");
+  });
+
+  it("deletes a remote branch by its name on its own remote", () => {
+    choose(menus.refMenu(remote, false), "deleteRemoteBranch…");
+    expect(lastRequest()).toMatchObject({ command: "loadRemotes", branchName: null });
+    const picker = answerRemotes();
+    expect(picker.inputs[0]).toMatchObject({ kind: "select", value: "origin" });
+    picker.onSubmit(["origin"]);
+    const confirm = stores.dialog.value;
+    if (confirm?.kind !== "form") {
+      throw new Error("Expected a confirmation");
+    }
+    expect(confirm.destructive).toBe(true);
+    confirm.onSubmit([]);
+    expect(lastRequest()).toMatchObject({
+      command: "repositoryAction",
+      repo: "/repo",
+      action: { kind: "deleteRemoteRef", remote: "origin", name: "topic", refType: "branch" }
+    });
   });
 });

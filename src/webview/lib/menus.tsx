@@ -8,83 +8,230 @@ import { openInteractiveRebase, openRebase } from "@/webview/components/reposito
 import { openTracking } from "@/webview/components/repository/RemoteManager";
 import { openAddWorktree } from "@/webview/components/repository/WorktreeManager";
 import { Explain } from "@/webview/components/ui/Explain";
-import { focusBranchInGraph, openFormDialog, runAction } from "@/webview/lib/actions";
+import { closeDialog, focusBranchInGraph, openFormDialog, runAction } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
 import type { ContextMenuEntry } from "@/webview/types";
 import { format } from "@/webview/utils/format";
 
-/** Commit message of every loaded commit, by hash. It labels the parents of a merge. */
+/** The message of each loaded commit by its full hash, to describe the parents of a merge. */
 export type CommitMessages = ReadonlyMap<string, string>;
 
-/**
- * Keys that tell a commit row or a ref label that its own menu is open.
- * A ref name is unique per type, so the pair identifies one label.
- */
+type Entry = Exclude<ContextMenuEntry, null>;
+
+/** The key of a commit row, matched against the source of an open menu or dialog. */
 export function commitMenuSource(hash: string) {
-  return `commit:${hash}`;
+  return "commit:" + hash;
 }
 
+/** The key of a branch or tag label. Every label of the same ref shares it. */
 export function refMenuSource(gitRef: GitRef) {
   return `ref:${gitRef.type}:${gitRef.name}`;
 }
 
-/** A hash or a ref name, as the dialogs show it. */
-function Name({ children }: { children: string }) {
+/** The title of an entry that asks for more before it acts. */
+function more(title: string) {
+  return title + "…";
+}
+
+/** Put a divider between each group of entries and the next. A fresh array every time. */
+function grouped(...groups: Array<Array<Entry>>): Array<ContextMenuEntry> {
+  const entries: Array<ContextMenuEntry> = [];
+  for (const group of groups) {
+    if (entries.length > 0 && group.length > 0) {
+      entries.push(null);
+    }
+    entries.push(...group);
+  }
+  return entries;
+}
+
+/** A hash or ref name inside a dialog question. */
+function named(text: string) {
   return (
     <b>
-      <i>{children}</i>
+      <i>{text}</i>
     </b>
   );
 }
 
-function CurrentBranch() {
+function currentBranch() {
   return <b>{window.l10n.labelCurrentBranch}</b>;
 }
 
-/** One line per parent, so the user can tell which side of a merge to take. */
-function parentOptions(commit: GitCommitNode, messages: CommitMessages) {
-  return commit.parentHashes.map((hash, index) => {
-    const message = messages.get(hash);
-    return {
-      label: message === undefined ? abbrevCommit(hash) : `${abbrevCommit(hash)}: ${message}`,
-      value: String(index + 1)
-    };
+function withExplanation(question: Array<ComponentChildren>, explanation: string) {
+  return (
+    <>
+      {question}
+      <Explain>{explanation}</Explain>
+    </>
+  );
+}
+
+/**
+ * The symbolic ref that names a remote's default branch, such as `origin/HEAD`. It is not a
+ * branch of its own, so nothing that treats it as one is offered.
+ */
+function isRemoteHead(gitRef: GitRef) {
+  return gitRef.type === "remote" && gitRef.name.endsWith("/HEAD");
+}
+
+function compareEntry(hash: string): Entry {
+  return { title: window.l10n.compareWith, onClick: () => openCompare("HEAD", hash) };
+}
+
+function focusEntry(branch: string): Entry {
+  return { title: window.l10n.focusThisBranch, onClick: () => focusBranchInGraph(branch) };
+}
+
+function copyBranchEntry(name: string): Entry {
+  return {
+    title: window.l10n.copyBranchName,
+    onClick: () => copyToClipboard(window.l10n.typeBranchName, name)
+  };
+}
+
+// Commit menu
+
+function addTag(hash: string) {
+  openFormDialog({
+    message: format(window.l10n.dialogAddTagTitle, named(abbrevCommit(hash))),
+    inputs: [
+      { kind: "ref", label: window.l10n.dialogAddTagName, value: "" },
+      {
+        kind: "select",
+        label: window.l10n.dialogAddTagType,
+        value: "annotated",
+        options: [
+          { label: window.l10n.dialogAddTagTypeAnnotated, value: "annotated" },
+          { label: window.l10n.dialogAddTagTypeLightweight, value: "lightweight" }
+        ]
+      },
+      {
+        kind: "text",
+        label: window.l10n.dialogAddTagMessage,
+        value: "",
+        placeholder: window.l10n.dialogAddTagOptional
+      }
+    ],
+    action: window.l10n.dialogAddTagSubmit,
+    source: commitMenuSource(hash),
+    onSubmit: ([tagName, type, message]) => {
+      // A lightweight tag has no message, whatever was left in the field.
+      const lightweight = type === "lightweight";
+      runAction({
+        command: "addTag",
+        tagName,
+        commitHash: hash,
+        lightweight,
+        message: lightweight ? "" : message
+      });
+    }
+  });
+}
+
+function createBranch(hash: string) {
+  openFormDialog({
+    message: format(window.l10n.dialogCreateBranchTitle, named(abbrevCommit(hash))),
+    inputs: [{ kind: "ref", value: "" }],
+    action: window.l10n.dialogCreateBranchSubmit,
+    source: commitMenuSource(hash),
+    onSubmit: ([branchName]) => runAction({ command: "createBranch", branchName, commitHash: hash })
+  });
+}
+
+function checkoutCommit(hash: string) {
+  openFormDialog({
+    message: withExplanation(
+      format(window.l10n.dialogCheckoutConfirm, named(abbrevCommit(hash))),
+      window.l10n.explainDetachedHead
+    ),
+    inputs: [],
+    action: window.l10n.dialogYes,
+    source: commitMenuSource(hash),
+    onSubmit: () => runAction({ command: "checkoutCommit", commitHash: hash })
   });
 }
 
 /**
- * Ask before a command that takes one parent of a commit. A merge has more than
- * one parent, so the user must pick the side to apply.
+ * Cherry-pick or revert a commit. A merge has one change per parent, so the user picks the
+ * parent (1-based, as Git's `--mainline` counts) that the change is taken against.
  */
-function confirmOnParent(options: {
-  command: "cherrypickCommit" | "revertCommit";
-  message: ComponentChildren;
-  action: string;
-  commit: GitCommitNode;
-  messages: CommitMessages;
-  source: string;
-}) {
-  const { command, message, action, commit, messages, source } = options;
+function applyCommit(
+  commit: GitCommitNode,
+  messages: CommitMessages,
+  command: "cherrypickCommit" | "revertCommit"
+) {
+  const commitHash = commit.hash;
+  const cherryPick = command === "cherrypickCommit";
+  const question = format(
+    cherryPick ? window.l10n.dialogCherryPickConfirm : window.l10n.dialogRevertConfirm,
+    named(abbrevCommit(commitHash))
+  );
+  const action = cherryPick ? window.l10n.dialogYesCherryPick : window.l10n.dialogYesRevert;
+  const source = commitMenuSource(commitHash);
 
   if (commit.parentHashes.length < 2) {
     openFormDialog({
-      message,
+      message: question,
       inputs: [],
       action,
       source,
-      onSubmit: () => runAction({ command, commitHash: commit.hash, parentIndex: 0 })
+      onSubmit: () => runAction({ command, commitHash, parentIndex: 0 })
     });
     return;
   }
 
+  const options = commit.parentHashes.map((parent, index) => {
+    const summary = messages.get(parent);
+    const short = abbrevCommit(parent);
+    return {
+      label: summary === undefined ? short : `${short}: ${summary}`,
+      value: String(index + 1)
+    };
+  });
   openFormDialog({
-    message,
-    inputs: [{ kind: "select", value: "1", options: parentOptions(commit, messages) }],
+    message: question,
+    inputs: [{ kind: "select", value: "1", options }],
     action,
     source,
-    onSubmit: ([parentIndex]) =>
-      runAction({ command, commitHash: commit.hash, parentIndex: Number(parentIndex) })
+    onSubmit: ([parent]) => runAction({ command, commitHash, parentIndex: Number(parent) })
+  });
+}
+
+function mergeCommit(hash: string) {
+  openFormDialog({
+    message: format(window.l10n.dialogMergeConfirm, named(abbrevCommit(hash)), currentBranch()),
+    inputs: [{ kind: "checkbox", label: window.l10n.dialogMergeNoFastForward, value: true }],
+    action: window.l10n.dialogYesMerge,
+    source: commitMenuSource(hash),
+    onSubmit: ([createNewCommit]) =>
+      runAction({ command: "mergeCommit", commitHash: hash, createNewCommit })
+  });
+}
+
+function resetToCommit(hash: string) {
+  openFormDialog({
+    message: withExplanation(
+      format(window.l10n.dialogResetConfirm, currentBranch(), named(abbrevCommit(hash))),
+      window.l10n.explainReset
+    ),
+    inputs: [
+      {
+        kind: "select",
+        value: "mixed",
+        options: [
+          { label: window.l10n.dialogResetSoft, value: "soft" },
+          { label: window.l10n.dialogResetMixed, value: "mixed" },
+          { label: window.l10n.dialogResetHard, value: "hard" }
+        ]
+      }
+    ],
+    action: window.l10n.dialogYesReset,
+    source: commitMenuSource(hash),
+    destructive: true,
+    onSubmit: ([mode]) =>
+      runAction({ command: "resetToCommit", commitHash: hash, resetMode: mode as GitResetMode })
   });
 }
 
@@ -92,368 +239,185 @@ export function commitMenu(
   commit: GitCommitNode,
   messages: CommitMessages
 ): Array<ContextMenuEntry> {
-  const hash = commit.hash;
-  const source = commitMenuSource(hash);
-  const shortHash = abbrevCommit(hash);
-
-  return [
-    {
-      title: `${window.l10n.addTag}…`,
-      onClick: () =>
-        openFormDialog({
-          message: format(window.l10n.dialogAddTagTitle, <Name>{shortHash}</Name>),
-          inputs: [
-            { kind: "ref", label: window.l10n.dialogAddTagName, value: "" },
-            {
-              kind: "select",
-              label: window.l10n.dialogAddTagType,
-              value: "annotated",
-              options: [
-                { label: window.l10n.dialogAddTagTypeAnnotated, value: "annotated" },
-                { label: window.l10n.dialogAddTagTypeLightweight, value: "lightweight" }
-              ]
-            },
-            {
-              kind: "text",
-              label: window.l10n.dialogAddTagMessage,
-              value: "",
-              placeholder: window.l10n.dialogAddTagOptional
-            }
-          ],
-          action: window.l10n.dialogAddTagSubmit,
-          source,
-          onSubmit: ([tagName, type, message]) =>
-            runAction({
-              command: "addTag",
-              tagName,
-              commitHash: hash,
-              lightweight: type === "lightweight",
-              message
-            })
-        })
-    },
-    {
-      title: `${window.l10n.createBranch}…`,
-      onClick: () =>
-        openFormDialog({
-          message: format(window.l10n.dialogCreateBranchTitle, <Name>{shortHash}</Name>),
-          inputs: [{ kind: "ref", value: "" }],
-          action: window.l10n.dialogCreateBranchSubmit,
-          source,
-          onSubmit: ([branchName]) =>
-            runAction({ command: "createBranch", branchName, commitHash: hash })
-        })
-    },
-    null,
-    {
-      title: `${window.l10n.checkout}…`,
-      onClick: () =>
-        openFormDialog({
-          message: (
-            <>
-              {format(window.l10n.dialogCheckoutConfirm, <Name>{shortHash}</Name>)}
-              <Explain>{window.l10n.explainDetachedHead}</Explain>
-            </>
-          ),
-          inputs: [],
-          action: window.l10n.dialogYes,
-          source,
-          onSubmit: () => runAction({ command: "checkoutCommit", commitHash: hash })
-        })
-    },
-    {
-      title: `${window.l10n.cherryPick}…`,
-      onClick: () =>
-        confirmOnParent({
-          command: "cherrypickCommit",
-          message: format(window.l10n.dialogCherryPickConfirm, <Name>{shortHash}</Name>),
-          action: window.l10n.dialogYesCherryPick,
-          commit,
-          messages,
-          source
-        })
-    },
-    {
-      title: `${window.l10n.revert}…`,
-      onClick: () =>
-        confirmOnParent({
-          command: "revertCommit",
-          message: format(window.l10n.dialogRevertConfirm, <Name>{shortHash}</Name>),
-          action: window.l10n.dialogYesRevert,
-          commit,
-          messages,
-          source
-        })
-    },
-    null,
-    {
-      title: `${window.l10n.merge}…`,
-      onClick: () =>
-        openFormDialog({
-          message: format(
-            window.l10n.dialogMergeConfirm,
-            <Name>{shortHash}</Name>,
-            <CurrentBranch />
-          ),
-          inputs: [{ kind: "checkbox", label: window.l10n.dialogMergeNoFastForward, value: true }],
-          action: window.l10n.dialogYesMerge,
-          source,
-          onSubmit: ([createNewCommit]) =>
-            runAction({ command: "mergeCommit", commitHash: hash, createNewCommit })
-        })
-    },
-    {
-      title: `${window.l10n.reset}…`,
-      onClick: () =>
-        openFormDialog({
-          message: (
-            <>
-              {format(window.l10n.dialogResetConfirm, <CurrentBranch />, <Name>{shortHash}</Name>)}
-              <Explain>{window.l10n.explainReset}</Explain>
-            </>
-          ),
-          inputs: [
-            {
-              kind: "select",
-              value: "mixed",
-              options: [
-                { label: window.l10n.dialogResetSoft, value: "soft" },
-                { label: window.l10n.dialogResetMixed, value: "mixed" },
-                { label: window.l10n.dialogResetHard, value: "hard" }
-              ]
-            }
-          ],
-          action: window.l10n.dialogYesReset,
-          source,
-          destructive: true,
-          onSubmit: ([resetMode]) =>
-            runAction({
-              command: "resetToCommit",
-              commitHash: hash,
-              resetMode: resetMode as GitResetMode
-            })
-        })
-    },
-    null,
-    {
-      title: `${window.l10n.interactiveRebase}…`,
-      onClick: () => openInteractiveRebase(hash)
-    },
-    { title: window.l10n.createFixupMenu + "…", onClick: () => openFixup(hash) },
-    { title: window.l10n.compareWith, onClick: () => openCompare("HEAD", hash) },
-    { title: window.l10n.bisectChooseGood, onClick: () => chooseBisectCommit("good", hash) },
-    { title: window.l10n.bisectChooseBad, onClick: () => chooseBisectCommit("bad", hash) },
-    {
-      title: window.l10n.copyCommitHash,
-      onClick: () => copyToClipboard(window.l10n.typeCommitHash, hash)
-    }
-  ];
+  const { hash } = commit;
+  const l10n = window.l10n;
+  return grouped(
+    [
+      { title: more(l10n.addTag), onClick: () => addTag(hash) },
+      { title: more(l10n.createBranch), onClick: () => createBranch(hash) }
+    ],
+    [
+      { title: more(l10n.checkout), onClick: () => checkoutCommit(hash) },
+      {
+        title: more(l10n.cherryPick),
+        onClick: () => applyCommit(commit, messages, "cherrypickCommit")
+      },
+      { title: more(l10n.revert), onClick: () => applyCommit(commit, messages, "revertCommit") }
+    ],
+    [
+      { title: more(l10n.merge), onClick: () => mergeCommit(hash) },
+      { title: more(l10n.reset), onClick: () => resetToCommit(hash) }
+    ],
+    [
+      { title: more(l10n.interactiveRebase), onClick: () => openInteractiveRebase(hash) },
+      { title: more(l10n.createFixupMenu), onClick: () => openFixup(hash) },
+      compareEntry(hash),
+      { title: l10n.bisectChooseGood, onClick: () => chooseBisectCommit("good", hash) },
+      { title: l10n.bisectChooseBad, onClick: () => chooseBisectCommit("bad", hash) },
+      {
+        title: l10n.copyCommitHash,
+        onClick: () => copyToClipboard(window.l10n.typeCommitHash, hash)
+      }
+    ]
+  );
 }
 
-/**
- * Check out a branch. A local branch is checked out as it is. A remote branch
- * uses a new or existing local branch, fast-forwarding an existing branch when possible.
- */
+// Ref menus
+
+/** Check out a local branch now, or ask how to check out a remote one. Tags are ignored. */
 export function checkoutBranchAction(gitRef: GitRef) {
   if (gitRef.type === "head") {
     runAction({ command: "checkoutBranch", branchName: gitRef.name, remoteBranch: null });
-    return;
+  } else if (gitRef.type === "remote" && !isRemoteHead(gitRef)) {
+    openRemoteAction("checkout", "", gitRef.name);
   }
-
-  if (gitRef.type !== "remote") {
-    return;
-  }
-
-  openRemoteAction("checkout", "", gitRef.name);
 }
 
-function tagMenu(gitRef: GitRef): Array<ContextMenuEntry> {
-  const source = refMenuSource(gitRef);
-
-  return [
-    {
-      title: `${window.l10n.deleteTag}…`,
-      onClick: () =>
-        openFormDialog({
-          message: format(
-            window.l10n.dialogDeleteConfirm,
-            window.l10n.labelTag,
-            <Name>{gitRef.name}</Name>
-          ),
-          inputs: [],
-          action: window.l10n.dialogYes,
-          source,
-          destructive: true,
-          onSubmit: () => runAction({ command: "deleteTag", tagName: gitRef.name })
-        })
-    },
-    {
-      title: `${window.l10n.pushTag}…`,
-      onClick: () => openRemoteAction("tagPush", gitRef.name)
-    },
-    {
-      title: `${window.l10n.deleteRemoteTag}…`,
-      onClick: () => openRemoteAction("tagDelete", gitRef.name)
-    },
-    null,
-    {
-      title: window.l10n.copyTagName,
-      onClick: () => copyToClipboard(window.l10n.typeTagName, gitRef.name)
-    }
-  ];
-}
-
-function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean): Array<ContextMenuEntry> {
-  const source = refMenuSource(gitRef);
-  const entries: Array<ContextMenuEntry> = [];
-  entries.push({
-    title: `${window.l10n.configureUpstream}…`,
-    onClick: () => openTracking(gitRef.name)
-  });
-  entries.push({
-    title: `${window.l10n.addWorktree}…`,
-    onClick: () => openAddWorktree(`refs/heads/${gitRef.name}`)
-  });
-
-  if (!isHeadBranch) {
-    entries.push({
-      title: `${window.l10n.rebaseOnto}…`,
-      onClick: () => openRebase(`refs/heads/${gitRef.name}`)
-    });
-    entries.push({
-      title: window.l10n.checkoutBranch,
-      onClick: () => checkoutBranchAction(gitRef)
-    });
-  }
-
-  entries.push({
-    title: `${window.l10n.pushBranch}…`,
-    onClick: () => openRemoteAction("push", gitRef.name)
-  });
-  if (isHeadBranch) {
-    entries.push({
-      title: `${window.l10n.pullBranch}…`,
-      onClick: () => openRemoteAction("pull", gitRef.name)
-    });
-  }
-
-  entries.push({
-    title: `${window.l10n.renameBranch}…`,
-    onClick: () =>
-      openFormDialog({
-        message: format(window.l10n.dialogRenameBranchTitle, <Name>{gitRef.name}</Name>),
-        inputs: [{ kind: "ref", value: gitRef.name }],
-        action: window.l10n.dialogRenameBranchSubmit,
-        source,
-        onSubmit: ([newName]) =>
-          runAction({ command: "renameBranch", oldName: gitRef.name, newName })
-      })
-  });
-
-  if (!isHeadBranch) {
-    entries.push(
-      {
-        title: `${window.l10n.deleteBranch}…`,
-        onClick: () =>
-          openFormDialog({
-            message: (
-              <>
-                {format(
-                  window.l10n.dialogDeleteConfirm,
-                  window.l10n.labelBranch,
-                  <Name>{gitRef.name}</Name>
-                )}
-                <Explain>{window.l10n.explainDeleteBranch}</Explain>
-              </>
-            ),
-            inputs: [
-              { kind: "checkbox", label: window.l10n.dialogDeleteForceDelete, value: false }
-            ],
-            action: window.l10n.deleteBranch,
-            source,
-            destructive: true,
-            onSubmit: ([forceDelete]) =>
-              runAction({ command: "deleteBranch", branchName: gitRef.name, forceDelete })
-          })
-      },
-      {
-        title: `${window.l10n.merge}…`,
-        onClick: () =>
-          openFormDialog({
-            message: format(
-              window.l10n.dialogMergeConfirm,
-              <Name>{gitRef.name}</Name>,
-              <CurrentBranch />
-            ),
-            inputs: [
-              { kind: "checkbox", label: window.l10n.dialogMergeNoFastForward, value: true }
-            ],
-            action: window.l10n.dialogYesMerge,
-            source,
-            onSubmit: ([createNewCommit]) =>
-              runAction({ command: "mergeBranch", branchName: gitRef.name, createNewCommit })
-          })
+function renameBranch(gitRef: GitRef) {
+  const oldName = gitRef.name;
+  openFormDialog({
+    message: format(window.l10n.dialogRenameBranchTitle, named(oldName)),
+    inputs: [{ kind: "ref", value: oldName }],
+    action: window.l10n.dialogRenameBranchSubmit,
+    source: refMenuSource(gitRef),
+    onSubmit: ([newName]) => {
+      if (newName === oldName) {
+        closeDialog();
+        return;
       }
-    );
-  }
-
-  entries.push(null, {
-    title: window.l10n.copyBranchName,
-    onClick: () => copyToClipboard(window.l10n.typeBranchName, gitRef.name)
-  });
-
-  return entries;
-}
-
-function remoteBranchMenu(gitRef: GitRef): Array<ContextMenuEntry> {
-  return [
-    {
-      title: `${window.l10n.rebaseOnto}…`,
-      onClick: () => openRebase(`refs/remotes/${gitRef.name}`)
-    },
-    {
-      title: `${window.l10n.addWorktree}…`,
-      onClick: () => openAddWorktree(`refs/remotes/${gitRef.name}`)
-    },
-    {
-      title: `${window.l10n.deleteRemoteBranch}…`,
-      onClick: () => openRemoteAction("branchDelete", "", gitRef.name)
-    },
-    {
-      title: `${window.l10n.fetch}…`,
-      onClick: () => openRemoteAction("fetch", "", gitRef.name)
-    },
-    {
-      title: `${window.l10n.checkoutBranch}…`,
-      onClick: () => checkoutBranchAction(gitRef)
-    },
-    null,
-    {
-      title: window.l10n.copyBranchName,
-      onClick: () => copyToClipboard(window.l10n.typeBranchName, gitRef.name)
+      runAction({ command: "renameBranch", oldName, newName });
     }
-  ];
+  });
 }
 
-/** `isHeadBranch` tells that this ref is the branch that is checked out. */
+function deleteBranch(gitRef: GitRef) {
+  openFormDialog({
+    message: withExplanation(
+      format(window.l10n.dialogDeleteConfirm, window.l10n.labelBranch, named(gitRef.name)),
+      window.l10n.explainDeleteBranch
+    ),
+    inputs: [{ kind: "checkbox", label: window.l10n.dialogDeleteForceDelete, value: false }],
+    action: window.l10n.deleteBranch,
+    source: refMenuSource(gitRef),
+    destructive: true,
+    onSubmit: ([forceDelete]) =>
+      runAction({ command: "deleteBranch", branchName: gitRef.name, forceDelete })
+  });
+}
+
+function mergeBranch(gitRef: GitRef) {
+  openFormDialog({
+    message: format(window.l10n.dialogMergeConfirm, named(gitRef.name), currentBranch()),
+    inputs: [{ kind: "checkbox", label: window.l10n.dialogMergeNoFastForward, value: true }],
+    action: window.l10n.dialogYesMerge,
+    source: refMenuSource(gitRef),
+    onSubmit: ([createNewCommit]) =>
+      runAction({ command: "mergeBranch", branchName: gitRef.name, createNewCommit })
+  });
+}
+
+function deleteTag(gitRef: GitRef) {
+  openFormDialog({
+    message: format(window.l10n.dialogDeleteConfirm, window.l10n.labelTag, named(gitRef.name)),
+    inputs: [],
+    action: window.l10n.dialogYes,
+    source: refMenuSource(gitRef),
+    destructive: true,
+    onSubmit: () => runAction({ command: "deleteTag", tagName: gitRef.name })
+  });
+}
+
+function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean) {
+  const { name } = gitRef;
+  const fullName = "refs/heads/" + name;
+  const l10n = window.l10n;
+  const upstream = { title: more(l10n.configureUpstream), onClick: () => openTracking(name) };
+  const worktree = { title: more(l10n.addWorktree), onClick: () => openAddWorktree(fullName) };
+  const push = { title: more(l10n.pushBranch), onClick: () => openRemoteAction("push", name) };
+  const rename = { title: more(l10n.renameBranch), onClick: () => renameBranch(gitRef) };
+
+  // Rebasing onto, checking out, deleting, or merging the checked-out branch has nothing to do;
+  // pulling into it is offered instead.
+  const tools = isHeadBranch
+    ? [
+        upstream,
+        worktree,
+        push,
+        { title: more(l10n.pullBranch), onClick: () => openRemoteAction("pull", name) },
+        rename
+      ]
+    : [
+        upstream,
+        worktree,
+        { title: more(l10n.rebaseOnto), onClick: () => openRebase(fullName) },
+        { title: l10n.checkoutBranch, onClick: () => checkoutBranchAction(gitRef) },
+        push,
+        rename,
+        { title: more(l10n.deleteBranch), onClick: () => deleteBranch(gitRef) },
+        { title: more(l10n.merge), onClick: () => mergeBranch(gitRef) }
+      ];
+  return grouped([focusEntry(name), compareEntry(gitRef.hash)], tools, [copyBranchEntry(name)]);
+}
+
+function remoteBranchMenu(gitRef: GitRef) {
+  const { name } = gitRef;
+  const fullName = "refs/remotes/" + name;
+  const l10n = window.l10n;
+  const rebase = { title: more(l10n.rebaseOnto), onClick: () => openRebase(fullName) };
+  const worktree = { title: more(l10n.addWorktree), onClick: () => openAddWorktree(fullName) };
+  const fetch = { title: more(l10n.fetch), onClick: () => openRemoteAction("fetch", "", name) };
+
+  if (isRemoteHead(gitRef)) {
+    return grouped([compareEntry(gitRef.hash)], [rebase, worktree, fetch], [copyBranchEntry(name)]);
+  }
+  return grouped(
+    [focusEntry("remotes/" + name), compareEntry(gitRef.hash)],
+    [
+      rebase,
+      worktree,
+      {
+        title: more(l10n.deleteRemoteBranch),
+        onClick: () => openRemoteAction("branchDelete", "", name)
+      },
+      fetch,
+      { title: more(l10n.checkoutBranch), onClick: () => checkoutBranchAction(gitRef) }
+    ],
+    [copyBranchEntry(name)]
+  );
+}
+
+function tagMenu(gitRef: GitRef) {
+  const { name } = gitRef;
+  const l10n = window.l10n;
+  return grouped(
+    [compareEntry(gitRef.hash)],
+    [
+      { title: more(l10n.deleteTag), onClick: () => deleteTag(gitRef) },
+      { title: more(l10n.pushTag), onClick: () => openRemoteAction("tagPush", name) },
+      { title: more(l10n.deleteRemoteTag), onClick: () => openRemoteAction("tagDelete", name) }
+    ],
+    [{ title: l10n.copyTagName, onClick: () => copyToClipboard(window.l10n.typeTagName, name) }]
+  );
+}
+
+/** The menu of a branch or tag label. `isHeadBranch` marks the checked-out local branch. */
 export function refMenu(gitRef: GitRef, isHeadBranch: boolean): Array<ContextMenuEntry> {
-  const comparison: ContextMenuEntry = {
-    title: window.l10n.compareWith,
-    onClick: () => openCompare("HEAD", gitRef.hash)
-  };
-  if (gitRef.type === "tag") {
-    return [comparison, null, ...tagMenu(gitRef)];
+  switch (gitRef.type) {
+    case "head":
+      return localBranchMenu(gitRef, isHeadBranch);
+    case "remote":
+      return remoteBranchMenu(gitRef);
+    case "tag":
+      return tagMenu(gitRef);
   }
-
-  const focus: ContextMenuEntry = {
-    title: window.l10n.focusThisBranch,
-    onClick: () =>
-      focusBranchInGraph(gitRef.type === "remote" ? "remotes/" + gitRef.name : gitRef.name)
-  };
-
-  if (gitRef.type === "head") {
-    return [focus, comparison, null, ...localBranchMenu(gitRef, isHeadBranch)];
-  }
-
-  return [focus, comparison, null, ...remoteBranchMenu(gitRef)];
 }

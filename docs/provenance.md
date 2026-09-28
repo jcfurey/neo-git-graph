@@ -82,3 +82,7 @@ the code came from and how it was replaced.
 | `src/webview/lib/rpc/rpc-client.ts`                | [rpc-client.md](clean-room/rpc-client.md)         | `f488109`    |
 | `src/backend/queries/loadCommits.ts`               | [load-commits.md](clean-room/load-commits.md)     | `715fa1b`    |
 | `src/backend/queries/commitDetails.ts`             | [commit-details.md](clean-room/commit-details.md) | `8d063e2`    |
+| `src/webview/lib/menus.tsx`                        | [menus.md](clean-room/menus.md)                   | `cdcd3af`    |
+| `src/webview/components/ui/ContextMenu.tsx`        | [context-menu.md](clean-room/context-menu.md)     | `16805dd`    |
+| `src/webview/components/ui/Dropdown.tsx`           | [dropdown.md](clean-room/dropdown.md)             | `9cd9e07`    |
+| `src/webview/components/ui/Dialog.tsx`             | [dialog.md](clean-room/dialog.md)                 | `2871b92`    |
