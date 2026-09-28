@@ -1,9 +1,9 @@
 import { batch } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 
-import type { GitFileChange } from "@/backend/types";
+import type { GitFileChange, GraphQueryCommand } from "@/backend/types";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
-import type { ResponseMessage, WebviewConfig } from "@/types";
+import type { GitRepoState, ResponseMessage, WebviewConfig } from "@/types";
 import { SHOW_ALL_BRANCHES, UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { captureFocus, restoreFocus } from "@/webview/lib/focus";
 import {
@@ -25,9 +25,9 @@ import {
   resetRepositoryState
 } from "@/webview/lib/repository-actions";
 import {
-  branchList,
   branchDisplay,
   branchFocusTarget,
+  branchList,
   commitDetails,
   commitHead,
   commitList,
@@ -42,8 +42,8 @@ import {
   hiddenRemotes,
   maxCommits,
   moreCommitsAvailable,
-  repoStates,
   remoteVisibilityKey,
+  repoStates,
   selectedBranch,
   selectedRepo,
   showRemoteBranch,
@@ -62,8 +62,24 @@ import type {
   FocusDimming
 } from "@/webview/types";
 
+// This module sits in import cycles with the panels that call it back, so its top level holds
+// plain counters only. Every imported binding is used inside the functions below.
+
+/** Last token handed to a dialog. The Dialog keys its panel by it, so each opening is fresh. */
+let dialogCount = 0;
+/** Last number used in an `action-<n>` request id. */
+let actionCount = 0;
+
+/* Graph requests */
+
+function clearGraphError(query: Exclude<GraphQueryCommand, "commitDetails">) {
+  if (graphErrors.value[query] !== undefined) {
+    graphErrors.value = { ...graphErrors.value, [query]: undefined };
+  }
+}
+
 function requestBranches(repo: string) {
-  graphErrors.value = { ...graphErrors.value, loadBranches: undefined };
+  clearGraphError("loadBranches");
   vscode.postMessage({
     command: "loadBranches",
     requestId: startGraphRequest("loadBranches", repo),
@@ -75,13 +91,14 @@ function requestBranches(repo: string) {
   });
 }
 
-function requestCommits(repo: string, branch: CommitBranchType) {
-  graphErrors.value = { ...graphErrors.value, loadCommits: undefined };
+/** Ask for the rows of the displayed branch, as many as `maxCommits` allows. */
+function requestCommits(repo: string) {
+  clearGraphError("loadCommits");
   vscode.postMessage({
     command: "loadCommits",
     requestId: startGraphRequest("loadCommits", repo),
     repo,
-    branchName: displayedBranch(branch),
+    branchName: displayedBranch(),
     maxCommits: maxCommits.value,
     showRemoteBranches: showRemoteBranch.value,
     hiddenRemotes: hiddenRemotes.value,
@@ -90,119 +107,222 @@ function requestCommits(repo: string, branch: CommitBranchType) {
   });
 }
 
-function clearCommits() {
-  graphErrors.value = { ...graphErrors.value, loadCommits: undefined };
+/** Drop the loaded rows and anything waiting for them, back to a first page. */
+function forgetHistory() {
   invalidateGraphRequest("loadCommits");
-  commitList.value = undefined;
-  commitHead.value = null;
-  moreCommitsAvailable.value = false;
-  uncommittedChanges.value = 0;
-  maxCommits.value = getWebviewConfig().initialLoadCommits;
-  closeCommitDetails();
+  batch(() => {
+    clearGraphError("loadCommits");
+    commitList.value = undefined;
+    commitHead.value = null;
+    moreCommitsAvailable.value = false;
+    uncommittedChanges.value = 0;
+    maxCommits.value = getWebviewConfig().initialLoadCommits;
+    closeCommitDetails();
+  });
 }
 
-export function selectRepo(repo: string) {
-  if (repo === selectedRepo.value) {
+/**
+ * After a selection or mode change: reload what a revealed remote or missing rows call for,
+ * then keep the view preferences in step.
+ */
+function reloadForChoice(revealed: boolean) {
+  const repo = selectedRepo.value;
+  if (repo === undefined) {
     return;
   }
+  if (revealed) {
+    requestBranches(repo);
+  }
+  if (revealed || commitList.value === undefined) {
+    requestCommits(repo);
+  }
+  leaveNavigation(repo);
+}
 
-  leaveNavigation(selectedRepo.value);
-  resetGraphRequests();
-  graphErrors.value = {};
+/* Remote visibility */
+
+/** Hidden remotes form a set: kept sorted and without repeats, whoever wrote them. */
+function asRemoteSet(names: ReadonlyArray<string>) {
+  return [...new Set(names)].toSorted();
+}
+
+/** The remote a branch belongs to, or `undefined` for a local branch or `*`. */
+function remoteOfBranch(branch: string) {
+  const prefix = "remotes/";
+  if (!branch.startsWith(prefix)) {
+    return undefined;
+  }
+  const known = repositoryState.value?.remotes.map((remote) => remote.name) ?? [];
+  return remoteForRef(branch.slice(prefix.length), [...known, ...hiddenRemotes.value]);
+}
+
+/** Write fields of one repository's record, leaving the other records as they are. */
+function patchRepoState(repo: string, fields: Partial<GitRepoState>) {
+  const states = repoStates.value;
+  repoStates.value = { ...states, [repo]: { columnWidths: null, ...states[repo], ...fields } };
+}
+
+function saveHiddenRemotes(repo: string, names: ReadonlyArray<string>) {
+  const hidden = asRemoteSet(names);
+  patchRepoState(repo, { hiddenRemotes: hidden });
+  vscode.postMessage({ command: "saveRepoState", repo, state: { hiddenRemotes: hidden } });
+}
+
+/**
+ * Make a remote branch visible before it is chosen: remotes on, and its own remote off the
+ * hidden list. Says whether anything had to change.
+ */
+function revealBranch(branch: string) {
+  const remote = remoteOfBranch(branch);
+  if (remote === undefined) {
+    return false;
+  }
+  const hidden = hiddenRemotes.value;
+  const wasHidden = hidden.includes(remote);
+  if (!wasHidden && showRemoteBranch.value) {
+    return false;
+  }
+  const repo = selectedRepo.value;
   batch(() => {
+    showRemoteBranch.value = true;
+    if (wasHidden && repo !== undefined) {
+      saveHiddenRemotes(
+        repo,
+        hidden.filter((name) => name !== remote)
+      );
+    }
+  });
+  return true;
+}
+
+/**
+ * The store half of a visibility change, for the caller's batch: back to the first history
+ * page, and away from a remote branch that can no longer be shown. Rows stay until the reply.
+ */
+function applyVisibility() {
+  historyOffset.value = 0;
+  const branch = selectedBranch.value;
+  const remote = branch === undefined ? undefined : remoteOfBranch(branch);
+  if (remote !== undefined && (!showRemoteBranch.value || hiddenRemotes.value.includes(remote))) {
+    selectedBranch.value = SHOW_ALL_BRANCHES;
+    focusPaused.value = false;
+  }
+}
+
+/** The message half of a visibility change: reload both lists and save the preferences. */
+function reloadForVisibility() {
+  const repo = selectedRepo.value;
+  if (repo === undefined) {
+    return;
+  }
+  requestBranches(repo);
+  if (selectedBranch.value !== undefined) {
+    requestCommits(repo);
+  }
+  leaveNavigation(repo);
+}
+
+/* Dialogs */
+
+function showDialog(body: DialogBody) {
+  // Remember the control in use before the dialog takes focus.
+  captureFocus();
+  batch(() => {
+    contextMenu.value = null;
+    dialog.value = { ...body, token: ++dialogCount };
+  });
+}
+
+/* Exports */
+
+/** Show another repository, starting from its own saved view. */
+export function selectRepo(repo: string): void {
+  const previous = selectedRepo.value;
+  if (repo === previous) {
+    return;
+  }
+  leaveNavigation(previous);
+  batch(() => {
+    resetGraphRequests();
     selectedRepo.value = repo;
     enterNavigation(repo);
     branchList.value = undefined;
     headBranch.value = null;
     selectedBranch.value = undefined;
-    clearCommits();
+    forgetHistory();
     resetRepositoryState();
-    closeDialog();
+    graphErrors.value = {};
+    contextMenu.value = null;
+    dialog.value = null;
   });
-
+  restoreFocus();
   vscode.postMessage({ command: "selectRepo", repo });
   requestBranches(repo);
   requestRepositoryState();
 }
 
-export function selectBranch(branch: CommitBranchType) {
-  const revealed = revealBranchRemote(branch);
-  if (branch === selectedBranch.value && !revealed) {
+/** Choose the branch the graph filters to or emphasises, or `*` for all of them. */
+export function selectBranch(branch: CommitBranchType): void {
+  const revealed = revealBranch(branch);
+  if (!revealed && branch === selectedBranch.value) {
     return;
   }
-
-  const previous = displayedBranch();
+  const shownBefore = displayedBranch();
   batch(() => {
     selectedBranch.value = branch;
     if (branch === SHOW_ALL_BRANCHES) {
       focusPaused.value = false;
     }
-    if (previous !== displayedBranch()) {
-      clearCommits();
+    if (displayedBranch() !== shownBefore) {
+      forgetHistory();
     }
   });
-
-  const repo = selectedRepo.value;
-  if (repo !== undefined) {
-    if (revealed) {
-      requestBranches(repo);
-    }
-    if (revealed || commitList.value === undefined) {
-      requestCommits(repo, branch);
-    }
-  }
-  leaveNavigation(repo);
+  reloadForChoice(revealed);
 }
 
-export function setBranchDisplay(value: BranchDisplay) {
+/** Switch between filtering to the branch and emphasising it in the whole graph. */
+export function setBranchDisplay(value: BranchDisplay): void {
   if (value === branchDisplay.value) {
     return;
   }
-  const previous = displayedBranch();
+  const shownBefore = displayedBranch();
   batch(() => {
     branchDisplay.value = value;
     focusPaused.value = false;
+    // Emphasis needs a branch: fall back to HEAD, then to the first branch listed.
     if (value !== "filter" && selectedBranch.value === SHOW_ALL_BRANCHES) {
       selectedBranch.value = headBranch.value ?? branchList.value?.[0] ?? SHOW_ALL_BRANCHES;
     }
-    if (previous !== displayedBranch()) {
-      clearCommits();
+    if (displayedBranch() !== shownBefore) {
+      forgetHistory();
     }
   });
   const repo = selectedRepo.value;
   if (repo !== undefined && selectedBranch.value !== undefined && commitList.value === undefined) {
-    requestCommits(repo, selectedBranch.value);
+    requestCommits(repo);
   }
   leaveNavigation(repo);
 }
 
-/** A view action: it never checks out or modifies the selected branch. */
-export function focusBranchInGraph(branch: string) {
-  const previous = displayedBranch();
-  const revealRemote = revealBranchRemote(branch);
+/** Emphasise a branch in the full graph. Git is not asked to do anything. */
+export function focusBranchInGraph(branch: string): void {
+  const revealed = revealBranch(branch);
+  const shownBefore = displayedBranch();
   batch(() => {
     if (branchDisplay.value === "filter") {
       branchDisplay.value = "focus";
     }
     selectedBranch.value = branch;
     focusPaused.value = false;
-    if (previous !== displayedBranch()) {
-      clearCommits();
+    if (displayedBranch() !== shownBefore) {
+      forgetHistory();
     }
   });
-  const repo = selectedRepo.value;
-  if (repo !== undefined) {
-    if (revealRemote) {
-      requestBranches(repo);
-    }
-    if (revealRemote || commitList.value === undefined) {
-      requestCommits(repo, branch);
-    }
-  }
-  leaveNavigation(repo);
+  reloadForChoice(revealed);
 }
 
-export function toggleBranchFocus() {
+/** Pause or resume the emphasis, keeping its target. */
+export function toggleBranchFocus(): void {
   if (branchFocusTarget.value === undefined) {
     return;
   }
@@ -210,198 +330,133 @@ export function toggleBranchFocus() {
   leaveNavigation(selectedRepo.value);
 }
 
-export function setFocusDimming(value: FocusDimming) {
+export function setFocusDimming(value: FocusDimming): void {
   focusDimming.value = value;
   leaveNavigation(selectedRepo.value);
 }
 
-/** Resize the columns of the commit table, while the user drags a boundary. */
-export function setColumnWidths(widths: Array<number>) {
+/** Keep widths in memory while a boundary moves. The array itself is stored. */
+export function setColumnWidths(widths: Array<number>): void {
+  const repo = selectedRepo.value;
+  if (repo !== undefined) {
+    patchRepoState(repo, { columnWidths: widths });
+  }
+}
+
+/** Keep widths in memory and have the extension store them. */
+export function saveColumnWidths(widths: Array<number>): void {
   const repo = selectedRepo.value;
   if (repo === undefined) {
     return;
   }
-
-  repoStates.value = {
-    ...repoStates.value,
-    [repo]: { ...repoStates.value[repo], columnWidths: widths }
-  };
+  patchRepoState(repo, { columnWidths: widths });
+  vscode.postMessage({ command: "saveRepoState", repo, state: { columnWidths: widths } });
 }
 
-/** Resize the columns of the commit table, and keep the widths for the next session. */
-export function saveColumnWidths(widths: Array<number>) {
-  const repo = selectedRepo.value;
-  if (repo === undefined) {
-    return;
-  }
-
-  setColumnWidths(widths);
-  const state = repoStates.value[repo];
-  if (state === undefined) {
-    return;
-  }
-  vscode.postMessage({
-    command: "saveRepoState",
-    repo,
-    state: { columnWidths: state.columnWidths }
-  });
-}
-
-export function setShowRemoteBranch(value: boolean) {
+/** The global remotes switch. Each remote's own choice is kept while it is off. */
+export function setShowRemoteBranch(value: boolean): void {
   if (value === showRemoteBranch.value) {
     return;
   }
-
-  showRemoteBranch.value = value;
-  refreshRemoteVisibility();
+  batch(() => {
+    showRemoteBranch.value = value;
+    applyVisibility();
+  });
+  reloadForVisibility();
 }
 
-function remoteOfBranch(branch: string | undefined) {
-  return branch?.startsWith("remotes/")
-    ? remoteForRef(branch.slice(8), [
-        ...(repositoryState.value?.remotes.map((remote) => remote.name) ?? []),
-        ...hiddenRemotes.value
-      ])
-    : undefined;
+/**
+ * Take the extension's stored record for a repository. Choices made on the page since it was
+ * sent win, apart from the hidden remotes.
+ */
+export function receiveRepoState(
+  message: Extract<ResponseMessage, { command: "repoState" }>
+): void {
+  const { repo, state } = message;
+  const current = repoStates.value[repo];
+  const hidden = asRemoteSet(state.hiddenRemotes ?? []);
+  const newPreferences =
+    current?.graphPreferences === undefined && state.graphPreferences !== undefined;
+  const hiddenChanged =
+    JSON.stringify(asRemoteSet(current?.hiddenRemotes ?? [])) !== JSON.stringify(hidden);
+  const affectsView = repo === selectedRepo.value && (newPreferences || hiddenChanged);
+
+  batch(() => {
+    repoStates.value = {
+      ...repoStates.value,
+      [repo]: { ...state, ...current, hiddenRemotes: hidden }
+    };
+    if (!affectsView) {
+      return;
+    }
+    // Before the branch list arrives nothing has been chosen yet, so the saved view applies.
+    if (newPreferences && selectedBranch.value === undefined) {
+      restoreGraphPreferences(repo);
+    }
+    applyVisibility();
+  });
+  if (affectsView) {
+    reloadForVisibility();
+  }
 }
 
-function saveHiddenRemotes(remotes: string[]) {
-  const repo = selectedRepo.value;
-  if (repo === undefined) {
+/** Show or hide one remote's branches in the selected repository. */
+export function setRemoteVisible(remote: string, visible: boolean): void {
+  const hidden = hiddenRemotes.value;
+  const isHidden = hidden.includes(remote);
+  if (visible ? !isHidden && showRemoteBranch.value : isHidden) {
     return;
   }
-  const state = {
-    columnWidths: null,
-    ...repoStates.value[repo],
-    hiddenRemotes: remotes.toSorted()
-  };
-  repoStates.value = { ...repoStates.value, [repo]: state };
-  vscode.postMessage({
-    command: "saveRepoState",
-    repo,
-    state: { hiddenRemotes: state.hiddenRemotes }
-  });
-}
-
-/** Apply persisted preferences without overwriting a column resize in progress. */
-export function receiveRepoState(message: Extract<ResponseMessage, { command: "repoState" }>) {
-  const current = repoStates.value[message.repo];
-  const restorePreferences =
-    current?.graphPreferences === undefined && message.state.graphPreferences !== undefined;
-  const hidden = message.state.hiddenRemotes ?? [];
-  const changed = JSON.stringify(current?.hiddenRemotes ?? []) !== JSON.stringify(hidden);
-  repoStates.value = {
-    ...repoStates.value,
-    [message.repo]: {
-      ...message.state,
-      ...current,
-      hiddenRemotes: hidden
-    }
-  };
-  if (message.repo === selectedRepo.value) {
-    batch(() => {
-      if (restorePreferences && selectedBranch.value === undefined) {
-        restoreGraphPreferences(message.repo);
-      }
-      if (changed || restorePreferences) {
-        refreshRemoteVisibility();
-      }
-    });
-  }
-}
-
-/** Selecting a hidden branch reveals only its owning remote. */
-function revealBranchRemote(branch: string) {
-  const remote = remoteOfBranch(branch);
-  if (remote === undefined) {
-    return false;
-  }
-  const hidden = hiddenRemotes.value.includes(remote);
-  const changed = hidden || !showRemoteBranch.value;
+  const repo = selectedRepo.value;
   batch(() => {
-    showRemoteBranch.value = true;
-    if (hidden) {
-      saveHiddenRemotes(hiddenRemotes.value.filter((name) => name !== remote));
+    if (repo !== undefined) {
+      saveHiddenRemotes(
+        repo,
+        visible ? hidden.filter((name) => name !== remote) : [...hidden, remote]
+      );
     }
-  });
-  return changed;
-}
-
-export function setRemoteVisible(remote: string, visible: boolean) {
-  const next = new Set(hiddenRemotes.value);
-  if (visible) {
-    next.delete(remote);
-  } else {
-    next.add(remote);
-  }
-  batch(() => {
-    saveHiddenRemotes([...next]);
     if (visible) {
       showRemoteBranch.value = true;
     }
+    applyVisibility();
   });
-  refreshRemoteVisibility();
+  reloadForVisibility();
 }
 
-function refreshRemoteVisibility() {
-  batch(() => {
-    const remote = remoteOfBranch(selectedBranch.value);
-    if (remote !== undefined && (!showRemoteBranch.value || hiddenRemotes.value.includes(remote))) {
-      selectedBranch.value = SHOW_ALL_BRANCHES;
-      focusPaused.value = false;
-    }
-    historyOffset.value = 0;
-  });
-
+/** Ask for one more page of rows. Nothing happens while no rows can be asked for. */
+export function loadMoreCommits(): void {
   const repo = selectedRepo.value;
-  if (repo === undefined) {
+  if (repo === undefined || selectedBranch.value === undefined) {
     return;
   }
-
-  requestBranches(repo);
-  const branch = selectedBranch.value;
-  if (branch !== undefined) {
-    requestCommits(repo, branch);
-  }
-  leaveNavigation(repo);
-}
-
-export function loadMoreCommits() {
   maxCommits.value += getWebviewConfig().loadMoreCommits;
-
-  const repo = selectedRepo.value;
-  const branch = selectedBranch.value;
-  if (repo !== undefined && branch !== undefined) {
-    requestCommits(repo, branch);
-  }
+  requestCommits(repo);
 }
 
-/** Apply settings changed while the graph is open, then load it again with them. */
-export function applyWebviewConfig(config: WebviewConfig) {
+/** Take settings changed while the page is open, then reload with them. */
+export function applyWebviewConfig(config: WebviewConfig): void {
   if (!updateWebviewConfig(config)) {
     return;
   }
-  // A larger first page takes effect now; a smaller one keeps the commits already shown.
-  maxCommits.value = Math.max(maxCommits.peek(), config.initialLoadCommits);
+  maxCommits.value = Math.max(maxCommits.value, config.initialLoadCommits);
   refresh();
 }
 
-export function refresh() {
+/** Reload everything shown for the selected repository, keeping the rows until replies come. */
+export function refresh(): void {
   const repo = selectedRepo.value;
   if (repo === undefined) {
     return;
   }
-
-  requestBranches(repo);
   repositoryRevision.value++;
+  requestBranches(repo);
   requestRepositoryState();
-  const branch = selectedBranch.value;
-  if (branch !== undefined) {
-    requestCommits(repo, branch);
+  if (selectedBranch.value !== undefined) {
+    requestCommits(repo);
   }
 }
 
-export function closeCommitDetails() {
+export function closeCommitDetails(): void {
   invalidateGraphRequest("commitDetails");
   batch(() => {
     expandedCommit.value = null;
@@ -409,158 +464,137 @@ export function closeCommitDetails() {
   });
 }
 
-/** Open the details view of a commit, or close it when it is already open. */
-export function toggleCommitDetails(hash: string) {
+/** Open a row's details, or close them when that row is the one open. */
+export function toggleCommitDetails(hash: string): void {
+  const repo = selectedRepo.value;
+  if (repo === undefined) {
+    return;
+  }
   if (hash === expandedCommit.value) {
     closeCommitDetails();
     return;
   }
-
-  const repo = selectedRepo.value;
   invalidateGraphRequest("commitDetails");
   batch(() => {
     expandedCommit.value = hash;
     commitDetails.value = null;
   });
-
-  if (repo === undefined || hash === UNCOMMITTED_CHANGES) {
-    return;
+  // The uncommitted row's panel loads its own data.
+  if (hash !== UNCOMMITTED_CHANGES) {
+    vscode.postMessage({
+      command: "commitDetails",
+      requestId: startGraphRequest("commitDetails", repo),
+      repo,
+      commitHash: hash
+    });
   }
-
-  vscode.postMessage({
-    command: "commitDetails",
-    requestId: startGraphRequest("commitDetails", repo),
-    repo,
-    commitHash: hash
-  });
 }
 
 /**
- * Open a context menu at the pointer. The default menu of the host is
- * suppressed, because browser-based VS Code draws it on top of ours.
+ * Open a menu for the element that handled `event`. A menu opened from the keyboard hangs
+ * below that element; one opened with the pointer appears at the pointer.
  */
 export function openContextMenu(
   event: MouseEvent,
   source: string,
   entries: Array<ContextMenuEntry>
-) {
+): void {
   event.preventDefault();
   event.stopPropagation();
   captureFocus(event.target);
-  // Enter or Space on a button clicks it with no pointer position, and the context-menu key
-  // reports none either; open the menu below the control instead of in the window's corner.
-  const keyboard =
+
+  // Enter or Space clicks with a count of 0; the menu key reports the viewport origin.
+  const fromKeyboard =
     event.type === "click" ? event.detail === 0 : event.clientX === 0 && event.clientY === 0;
-  const anchor = event.currentTarget instanceof Element ? event.currentTarget : null;
-  if (keyboard && anchor !== null) {
-    const rect = anchor.getBoundingClientRect();
-    contextMenu.value = { x: rect.left, y: rect.bottom, entries, source };
-    return;
+  const owner = event.currentTarget;
+  let x = event.clientX;
+  let y = event.clientY;
+  if (fromKeyboard && owner instanceof Element) {
+    const box = owner.getBoundingClientRect();
+    x = box.left;
+    y = box.bottom;
   }
-  contextMenu.value = { x: event.clientX, y: event.clientY, entries, source };
+  contextMenu.value = { x, y, entries, source };
 }
 
-export function closeContextMenu() {
+export function closeContextMenu(): void {
   contextMenu.value = null;
   restoreFocus();
 }
 
-/** Open a dialog. The context menu that asked for it closes. */
-let nextDialogToken = 0;
-function openDialog(body: DialogBody) {
-  captureFocus();
-  batch(() => {
-    contextMenu.value = null;
-    dialog.value = { ...body, token: ++nextDialogToken };
-  });
-}
-
-export function closeDialog() {
+export function closeDialog(): void {
   dialog.value = null;
   restoreFocus();
 }
 
-export function openContentDialog(message: string, content: ComponentChildren, wide = false) {
-  openDialog({ kind: "content", message, content, wide });
+export function openContentDialog(
+  message: string,
+  content: ComponentChildren,
+  wide: boolean = false
+): void {
+  showDialog({ kind: "content", message, content, wide });
 }
 
-type FormDialog<T extends ReadonlyArray<DialogInput>> = {
+/**
+ * Ask for values, or for a yes or no when `inputs` is empty. The answer is dropped, and the
+ * dialog closed, when another repository was selected in the meantime.
+ */
+export function openFormDialog<const T extends ReadonlyArray<DialogInput>>(options: {
   message: ComponentChildren;
   inputs: T;
-  /** Label of the button that submits the form. */
   action: string;
-  /** Context menu key of the element the dialog belongs to. */
   source: string | null;
   onSubmit: (values: DialogValues<T>) => void;
-  /** The dialog opens with focus on Cancel, so a stray Enter cannot confirm it. */
   destructive?: boolean;
-};
-
-/**
- * Ask the user to fill in a form, or to confirm when `inputs` is empty.
- * The dialog fills one value per input, in order, so the tuple type holds.
- */
-export function openFormDialog<const T extends ReadonlyArray<DialogInput>>({
-  message,
-  inputs,
-  action,
-  source,
-  onSubmit,
-  destructive
-}: FormDialog<T>) {
+}): void {
   const repo = selectedRepo.value;
-  openDialog({
+  const { onSubmit } = options;
+  showDialog({
     kind: "form",
-    message,
-    inputs: [...inputs],
-    action,
-    destructive: destructive === true,
+    message: options.message,
+    inputs: [...options.inputs],
+    action: options.action,
+    destructive: options.destructive ?? false,
     onSubmit: (values) => {
-      if (selectedRepo.value === repo) {
-        onSubmit(values as DialogValues<T>);
-      } else {
+      if (selectedRepo.value !== repo) {
         closeDialog();
+        return;
       }
+      onSubmit(values as unknown as DialogValues<T>);
     },
-    source
+    source: options.source
   });
 }
 
-/** Report a command that failed. `reason` holds the output of git. */
-export function openErrorDialog(message: string, reason: string | null = null) {
-  openDialog({ kind: "error", message, reason });
+export function openErrorDialog(message: string, reason: string | null = null): void {
+  showDialog({ kind: "error", message, reason });
 }
 
-/** Report a command that runs longer than the others. The response replaces it. */
 export function openRunningDialog(
   message: string,
-  context: { detail: string; started: number; onCancel?: () => void } | undefined = undefined
-) {
-  openDialog({ kind: "running", message, ...context });
+  context?: { detail: string; started: number; onCancel?: () => void } | undefined
+): void {
+  showDialog({ kind: "running", message, ...context });
 }
 
-/** Ask the editor to run a git command on the selected repo. */
-let nextActionRequest = 0;
-export function runAction(command: ActionCommand) {
+/** Have the extension run a Git command in the selected repository. */
+export function runAction(command: ActionCommand): void {
   const repo = selectedRepo.value;
   if (repo === undefined) {
     return;
   }
-
   sendRemoteAction(
-    { ...command, requestId: `action-${++nextActionRequest}` },
+    { ...command, requestId: `action-${++actionCount}` },
     repo,
     window.l10n.runningGitAction
   );
 }
 
-/** Ask the editor to open the diff of a file of a commit. */
-export function viewDiff(commitHash: string, file: GitFileChange) {
+export function viewDiff(commitHash: string, file: GitFileChange): void {
   const repo = selectedRepo.value;
   if (repo === undefined) {
     return;
   }
-
   vscode.postMessage({
     command: "viewDiff",
     repo,
