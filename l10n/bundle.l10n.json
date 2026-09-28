@@ -490,5 +490,7 @@
   "The file changed after the restore, so Undo would lose those changes. Its previous contents are Git object {0}.": "The file changed after the restore, so Undo would lose those changes. Its previous contents are Git object {0}.",
   "HEAD or the staged changes changed. Preview the fixup commit again.": "HEAD or the staged changes changed. Preview the fixup commit again.",
   "Commit or stash your changes before applying commits.": "Commit or stash your changes before applying commits.",
-  "Choose a valid mainline parent for the selected merge commits.": "Choose a valid mainline parent for the selected merge commits."
+  "Choose a valid mainline parent for the selected merge commits.": "Choose a valid mainline parent for the selected merge commits.",
+  "Choose a valid commit.": "Choose a valid commit.",
+  "Choose a soft, mixed or hard reset.": "Choose a soft, mixed or hard reset."
 }

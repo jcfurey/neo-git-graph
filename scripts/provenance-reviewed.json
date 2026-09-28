@@ -602,5 +602,308 @@
       "commitHead: string | null",
       "): GraphLayout {"
     ]
+  },
+  "src/backend/queries/loadBranches.ts": {
+    "commit": "39e0d8181fb366f4b16e139f03ff51ef29822c9b",
+    "specification": "docs/clean-room/backend-queries.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the Git arguments, messages or settings the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "showRemoteBranches: boolean;",
+      "hard: boolean;",
+      "repo: string;",
+      "gitPath: string;",
+      "export async function loadBranches(",
+      "git: SimpleGit,",
+      "): Promise<QueryResult<\"loadBranches\">> {"
+    ]
+  },
+  "src/backend/queries/repoSearch.ts": {
+    "commit": "39e0d8181fb366f4b16e139f03ff51ef29822c9b",
+    "specification": "docs/clean-room/backend-queries.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the Git arguments, messages or settings the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export async function findGitRepos(",
+      "paths: string[],",
+      "gitPath: string,",
+      "maxDepth: number",
+      "): Promise<string[]> {"
+    ]
+  },
+  "src/backend/utils/repoSearch.ts": {
+    "commit": "39e0d8181fb366f4b16e139f03ff51ef29822c9b",
+    "specification": "docs/clean-room/backend-queries.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the Git arguments, messages or settings the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export async function searchDirectoryForRepos(",
+      "directory: string,",
+      "maxDepth: number,",
+      "gitPath: string,",
+      "knownRepoPaths: string[]",
+      "): Promise<string[]> {",
+      "return [];",
+      "return [];"
+    ]
+  },
+  "src/backend/utils/promise.ts": {
+    "commit": "39e0d8181fb366f4b16e139f03ff51ef29822c9b",
+    "specification": "docs/clean-room/backend-queries.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the Git arguments, messages or settings the specification requires, or short generic statements leave little other way to write them.",
+    "lines": ["data: X[],", "maxParallel: number,", "createPromise: (val: X) => Promise<Y>"]
+  },
+  "src/extension/util/debounce.ts": {
+    "commit": "69a82f78d34fb661fd88856e7caebb604efd2956",
+    "specification": "docs/clean-room/extension-watchers.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the Git arguments, messages or settings the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export type FsWatcherEvent = \"created\" | \"deleted\";",
+      "debounce(",
+      "type: FsWatcherEvent,",
+      "key,",
+      "setTimeout(() => {"
+    ]
+  },
+  "src/extension/util/logger.ts": {
+    "commit": "69a82f78d34fb661fd88856e7caebb604efd2956",
+    "specification": "docs/clean-room/extension-watchers.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the Git arguments, messages or settings the specification requires, or short generic statements leave little other way to write them.",
+    "lines": ["export const logger = {"]
+  },
+  "src/extension/watchers/config.watcher.ts": {
+    "commit": "69a82f78d34fb661fd88856e7caebb604efd2956",
+    "specification": "docs/clean-room/extension-watchers.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the Git arguments, messages or settings the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export function initConfigWatcher(): vscode.Disposable {",
+      "logger.info(\"Configuration changed\");",
+      "void rpcNotify.notify(\"repo.rescan\", null);"
+    ]
+  },
+  "src/extension/watchers/git-repo.watcher.ts": {
+    "commit": "69a82f78d34fb661fd88856e7caebb604efd2956",
+    "specification": "docs/clean-room/extension-watchers.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the Git arguments, messages or settings the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "logger.debug(`Sending repo.updated notification: ${repo}`);",
+      "void rpcNotify.notify(\"repo.updated\", { path: repo });",
+      "export function watchGitRepo(): vscode.Disposable {"
+    ]
+  },
+  "src/extension/watchers/git.watcher.ts": {
+    "commit": "69a82f78d34fb661fd88856e7caebb604efd2956",
+    "specification": "docs/clean-room/extension-watchers.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the Git arguments, messages or settings the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export function watchGitDir(): vscode.Disposable {",
+      "const watcher = vscode.workspace.createFileSystemWatcher(\"**/.git\", false, true, false);",
+      "const debouncer = createDebouncer();"
+    ]
+  },
+  "src/backend/actions/merge.ts": {
+    "commit": "8c98767757b0445bf7317bdef37bca9f3ff38f6f",
+    "specification": "docs/clean-room/backend-actions.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the Git arguments, messages or settings the specification requires, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export async function mergeBranch(",
+      "git: SimpleGit,",
+      "export async function mergeCommit(",
+      "git: SimpleGit,"
+    ]
+  },
+  "src/backend/gitClient.ts": {
+    "commit": "8c98767757b0445bf7317bdef37bca9f3ff38f6f",
+    "specification": "docs/clean-room/backend-actions.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the Git arguments, messages or settings the specification requires, or short generic statements leave little other way to write them.",
+    "lines": ["maxConcurrentProcesses: 6,", "return {"]
+  },
+  "src/extension/config.ts": {
+    "commit": "57ade90712e76fd0a2b9182c313121a6c0f659d2",
+    "specification": "docs/clean-room/extension-core.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the default colours the manifest declares, the page skeleton and settings the specification requires, exact messages, or short generic statements leave little other way to write them.",
+    "lines": [
+      "type TabIconColourTheme = \"colour\" | \"grey\";",
+      "\"#0085d9\",",
+      "\"#d9008f\",",
+      "\"#00d90a\",",
+      "\"#d98500\",",
+      "\"#a300d9\",",
+      "\"#ff0000\",",
+      "\"#00d9cc\",",
+      "\"#e138e8\",",
+      "\"#85d900\",",
+      "\"#dc5b23\",",
+      "\"#6f24d6\",",
+      "\"#ffcc00\"",
+      "export const extConfig = {"
+    ]
+  },
+  "src/extension/html.ts": {
+    "commit": "57ade90712e76fd0a2b9182c313121a6c0f659d2",
+    "specification": "docs/clean-room/extension-core.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the default colours the manifest declares, the page skeleton and settings the specification requires, exact messages, or short generic statements leave little other way to write them.",
+    "lines": [
+      "<head>",
+      "<meta charset=\"UTF-8\">",
+      "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">",
+      "<title>${EXTENSION_NAME}</title>",
+      "<body>",
+      "<div id=\"app\"></div>"
+    ]
+  },
+  "src/extension/legacy.ts": {
+    "commit": "57ade90712e76fd0a2b9182c313121a6c0f659d2",
+    "specification": "docs/clean-room/extension-core.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the default colours the manifest declares, the page skeleton and settings the specification requires, exact messages, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export function createMessageProtocol(ctx: vscode.ExtensionContext) {",
+      "return {",
+      "return {",
+      "dispose() {",
+      "bridge.dispose();"
+    ]
+  },
+  "src/extension/view-command.ts": {
+    "commit": "57ade90712e76fd0a2b9182c313121a6c0f659d2",
+    "specification": "docs/clean-room/extension-core.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the default colours the manifest declares, the page skeleton and settings the specification requires, exact messages, or short generic statements leave little other way to write them.",
+    "lines": [
+      "const rpcServer = createRpcServer();",
+      "EXTENSION_NAME,",
+      "vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One,",
+      "enableScripts: true,",
+      "retainContextWhenHidden: true,",
+      "extConfig.tabIconColourTheme() === \"colour\""
+    ]
+  },
+  "src/extension/rpc/handlers.ts": {
+    "commit": "57ade90712e76fd0a2b9182c313121a6c0f659d2",
+    "specification": "docs/clean-room/extension-core.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the default colours the manifest declares, the page skeleton and settings the specification requires, exact messages, or short generic statements leave little other way to write them.",
+    "lines": [
+      "params: unknown",
+      ") => RpcMethodMap[M][\"result\"] | Promise<RpcMethodMap[M][\"result\"]>;",
+      "export const rpcHandlers = {",
+      "\"git.init\": () => initializeRepo(),"
+    ]
+  },
+  "src/extension/handlers/clipboard.ts": {
+    "commit": "57ade90712e76fd0a2b9182c313121a6c0f659d2",
+    "specification": "docs/clean-room/extension-core.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the default colours the manifest declares, the page skeleton and settings the specification requires, exact messages, or short generic statements leave little other way to write them.",
+    "lines": [
+      "if (typeof params !== \"string\") {",
+      "throw new Error(\"Invalid copyToClipboard parameters\");",
+      "await vscode.env.clipboard.writeText(params);",
+      "return true;",
+      "return false;"
+    ]
+  },
+  "src/extension/handlers/initialize-repo.ts": {
+    "commit": "57ade90712e76fd0a2b9182c313121a6c0f659d2",
+    "specification": "docs/clean-room/extension-core.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the default colours the manifest declares, the page skeleton and settings the specification requires, exact messages, or short generic statements leave little other way to write them.",
+    "lines": [
+      "export async function initializeRepo(): Promise<boolean> {",
+      "await vscode.commands.executeCommand(\"git.init\");",
+      "return true;"
+    ]
+  },
+  "src/extension/handlers/initialize.ts": {
+    "commit": "57ade90712e76fd0a2b9182c313121a6c0f659d2",
+    "specification": "docs/clean-room/extension-core.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the default colours the manifest declares, the page skeleton and settings the specification requires, exact messages, or short generic statements leave little other way to write them.",
+    "lines": [
+      "autoCenterCommitDetailsView: extConfig.autoCenterCommitDetailsView(),",
+      "dateFormat: extConfig.dateFormat(),",
+      "graphColours: extConfig.graphColours(),",
+      "graphStyle: extConfig.graphStyle(),",
+      "initialLoadCommits: extConfig.initialLoadCommits(),",
+      "loadMoreCommits: extConfig.loadMoreCommits(),",
+      "locale: vscode.env.language,",
+      "showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault()",
+      "export async function webviewInitialize(): Promise<WebviewInitialize> {"
+    ]
+  },
+  "src/extension/handlers/scan-repo.ts": {
+    "commit": "57ade90712e76fd0a2b9182c313121a6c0f659d2",
+    "specification": "docs/clean-room/extension-core.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, the default colours the manifest declares, the page skeleton and settings the specification requires, exact messages, or short generic statements leave little other way to write them.",
+    "lines": ["export async function scanRepos(): Promise<ScanRepoResult> {"]
+  },
+  "src/backend/types/actions.types.ts": {
+    "commit": "f58bcfb519b310118e2379c1e6a97a11fce686d3",
+    "specification": "docs/clean-room/backend-types.md",
+    "note": "Declared afresh from the specification without sight of the old module. The shapes must stay exactly as they were, because the extension, the webview and the tests depend on them, so field declarations and type names match upstream text; the documentation comments and the grouping are new.",
+    "lines": [
+      "export type GitCommandStatus = string | null;",
+      "addTag: { tagName: string; commitHash: string; lightweight: boolean; message: string };",
+      "deleteTag: { tagName: string };",
+      "createBranch: { commitHash: string; branchName: string };",
+      "deleteBranch: { branchName: string; forceDelete: boolean };",
+      "renameBranch: { oldName: string; newName: string };",
+      "cherrypickCommit: { commitHash: string; parentIndex: number };",
+      "revertCommit: { commitHash: string; parentIndex: number };",
+      "checkoutCommit: { commitHash: string };",
+      "resetToCommit: { commitHash: string; resetMode: GitResetMode };",
+      "mergeBranch: { branchName: string; createNewCommit: boolean };",
+      "mergeCommit: { commitHash: string; createNewCommit: boolean };",
+      "export type ActionRequest = {",
+      "export type ActionResponse = {"
+    ]
+  },
+  "src/backend/types/git.types.ts": {
+    "commit": "f58bcfb519b310118e2379c1e6a97a11fce686d3",
+    "specification": "docs/clean-room/backend-types.md",
+    "note": "Declared afresh from the specification without sight of the old module. The shapes must stay exactly as they were, because the extension, the webview and the tests depend on them, so field declarations and type names match upstream text; the documentation comments and the grouping are new.",
+    "lines": [
+      "export type GitResetMode = \"soft\" | \"mixed\" | \"hard\";",
+      "export type DateType = \"Author Date\" | \"Commit Date\";",
+      "export type GitFileChangeType = \"A\" | \"M\" | \"D\" | \"R\";",
+      "export type GitLogEntry = {",
+      "hash: string;",
+      "parentHashes: string[];",
+      "author: string;",
+      "email: string;",
+      "date: number;",
+      "message: string;",
+      "export type GitFileChange = {",
+      "oldFilePath: string;",
+      "newFilePath: string;",
+      "type: GitFileChangeType;",
+      "additions: number | null;",
+      "deletions: number | null;",
+      "export type GitCommitDetails = {",
+      "hash: string;",
+      "parents: string[];",
+      "author: string;",
+      "email: string;",
+      "date: number;",
+      "committer: string;",
+      "body: string;",
+      "fileChanges: GitFileChange[];"
+    ]
+  },
+  "src/backend/types/queries.types.ts": {
+    "commit": "f58bcfb519b310118e2379c1e6a97a11fce686d3",
+    "specification": "docs/clean-room/backend-types.md",
+    "note": "Declared afresh from the specification without sight of the old module. The shapes must stay exactly as they were, because the extension, the webview and the tests depend on them, so field declarations and type names match upstream text; the documentation comments and the grouping are new.",
+    "lines": [
+      "showRemoteBranches: boolean;",
+      "loadBranches: {",
+      "repo: string;",
+      "branches: string[];",
+      "head: string | null;",
+      "hard: boolean;",
+      "isRepo: boolean;",
+      "loadCommits: {",
+      "repo: string;",
+      "branchName: string;",
+      "commits: GitCommitNode[];",
+      "head: string | null;",
+      "moreCommitsAvailable: boolean;",
+      "hard: boolean;",
+      "uncommittedChanges: number;",
+      "export type QueryRequest = {",
+      "export type QueryResponse = {"
+    ]
   }
 }

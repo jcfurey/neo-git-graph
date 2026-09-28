@@ -23,6 +23,9 @@ Branchwise was named (neo) Git Graph, `jcfurey.neo-git-graph`, through its 0.9.6
 
 ### Fixed
 
+- Checkout Branch only switches to an existing local branch, and checking out, resetting to, cherry-picking or reverting a commit only accepts a commit ID, so none of them can restore a file and discard its uncommitted changes, create a branch, or read the value as a Git option. A reset only takes soft, mixed or hard, a merge that was already in progress reports Git's own error instead of "stopped on conflicts", and a tag cannot be named `HEAD`.
+- Refresh the graph at least every two seconds while files keep changing, as during a build, instead of waiting until they stop; count changes to project lock files such as `yarn.lock` and to a shallow clone's depth, and watch a bare repository once.
+- Open the graph when `branchwise.graphColours` holds something other than a list, using the default colours; cap whole-number settings at 1,000,000; keep a file history that was asked for while the graph was still opening; and list a repository reached through a symbolic link once in the repository search.
 - Draw and lay out long histories much faster: a graph of 50,000 commits takes milliseconds instead of seconds, and one with thousands of branches no longer slows down out of proportion. The line from Uncommitted Changes to the checked-out commit stays grey all the way down.
 - Open a file's diff once on a double-click in the commit details, show renamed paths in full in their tooltip even when they contain `$`, render folders nested thousands deep, toggle folders in a large commit quickly, and mark binary files as unavailable to assistive technology.
 - Close an open context menu when the repository changes, and do nothing when showing or hiding a remote that is already in that state, when loading more commits with no branch selected, or when opening commit details with no repository.

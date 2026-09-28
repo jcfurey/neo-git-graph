@@ -4,32 +4,24 @@ import type { SimpleGit } from "simple-git";
 import type { ActionPayload } from "@/backend/types";
 import { runGit } from "@/backend/utils/runGit";
 
-/**
- * Git names the merge commit after the argument, so keep the short name only when Git resolves it
- * to the branch. A same-named tag, `refs/<name>`, or on a case-insensitive filesystem a tag that
- * differs only in case, would take precedence over the branch.
- */
-async function branchArgument(git: SimpleGit, branch: string) {
-  const ref = `refs/heads/${branch}`;
-  const resolved = await git
-    .raw(["rev-parse", "--verify", "--quiet", "--symbolic-full-name", "--end-of-options", branch])
-    .catch(() => "");
-  return resolved.trim() === ref ? branch : ref;
+/** Whether `MERGE_HEAD` exists. A check that fails, for example once cancelled, counts as no. */
+async function mergeInProgress(git: SimpleGit) {
+  const head = await git.raw(["rev-parse", "--verify", "--quiet", "MERGE_HEAD"]).catch(() => "");
+  return head.trim() !== "";
 }
 
 /**
- * Git reports merge conflicts on standard output, in the user's language, and exits with status
- * 1. Judge the result by the exit status and the merge state instead of the text.
+ * Merge `revision` into the checked-out branch. Git's messages may be translated, so a merge that
+ * this call left stopped is recognised by `MERGE_HEAD` alone. When one was already in progress,
+ * Git refuses to start, and its own message is the better explanation.
  */
-async function merge(git: SimpleGit, args: string[], binary: string) {
+async function merge(git: SimpleGit, revision: string, createNewCommit: boolean, binary: string) {
+  const alreadyMerging = await mergeInProgress(git);
+  const args = ["merge", ...(createNewCommit ? ["--no-ff"] : []), "--no-edit", "--end-of-options"];
   try {
-    await runGit(git, ["merge", ...args], binary);
+    await runGit(git, [...args, revision], binary);
   } catch (error) {
-    const merging = await git
-      .raw(["rev-parse", "--verify", "--quiet", "MERGE_HEAD"])
-      .then((head) => head.trim() !== "")
-      .catch(() => false);
-    if (merging) {
+    if (!alreadyMerging && (await mergeInProgress(git))) {
       throw new Error(
         l10n.t(
           "The merge stopped on conflicts. Resolve and stage the conflicted files, then continue or abort the merge from the status strip."
@@ -41,36 +33,34 @@ async function merge(git: SimpleGit, args: string[], binary: string) {
   }
 }
 
+/**
+ * Merge a local branch. Its short name gives the nicer message "Merge branch 'feature'", but only
+ * when Git resolves that name to the branch rather than, say, a tag of the same name.
+ */
 export async function mergeBranch(
   git: SimpleGit,
   input: ActionPayload<"mergeBranch">,
   binary: string
-): Promise<void> {
-  await merge(
-    git,
-    [
-      ...(input.createNewCommit ? ["--no-ff"] : []),
-      "--no-edit",
+) {
+  const fullRef = `refs/heads/${input.branchName}`;
+  const resolved = await git
+    .raw([
+      "rev-parse",
+      "--verify",
+      "--quiet",
+      "--symbolic-full-name",
       "--end-of-options",
-      await branchArgument(git, input.branchName)
-    ],
-    binary
-  );
+      input.branchName
+    ])
+    .catch(() => "");
+  const revision = resolved.trim() === fullRef ? input.branchName : fullRef;
+  await merge(git, revision, input.createNewCommit, binary);
 }
 
 export async function mergeCommit(
   git: SimpleGit,
   input: ActionPayload<"mergeCommit">,
   binary: string
-): Promise<void> {
-  await merge(
-    git,
-    [
-      ...(input.createNewCommit ? ["--no-ff"] : []),
-      "--no-edit",
-      "--end-of-options",
-      input.commitHash
-    ],
-    binary
-  );
+) {
+  await merge(git, input.commitHash, input.createNewCommit, binary);
 }

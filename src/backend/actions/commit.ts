@@ -1,41 +1,51 @@
+import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
-import type { ActionPayload } from "@/backend/types";
+import type { ActionPayload, GitResetMode } from "@/backend/types";
 
-export async function checkoutCommit(
-  git: SimpleGit,
-  input: ActionPayload<"checkoutCommit">
-): Promise<void> {
-  await git.checkout(input.commitHash);
-}
+const RESET_MODES: ReadonlySet<string> = new Set<GitResetMode>(["soft", "mixed", "hard"]);
 
-export async function cherrypickCommit(
-  git: SimpleGit,
-  input: ActionPayload<"cherrypickCommit">
-): Promise<void> {
-  const args = ["cherry-pick"];
-  if (input.parentIndex > 0) {
-    args.push("-m", String(input.parentIndex));
+/**
+ * Refuse anything but a commit ID, full or abbreviated to Git's minimum of four digits, so that
+ * Git cannot read the value as a branch, a path or an option.
+ */
+function requireCommitId(commitHash: string) {
+  if (!/^[0-9a-f]{4,64}$/i.test(commitHash)) {
+    throw new Error(l10n.t("Choose a valid commit."));
   }
-  args.push(input.commitHash);
-  await git.raw(args);
 }
 
-export async function revertCommit(
-  git: SimpleGit,
-  input: ActionPayload<"revertCommit">
-): Promise<void> {
-  const args = ["revert", "--no-edit"];
-  if (input.parentIndex > 0) {
-    args.push("-m", String(input.parentIndex));
+/** `-m <parent>` for a merge commit's 1-based parent, or nothing for 0. */
+function mainlineArgs(parentIndex: number) {
+  if (!Number.isSafeInteger(parentIndex) || parentIndex < 0) {
+    throw new Error(l10n.t("Choose a valid mainline parent for the selected merge commits."));
   }
-  args.push(input.commitHash);
-  await git.raw(args);
+  return parentIndex === 0 ? [] : ["-m", String(parentIndex)];
 }
 
-export async function resetToCommit(
-  git: SimpleGit,
-  input: ActionPayload<"resetToCommit">
-): Promise<void> {
-  await git.raw(["reset", "--" + input.resetMode, input.commitHash]);
+export async function checkoutCommit(git: SimpleGit, input: ActionPayload<"checkoutCommit">) {
+  requireCommitId(input.commitHash);
+  await git.raw(["checkout", "--detach", "--no-guess", input.commitHash, "--"]);
+}
+
+export async function cherrypickCommit(git: SimpleGit, input: ActionPayload<"cherrypickCommit">) {
+  requireCommitId(input.commitHash);
+  const mainline = mainlineArgs(input.parentIndex);
+  await git.raw(["cherry-pick", ...mainline, input.commitHash]);
+}
+
+export async function revertCommit(git: SimpleGit, input: ActionPayload<"revertCommit">) {
+  requireCommitId(input.commitHash);
+  const mainline = mainlineArgs(input.parentIndex);
+  // Nobody could answer an editor here, so Git's message is used as is.
+  await git.raw(["revert", "--no-edit", ...mainline, input.commitHash]);
+}
+
+export async function resetToCommit(git: SimpleGit, input: ActionPayload<"resetToCommit">) {
+  requireCommitId(input.commitHash);
+  if (!RESET_MODES.has(input.resetMode)) {
+    throw new Error(l10n.t("Choose a soft, mixed or hard reset."));
+  }
+  // `--` makes Git read the commit as a revision, never as a path to reset.
+  await git.raw(["reset", `--${input.resetMode}`, input.commitHash, "--"]);
 }
