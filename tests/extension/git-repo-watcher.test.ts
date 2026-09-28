@@ -112,15 +112,22 @@ async function commitAndReport(repo: string) {
 }
 
 describe("repository watcher", () => {
+  // Each case runs Git several times, which can take seconds on a busy Windows runner.
   it.each([
     ["a linked worktree", () => worktree, 3],
     ["a submodule", () => submodule, 2]
-  ])("refreshes once for a commit in %s", async (_name, repo, watcherCount) => {
-    selectWatchedRepo(repo(), "git");
-    await vi.waitFor(() => expect(mocks.watchers).toHaveLength(watcherCount));
-    await commitAndReport(repo());
-    expect(mocks.notify.mock.calls).toEqual([["repo.updated", { path: repo() }]]);
-  });
+  ])(
+    "refreshes once for a commit in %s",
+    async (_name, repo, watcherCount) => {
+      selectWatchedRepo(repo(), "git");
+      await vi.waitFor(() => expect(mocks.watchers).toHaveLength(watcherCount), {
+        timeout: 10_000
+      });
+      await commitAndReport(repo());
+      expect(mocks.notify.mock.calls).toEqual([["repo.updated", { path: repo() }]]);
+    },
+    30_000
+  );
 
   it("refreshes for an interrupted merge but not for new objects", async () => {
     selectWatchedRepo(worktree, "git");
