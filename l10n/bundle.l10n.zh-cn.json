@@ -490,5 +490,7 @@
   "Loading…": "正在加载…",
   "Unable to open the graph: {0}": "无法打开分支图：{0}",
   "The extension did not answer in time: {0}": "扩展未及时响应：{0}",
-  "Unable to load repositories: {0}": "无法加载仓库：{0}"
+  "Unable to load repositories: {0}": "无法加载仓库：{0}",
+  "Choose a valid commit.": "请选择有效的提交。",
+  "Choose a soft, mixed or hard reset.": "请选择软重置、混合重置或硬重置。"
 }
