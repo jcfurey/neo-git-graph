@@ -411,6 +411,7 @@
   "Failed": "Failed",
   "{0} elapsed": "{0} elapsed",
   "Copy Error Details": "Copy Error Details",
+  "Error Details": "Error Details",
   "Clear Completed Activity": "Clear Completed Activity",
   "Failed Git operations: {0}": "Failed Git operations: {0}",
   "Hide": "Hide",

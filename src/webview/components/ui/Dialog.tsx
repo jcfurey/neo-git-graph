@@ -389,7 +389,7 @@ function ErrorBody({ state, titleId }: BodyProps<"error">) {
       )}
       <div class="mt-4 flex justify-center gap-2">
         {reason !== null && (
-          <Button onClick={() => copyToClipboard(window.l10n.copyError, reason)}>
+          <Button onClick={() => copyToClipboard(window.l10n.errorDetails, reason)}>
             {window.l10n.copyError}
           </Button>
         )}

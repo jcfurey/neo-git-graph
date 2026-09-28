@@ -9,43 +9,58 @@ import {
   branchDisplay,
   branchList,
   headBranch,
+  remoteVisibilityKey,
   selectedBranch,
-  selectedRepo,
-  remoteVisibilityKey
+  selectedRepo
 } from "@/webview/lib/stores";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
+import type { CommitBranchType } from "@/webview/types";
 
-type LoadBranchesMessage = Extract<ResponseMessage, { command: "loadBranches" }>;
+type BranchesAnswer = Extract<ResponseMessage, { command: "loadBranches" }>;
 
-export function handleLoadBranches(msg: LoadBranchesMessage) {
-  if (
-    msg.repo !== selectedRepo.value ||
-    (msg.visibilityKey !== undefined && msg.visibilityKey !== remoteVisibilityKey()) ||
-    !acceptGraphResponse(msg)
-  ) {
+/**
+ * Take the branch list of the selected repository, and choose another branch when the one chosen
+ * is not in it (or none is chosen yet).
+ */
+export function handleLoadBranches(msg: BranchesAnswer): void {
+  // An answer for another repository or remote choice is refused before it can use up the
+  // pending request. An answer that does not echo a key is not checked against it.
+  const staleKey = msg.visibilityKey !== undefined && msg.visibilityKey !== remoteVisibilityKey();
+  if (msg.repo !== selectedRepo.value || staleKey || !acceptGraphResponse(msg)) {
     return;
   }
 
-  const current = selectedBranch.value;
-  const valid =
-    current === SHOW_ALL_BRANCHES || (current !== undefined && msg.branches.includes(current));
-
+  const { branches, head } = msg;
   batch(() => {
-    branchList.value = msg.branches;
-    headBranch.value = msg.head;
+    branchList.value = branches;
+    headBranch.value = head;
   });
 
-  if (!valid) {
-    const remembered =
-      current === undefined && branchDisplay.value !== "filter"
-        ? savedFocusBranch(msg.repo)
-        : undefined;
-    const fallback =
-      remembered && (remembered === SHOW_ALL_BRANCHES || msg.branches.includes(remembered))
-        ? remembered
-        : branchDisplay.value !== "filter" || getWebviewConfig().showCurrentBranchByDefault
-          ? (msg.head ?? SHOW_ALL_BRANCHES)
-          : SHOW_ALL_BRANCHES;
-    selectBranch(fallback);
+  const current = selectedBranch.value;
+  if (current === SHOW_ALL_BRANCHES || (current !== undefined && branches.includes(current))) {
+    return;
   }
+  selectBranch(replacementBranch(msg.repo, current, branches, head));
+}
+
+/** What to show in place of `current`, which is not among `branches`. */
+function replacementBranch(
+  repo: string,
+  current: string | undefined,
+  branches: Array<string>,
+  head: string | null
+): CommitBranchType {
+  const headOrAll = head ?? SHOW_ALL_BRANCHES;
+  if (branchDisplay.value === "filter") {
+    return getWebviewConfig().showCurrentBranchByDefault ? headOrAll : SHOW_ALL_BRANCHES;
+  }
+  // Just after a switch, a focus mode returns to the target saved for this repository if it is
+  // still there. A target that disappeared while in view gives way to HEAD instead.
+  if (current === undefined) {
+    const saved = savedFocusBranch(repo);
+    if (saved === SHOW_ALL_BRANCHES || (saved !== undefined && branches.includes(saved))) {
+      return saved;
+    }
+  }
+  return headOrAll;
 }

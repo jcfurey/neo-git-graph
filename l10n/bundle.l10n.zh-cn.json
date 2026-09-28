@@ -376,6 +376,7 @@
   "Failed": "失败",
   "{0} elapsed": "已用时 {0}",
   "Copy Error Details": "复制错误详情",
+  "Error Details": "错误详情",
   "Clear Completed Activity": "清除已完成的活动",
   "Failed Git operations: {0}": "失败的 Git 操作：{0}",
   "Hide": "隐藏",

@@ -48,7 +48,7 @@ export function QueryStatus({ loading, error }: { loading: boolean; error: strin
       <p role="alert" class="break-words whitespace-pre-wrap select-text">
         {error}
       </p>
-      <Button onClick={() => copyToClipboard(window.l10n.copyError, error)}>
+      <Button onClick={() => copyToClipboard(window.l10n.errorDetails, error)}>
         {window.l10n.copyError}
       </Button>
     </div>

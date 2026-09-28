@@ -50,7 +50,7 @@ function ActivityView() {
                 <Button
                   onClick={() =>
                     copyToClipboard(
-                      window.l10n.copyError,
+                      window.l10n.errorDetails,
                       `${entry.title}\n${entry.repo}\n${entry.error}`
                     )
                   }
