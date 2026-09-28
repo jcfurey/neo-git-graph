@@ -1,24 +1,32 @@
+/* Values that mean "not a real branch or commit" */
+
+/** The branch choice that shows every branch, with nothing filtered or emphasised. */
 export const SHOW_ALL_BRANCHES = "*";
 
-/** Hash the backend gives to the synthetic "Uncommitted Changes" row. */
+/** The `hash` of the row standing for the working tree's changes, listed above every commit. */
 export const UNCOMMITTED_CHANGES = "*";
 
+/* Table geometry, in CSS pixels */
+
 /**
- * Metrics of the commit table, in pixels. The graph is drawn to them, so the
- * table must keep its cells exactly this high, and in pixels rather than `rem`.
+ * The height of every commit row, and so the graph's row pitch: row `y` is centred at
+ * `(y + 0.5) * ROW_HEIGHT`. Rendered rows must be exactly this tall, or the dots drift off them.
  */
 export const ROW_HEIGHT = 24;
+
+/** The height of the table's header row, and the graph's top offset when nothing else sets one. */
 export const TABLE_HEADER_HEIGHT = 32;
 
-/** Height of the commit details view. The graph is stretched by it when open. */
+/** The height of the commit details opened under a row; the rows and lines below move down by it. */
 export const COMMIT_DETAILS_HEIGHT = 250;
 
-/**
- * Index in a commit row of each column the user resizes, in the order the
- * widths are stored. The description column is absent: it takes the width the
- * other columns leave.
- */
-export const RESIZABLE_COLUMNS = [0, 2, 3, 4];
+/* Table columns, by cell index: graph, description, date, author, commit */
 
-/** Index in a commit row of the column that takes the remaining width. */
+/**
+ * The cells the user can resize, in the order their widths are stored in `columnWidths`: stored
+ * width `k` belongs to cell `RESIZABLE_COLUMNS[k]`.
+ */
+export const RESIZABLE_COLUMNS: readonly number[] = Object.freeze([0, 2, 3, 4]);
+
+/** The cell that is never given a width, and takes whatever the others leave. */
 export const DESCRIPTION_COLUMN = 1;

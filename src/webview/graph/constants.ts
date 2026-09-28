@@ -1,11 +1,13 @@
-/** Distance between two lanes, in pixels. */
+/* The graph's geometry across its lanes, in CSS pixels. Rows follow `ROW_HEIGHT`. */
+
+/** From one lane's centre to the next. */
 export const LANE_WIDTH = 16;
 
-/** Distance from the left edge of the graph to the first lane, in pixels. */
+/** From the drawing's left edge to lane 0's centre; the same margin follows the last lane. */
 export const LANE_OFFSET = 8;
 
-/** Radius of a commit dot, in pixels. */
+/** The radius of every commit dot. Scrolling a dot into view keeps 4 pixels more than this. */
 export const VERTEX_RADIUS = 4;
 
-/** Space kept between the widest lane and the next table column, in pixels. */
+/** Room added after the drawing when the graph column is sized. */
 export const GRAPH_PADDING = 16;
