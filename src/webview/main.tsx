@@ -47,7 +47,9 @@ function Page() {
   const repos = repoListStore.get();
   const error = repoListError.value;
 
-  useEffect(() => followRepoList(repos), [repos]);
+  // Decide on the list as it is when the effect runs: the extension may have added and selected
+  // a repository since this render, and a stale list would switch away from it.
+  useEffect(() => followRepoList(repoListStore.get()), [repos]);
 
   if (error !== undefined) {
     return (
