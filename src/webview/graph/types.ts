@@ -51,28 +51,3 @@ export type GraphStroke = {
   colour: number;
   isCommitted: boolean;
 };
-
-/* Traversal state, built while the layout is computed. */
-
-export type Branch = {
-  colour: number;
-  lines: Array<GraphLine>;
-  /** Number of leading lines that belong to the uncommitted changes row. */
-  uncommitted: number;
-};
-
-export type Connection = { connectsTo: Vertex | null; onBranch: Branch };
-
-export type Vertex = {
-  readonly y: number;
-  readonly parents: Array<Vertex>;
-  /** Parents walked so far. The rest still need a line drawn to them. */
-  nextParent: number;
-  branch: Branch | null;
-  x: number;
-  /** First lane of this row that no line uses yet. */
-  nextX: number;
-  connections: Array<Connection>;
-  isCommitted: boolean;
-  isCurrent: boolean;
-};

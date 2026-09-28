@@ -1,12 +1,6 @@
 import { ROW_HEIGHT } from "@/webview/constants";
 import { LANE_OFFSET, LANE_WIDTH } from "@/webview/graph/constants";
-import type {
-  Branch,
-  GraphExpansion,
-  GraphLayout,
-  GraphPoint,
-  Vertex
-} from "@/webview/graph/types";
+import type { GraphExpansion, GraphLayout } from "@/webview/graph/types";
 
 /* Pixels. The graph is drawn on a grid of lanes (columns) and rows. */
 
@@ -53,73 +47,4 @@ export function graphHeight(layout: GraphLayout, expansion: GraphExpansion | nul
  */
 export function expandOffset(row: number, expansion: GraphExpansion | null): number {
   return isOpen(expansion) && row > expansion.row ? expansion.height : 0;
-}
-
-/*
- * Lane bookkeeping while a layout is computed. The lanes of a row are taken
- * from the left, one at a time, and are never given back: lanes below `nextX`
- * are taken, the rest are free. `connections[lane]` records on whose behalf
- * each taken lane was claimed, as the vertex the line is heading for and the
- * branch drawing it. A record is never replaced once written.
- */
-
-/** Where the vertex's own dot sits. Only meaningful once it has joined a branch. */
-export function pointOf(vertex: Vertex): GraphPoint {
-  return { x: vertex.x, y: vertex.y };
-}
-
-/** The leftmost free lane of the vertex's row. */
-export function nextPointOf(vertex: Vertex): GraphPoint {
-  return { x: vertex.nextX, y: vertex.y };
-}
-
-/**
- * The leftmost lane of the vertex's row already claimed for the same target on
- * the same branch, so a new line can join it; `null` when there is none. Both
- * are matched by identity.
- */
-export function connectionTo(
-  vertex: Vertex,
-  connectsTo: Vertex | null,
-  onBranch: Branch
-): GraphPoint | null {
-  const records = vertex.connections;
-  for (let lane = 0; lane < records.length; lane++) {
-    const record = records[lane];
-    if (record?.connectsTo === connectsTo && record.onBranch === onBranch) {
-      return { x: lane, y: vertex.y };
-    }
-  }
-  return null;
-}
-
-/**
- * Claim lane `x` of the vertex's row. Only the leftmost free lane can be
- * claimed; any other lane is left as it is, so a lane that is already taken
- * keeps its first record.
- */
-export function takePoint(
-  vertex: Vertex,
-  x: number,
-  connectsTo: Vertex | null,
-  onBranch: Branch
-): void {
-  if (x !== vertex.nextX) {
-    return;
-  }
-  vertex.connections.push({ connectsTo, onBranch });
-  vertex.nextX = x + 1;
-}
-
-/**
- * Put a vertex on a branch in lane `x`. The first branch to reach a vertex
- * keeps it: the dot's lane and colour do not change afterwards. This does not
- * claim the lane; see `takePoint`.
- */
-export function joinBranch(vertex: Vertex, branch: Branch, x: number): void {
-  if (vertex.branch !== null) {
-    return;
-  }
-  vertex.branch = branch;
-  vertex.x = x;
 }

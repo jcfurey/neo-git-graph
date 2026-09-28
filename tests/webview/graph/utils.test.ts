@@ -3,20 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import type * as GraphConstants from "@/webview/graph/constants";
 import { LANE_OFFSET } from "@/webview/graph/constants";
 import { computeGraphLayout } from "@/webview/graph/layout";
-import type { Branch, GraphExpansion, GraphLayout } from "@/webview/graph/types";
-import {
-  connectionTo,
-  expandOffset,
-  graphHeight,
-  graphWidth,
-  joinBranch,
-  laneX,
-  nextPointOf,
-  pointOf,
-  rowY,
-  takePoint
-} from "@/webview/graph/utils";
-import { createVertex } from "@/webview/graph/vertex";
+import type { GraphExpansion, GraphLayout } from "@/webview/graph/types";
+import { expandOffset, graphHeight, graphWidth, laneX, rowY } from "@/webview/graph/utils";
 
 import { commit, histories } from "./fixtures";
 
@@ -33,8 +21,6 @@ function layoutOf(lanes: number, rows: number): GraphLayout {
     }))
   };
 }
-
-const newBranch = (): Branch => ({ colour: 0, lines: [], uncommitted: 0 });
 
 const details = (row: number, height = 250): GraphExpansion => ({ row, height });
 
@@ -103,109 +89,7 @@ describe("graph geometry", () => {
   });
 });
 
-describe("lane bookkeeping", () => {
-  it("returns points as fresh snapshots", () => {
-    const v = createVertex(4);
-    const b = newBranch();
-    const before = nextPointOf(v);
-    expect(before).toStrictEqual({ x: 0, y: 4 });
-    expect(pointOf(v)).toStrictEqual({ x: 0, y: 4 });
-    expect(pointOf(v)).not.toBe(pointOf(v));
-    expect(nextPointOf(v)).not.toBe(nextPointOf(v));
-
-    takePoint(v, 0, v, b);
-    joinBranch(v, b, 0);
-    takePoint(v, 1, null, b);
-    expect(before).toStrictEqual({ x: 0, y: 4 });
-    expect(nextPointOf(v)).toStrictEqual({ x: 2, y: 4 });
-
-    const w = createVertex(7);
-    joinBranch(w, b, 3);
-    const point = pointOf(w);
-    expect(point).toStrictEqual({ x: 3, y: 7 });
-    point.x = 9;
-    expect(w.x).toBe(3);
-    expect(pointOf(w)).toStrictEqual({ x: 3, y: 7 });
-  });
-
-  it("finds a claimed lane only for the same target on the same branch", () => {
-    const v = createVertex(4);
-    const t = createVertex(9);
-    const other = createVertex(9);
-    const b1 = newBranch();
-    const b2 = newBranch();
-    expect(connectionTo(v, t, b1)).toBeNull();
-    expect(connectionTo(v, null, b1)).toBeNull();
-
-    takePoint(v, 0, t, b1);
-    expect(connectionTo(v, t, b1)).toStrictEqual({ x: 0, y: 4 });
-    expect(connectionTo(v, t, b1)).not.toBe(connectionTo(v, t, b1));
-    expect(connectionTo(v, t, b2)).toBeNull();
-    expect(connectionTo(v, other, b1)).toBeNull();
-    expect(connectionTo(v, t, { ...b1 })).toBeNull();
-    expect(connectionTo(v, null, b1)).toBeNull();
-
-    takePoint(v, 1, null, b2);
-    expect(connectionTo(v, null, b2)).toStrictEqual({ x: 1, y: 4 });
-
-    takePoint(v, 2, t, b1);
-    expect(connectionTo(v, t, b1)).toStrictEqual({ x: 0, y: 4 });
-    expect(v.nextX).toBe(3);
-  });
-
-  it("claims only the leftmost free lane and never rewrites a claim", () => {
-    const v = createVertex(2);
-    const t = createVertex(5);
-    const b1 = newBranch();
-    const b2 = newBranch();
-
-    takePoint(v, 1, t, b1);
-    expect(v.nextX).toBe(0);
-    expect(connectionTo(v, t, b1)).toBeNull();
-
-    takePoint(v, 0, t, b1);
-    expect(v.nextX).toBe(1);
-
-    takePoint(v, 0, null, b2);
-    expect(v.nextX).toBe(1);
-    expect(connectionTo(v, t, b1)).toStrictEqual({ x: 0, y: 2 });
-    expect(connectionTo(v, null, b2)).toBeNull();
-
-    for (const lane of [5, -1, 0.5, Number.NaN]) {
-      takePoint(v, lane, null, b2);
-      expect(v.nextX).toBe(1);
-      expect(connectionTo(v, null, b2)).toBeNull();
-    }
-
-    takePoint(v, 1, null, b2);
-    expect(v.nextX).toBe(2);
-    expect(connectionTo(v, null, b2)).toStrictEqual({ x: 1, y: 2 });
-
-    expect(v.x).toBe(0);
-    expect(v.branch).toBeNull();
-  });
-
-  it("places a vertex on the first branch that reaches it", () => {
-    const v = createVertex(3);
-    const b1 = newBranch();
-    const b2 = newBranch();
-
-    joinBranch(v, b1, 2);
-    expect(v.branch).toBe(b1);
-    expect(v.x).toBe(2);
-    expect(v.nextX).toBe(0);
-    expect(connectionTo(v, v, b1)).toBeNull();
-
-    joinBranch(v, b2, 5);
-    expect(v.branch).toBe(b1);
-    expect(v.x).toBe(2);
-
-    joinBranch(v, b1, 4);
-    expect(v.x).toBe(2);
-  });
-});
-
-describe("layouts built on the lane bookkeeping", () => {
+describe("layouts", () => {
   it("ends a merge on the dot of a parent another branch reached first", () => {
     const commits = histories["merge into a parent another branch reached first"];
     const layout = computeGraphLayout(commits, "tip");
