@@ -905,5 +905,346 @@
       "export type QueryRequest = {",
       "export type QueryResponse = {"
     ]
+  },
+  "src/main.ts": {
+    "commit": "78dba459049abad2346a4f7a872071eb3c050c18",
+    "specification": "docs/clean-room/app-shell.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": ["logger.init(ctx);", "logger.info(\"Extension activated\");"]
+  },
+  "src/webview/App.tsx": {
+    "commit": "78dba459049abad2346a4f7a872071eb3c050c18",
+    "specification": "docs/clean-room/app-shell.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "export function App({ repos }: { repos: Array<GitRepo> }) {",
+      "return (",
+      "<MainHeader repos={repos} />",
+      "<GraphView />",
+      "<ScrollShadow />",
+      "<ContextMenu />",
+      "<Dialog />"
+    ]
+  },
+  "src/webview/layout/GraphView.tsx": {
+    "commit": "78dba459049abad2346a4f7a872071eb3c050c18",
+    "specification": "docs/clean-room/app-shell.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "return (",
+      "return (",
+      "<main class=\"grid flex-1 place-items-center\">",
+      "<Loading />",
+      "return (",
+      "<main class=\"relative\">",
+      "<Loading />",
+      "<div class=\"flex justify-center py-4\">"
+    ]
+  },
+  "src/webview/layout/MainHeader.tsx": {
+    "commit": "78dba459049abad2346a4f7a872071eb3c050c18",
+    "specification": "docs/clean-room/app-shell.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "export function MainHeader({ repos }: { repos: Array<GitRepo> }) {",
+      "return (",
+      "<Dropdown",
+      "onChange={selectRepo}",
+      "<Dropdown",
+      "options={[",
+      "value={selectedBranch.value}",
+      "onChange={selectBranch}"
+    ]
+  },
+  "src/webview/main.tsx": {
+    "commit": "78dba459049abad2346a4f7a872071eb3c050c18",
+    "specification": "docs/clean-room/app-shell.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "selectedRepo.value = undefined;",
+      "const repos = repoListStore.get();",
+      "const error = repoListError.value;",
+      "if (error !== undefined) {",
+      "return (",
+      "if (repos === undefined) {",
+      "return <LoadingPage />;",
+      "const { l10n, config } = await rpcClient.request(\"webview.initialize\", null);",
+      "window.l10n = l10n;",
+      "initializeWebviewConfig(config);",
+      "initializeStores(config.initialLoadCommits);",
+      "const root = document.getElementById(\"app\")!;",
+      "rpcClient.init();",
+      "initDispatcher();",
+      "render(<LoadingPage />, root);"
+    ]
+  },
+  "src/webview/components/commit/CommitDetails.tsx": {
+    "commit": "40aaca2c7b356725c075c6306c5f918fd8aa4fdb",
+    "specification": "docs/clean-room/commit-view.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them. Class lists follow the look the specification describes property by property.",
+    "lines": [
+      "if (getWebviewConfig().autoCenterCommitDetailsView) {",
+      "const row = useRef<HTMLTableRowElement>(null);",
+      "<td />",
+      "colSpan={4}",
+      "class=\"relative bg-btn p-0 align-top text-ui leading-4.5 whitespace-normal after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-line\"",
+      "<button",
+      "type=\"button\"",
+      "class=\"absolute top-1 right-1 cursor-pointer opacity-60 hover:opacity-100\"",
+      "return (",
+      "<div class=\"truncate\">",
+      "<b>{label}</b>",
+      "{children}",
+      "{after}",
+      "export function CommitDetails({ details }: { details: GitCommitDetails | null }) {"
+    ]
+  },
+  "src/webview/components/commit/CommitTable.tsx": {
+    "commit": "40aaca2c7b356725c075c6306c5f918fd8aa4fdb",
+    "specification": "docs/clean-room/commit-view.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them. Class lists follow the look the specification describes property by property.",
+    "lines": [
+      "type CommitTableProps = {",
+      "head: string | null;",
+      "headBranch: string | null;",
+      "boundary,",
+      "side,",
+      "resize",
+      "boundary: number;",
+      "side: \"left\" | \"right\";",
+      "resize: ColumnResize;",
+      "return (",
+      "<span",
+      "role=\"separator\"",
+      "aria-orientation=\"vertical\"",
+      "onMouseDown={(event) => resize.startResize(boundary, event)}",
+      "onKeyDown={(event) => resize.nudge(boundary, event)}",
+      "const layout = useMemo(() => computeGraphLayout(commits, head), [commits, head]);",
+      "const expandedHash = expandedCommit.value;",
+      "return (",
+      "<table",
+      "class={`w-full cursor-default border-collapse text-ui select-none ${",
+      "<colgroup>",
+      "<col style=\"width: var(--col-graph)\" />",
+      "<col />",
+      "<col style=\"width: var(--col-date)\" />",
+      "<col style=\"width: var(--col-author)\" />",
+      "<col style=\"width: var(--col-commit)\" />",
+      "<tbody>",
+      "{commits.map((commit, index) => (",
+      "<Fragment key={commit.hash}>",
+      "<CommitRow",
+      "commit={commit}",
+      "isHead={commit.hash === head}",
+      "headBranch={headBranch}",
+      "messages={messages}",
+      "colour={branchColour(layout.vertices[index]?.colour ?? 0)}",
+      "expanded={index === expandedRow}"
+    ]
+  },
+  "src/webview/components/commit/CommitRow.tsx": {
+    "commit": "40aaca2c7b356725c075c6306c5f918fd8aa4fdb",
+    "specification": "docs/clean-room/commit-view.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them. Class lists follow the look the specification describes property by property.",
+    "lines": [
+      "type CommitRowProps = {",
+      "isHead: boolean;",
+      "headBranch: string | null;",
+      "messages: CommitMessages;",
+      "colour: string | undefined;",
+      "expanded: boolean;",
+      "onSelect: (() => void) | undefined;",
+      "function orderRefs(refs: Array<GitRef>, headBranch: string | null) {",
+      "export function CommitRow({",
+      "commit,",
+      "isHead,",
+      "headBranch,",
+      "messages,",
+      "colour,",
+      "expanded,",
+      "}: CommitRowProps) {",
+      "const message = uncommitted",
+      ": commit.message;",
+      "<div class=\"flex min-w-0 items-center\">",
+      "<RefLabel",
+      "{isHead || uncommitted ? <b>{message}</b> : message}"
+    ]
+  },
+  "src/webview/components/commit/CommitGraph.tsx": {
+    "commit": "40aaca2c7b356725c075c6306c5f918fd8aa4fdb",
+    "specification": "docs/clean-room/commit-view.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them. Class lists follow the look the specification describes property by property.",
+    "lines": [
+      "expansion: GraphExpansion | null;",
+      "export function CommitGraph({",
+      "layout,",
+      "const angular = getWebviewConfig().graphStyle === \"angular\";",
+      "return (",
+      "<svg",
+      "class=\"block\"",
+      "width={graphWidth(layout)}",
+      "height={graphHeight(layout, expansion)}",
+      "aria-hidden=\"true\"",
+      "{strokes.map((stroke, index) => (",
+      "<g key={index}>",
+      "<path",
+      "d={stroke.path}",
+      "{layout.vertices.map((vertex) => {",
+      "<circle",
+      "key={vertex.y}"
+    ]
+  },
+  "src/webview/components/commit/RefLabel.tsx": {
+    "commit": "40aaca2c7b356725c075c6306c5f918fd8aa4fdb",
+    "specification": "docs/clean-room/commit-view.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them. Class lists follow the look the specification describes property by property.",
+    "lines": [
+      "export function RefLabel({ gitRef, active }: { gitRef: GitRef; active: boolean }) {",
+      "const source = refMenuSource(gitRef);",
+      "return (",
+      "<span",
+      "active ? \"border-graph\" : \"border-line\"",
+      "} ${menuOpen ? \"bg-btn-hover\" : \"bg-btn\"}`}",
+      "onContextMenu={(event) => openContextMenu(event, source, refMenu(gitRef, active))}",
+      "onClick={(event) => event.stopPropagation()}",
+      "onDblClick={(event) => {",
+      "event.stopPropagation();",
+      "checkoutBranchAction(gitRef);",
+      "<span class={`truncate ${active ? \"font-bold\" : \"\"}`}>{gitRef.name}</span>"
+    ]
+  },
+  "src/webview/lib/dispatcher.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "type Command = ResponseMessage[\"command\"];",
+      "// eslint-disable-next-line no-console"
+    ]
+  },
+  "src/webview/lib/stores.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "export const selectedRepo = signal<string | undefined>(undefined);",
+      "export const branchList = signal<Array<string> | undefined>(undefined);",
+      "export const headBranch = signal<string | null>(null);",
+      "export const commitList = signal<Array<GitCommitNode> | undefined>(undefined);",
+      "export const commitHead = signal<string | null>(null);",
+      "export const expandedCommit = signal<string | null>(null);",
+      "export const commitDetails = signal<GitCommitDetails | null>(null);",
+      "export const contextMenu = signal<ContextMenuState | null>(null);",
+      "export const dialog = signal<DialogState | null>(null);",
+      "export const repoStates = signal<GitRepoSet>({});",
+      "export const selectedBranch = signal<CommitBranchType | undefined>(undefined);",
+      "const menu = contextMenu.value;",
+      "if (menu !== null) {",
+      "return menu.source;",
+      "const open = dialog.value;",
+      "const repo = selectedRepo.value;",
+      "const repo = selectedRepo.value;",
+      "export function initializeStores(initialLoadCommits: number): void {",
+      "maxCommits.value = initialLoadCommits;"
+    ]
+  },
+  "src/webview/lib/stores/repo-list.store.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": ["export const repoListStore = {"]
+  },
+  "src/webview/lib/load-repos.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "export const repoListError = signal<string | undefined>(undefined);",
+      "export async function loadRepoList(): Promise<void> {",
+      "repoListError.value = undefined;",
+      "await repoListStore.load();",
+      "repoListError.value = error instanceof Error ? error.message : String(error);"
+    ]
+  },
+  "src/webview/lib/webview-config.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "export function initializeWebviewConfig(value: WebviewConfig): void {",
+      "throw new Error(\"Webview configuration is already initialized\");",
+      "export function getWebviewConfig(): WebviewConfig {",
+      "throw new Error(\"Webview configuration is not initialized\");"
+    ]
+  },
+  "src/webview/lib/vscode.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": ["export const vscode = acquireVsCodeApi();"]
+  },
+  "src/webview/lib/handler/action-result.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "addTag: \"unableToAddTag\",",
+      "checkoutBranch: \"unableToCheckoutBranch\",",
+      "checkoutCommit: \"unableToCheckoutCommit\",",
+      "cherrypickCommit: \"unableToCherryPick\",",
+      "createBranch: \"unableToCreateBranch\",",
+      "deleteBranch: \"unableToDeleteBranch\",",
+      "deleteTag: \"unableToDeleteTag\",",
+      "mergeBranch: \"unableToMergeBranch\",",
+      "mergeCommit: \"unableToMergeCommit\",",
+      "pushTag: \"unableToPushTag\",",
+      "renameBranch: \"unableToRenameBranch\",",
+      "resetToCommit: \"unableToReset\",",
+      "revertCommit: \"unableToRevert\"",
+      "if (msg.status === null) {",
+      "closeDialog();"
+    ]
+  },
+  "src/webview/lib/handler/load-branches.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": ["batch(() => {"]
+  },
+  "src/webview/lib/handler/load-commits.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "const expanded = expandedCommit.value;",
+      "batch(() => {",
+      "commitHead.value = msg.head;",
+      "moreCommitsAvailable.value = msg.moreCommitsAvailable;",
+      "uncommittedChanges.value = msg.uncommittedChanges;",
+      "closeCommitDetails();"
+    ]
+  },
+  "src/webview/lib/handler/commit-details.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": [
+      "if (msg.commitDetails === null) {",
+      "closeCommitDetails();",
+      "openErrorDialog(window.l10n.unableToLoadCommitDetails);",
+      "commitDetails.value = msg.commitDetails;"
+    ]
+  },
+  "src/webview/lib/handler/view-diff.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": ["openErrorDialog(window.l10n.unableToViewDiff);"]
+  },
+  "src/webview/lib/handler/refresh.ts": {
+    "commit": "f938e9a361f7353baa120b453e3ca5f173aad03f",
+    "specification": "docs/clean-room/webview-state.md",
+    "note": "Written from the specification without sight of the old module. These lines match upstream text because the exported interface, store and prop names, the start-up order, the exact messages or the look the specification requires, or short generic statements and JSX leave little other way to write them.",
+    "lines": ["refresh();"]
   }
 }
