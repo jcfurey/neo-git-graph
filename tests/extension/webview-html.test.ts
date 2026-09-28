@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 
-import { createWevbviewHtml, escapeAttribute } from "@/extension/html";
+import { createWebviewHtml, escapeAttribute } from "@/extension/html";
 
 vi.mock("vscode", () => ({
   env: { language: "zh-tw" },
@@ -9,7 +9,7 @@ vi.mock("vscode", () => ({
 }));
 
 it("carries the display language and the strings shown before the page is localized", () => {
-  const html = createWevbviewHtml(
+  const html = createWebviewHtml(
     { extensionUri: "ext" } as unknown as import("vscode").ExtensionContext,
     { cspSource: "csp", asWebviewUri: (uri: unknown) => uri } as unknown as import("vscode").Webview
   );

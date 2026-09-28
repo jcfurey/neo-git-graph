@@ -20,7 +20,7 @@ vi.mock("@/extension/config", () => ({
 }));
 vi.mock("@/backend/utils/git", () => ({ workTreeRoot: mocks.workTreeRoot }));
 vi.mock("@/extension/workspace-scan", () => ({ addSessionRepo: mocks.addSessionRepo }));
-vi.mock("@/extension/html", () => ({ createWevbviewHtml: () => "<html>graph</html>" }));
+vi.mock("@/extension/html", () => ({ createWebviewHtml: () => "<html>graph</html>" }));
 vi.mock("@/extension/legacy", () => ({
   createMessageProtocol: () => ({ attach: mocks.disposable })
 }));
