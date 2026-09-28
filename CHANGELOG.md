@@ -23,6 +23,10 @@ Branchwise was named (neo) Git Graph, `jcfurey.neo-git-graph`, through its 0.9.6
 
 ### Fixed
 
+- Offer only what applies on a remote's default-branch label, such as `origin/HEAD`: no Checkout, Delete Remote Branch or Focus entry, and double-clicking it does nothing. Renaming a branch to its own name sends nothing.
+- Keep context menus inside the window near any edge, close them with Tab, and make ArrowUp from nothing go to the last item. Space never scrolls the page behind an open menu, a menu opened again starts without a highlight, and no divider appears at a menu's edge or twice in a row.
+- A dropdown disabled while open, such as the branch list during a refresh, stays closed when it is enabled again. Its panel is placed again whenever its options change, arrow keys on its button no longer close it, closing it with its button keeps focus there, pointing at an option no longer scrolls the list, and its filter is named after the dropdown.
+- Start a running operation's dialog on Hide and an error on Dismiss, so a quick Enter no longer stops Git or copies the error. A dialog skips a disabled first button when it opens, leaves an Escape that a control inside it used alone, shows no empty reason, keeps Tab within all of its controls, and stops its spinner when reduced motion is preferred.
 - Load the graph when a commit has an unusual author line or a date Git leaves empty, showing that date as unknown, and open repositories without a work tree without the uncommitted-changes row.
 - Show a merge's changes against its first parent in the commit details, even when there are none, instead of another parent's changes; list files whose type changed, such as a file that became a symbolic link; and read names and messages as UTF-8 whatever `i18n.logOutputEncoding` says.
 - Sort the files and folders of the commit details in the display language, with numbers in numeric order, and ignore empty path segments.
