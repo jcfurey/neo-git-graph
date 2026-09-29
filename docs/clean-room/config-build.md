@@ -1162,3 +1162,25 @@ Each question states the current behaviour; none is decided here.
   closing a server on it, then passes the number to VS Code, which binds it later; another process
   could take it in between (4.3). Is this acceptable, or should the runner let VS Code choose the
   port and report it?
+
+---
+
+## Decisions
+
+These decisions are the maintainer's answers to the questions above; where they differ from the rest of this specification, they win.
+
+- **Q1.** Fix it. An error without a location is reported like any other, and the finished line is printed after every build, failed or not.
+- **Q2.** Take both the `@/` resolution and the JSX settings from the `tsconfig` files, and drop the build's own resolver and JSX options. Verify that the webview bundle contains no `React.createElement` and that the UI harness passes.
+- **Q3.** The build decides Tailwind's mode from `--production` alone, so `NODE_ENV` does not change the output.
+- **Q4.** A production build writes no source maps and removes any left from an earlier development build.
+- **Q5.** Yes: Tailwind errors point at `src/webview/styles.css`.
+- **Q6.** Raise the extension's target to ES2024, which the oldest supported VS Code's Node runs. Keep the webview's target.
+- **Q7.** In watch mode the build prints one start line and one finished line for each round that rebuilds both bundles, so the problem matcher ends when both are done (`config-repo.md` Q10).
+- **Q8.** Keep all four overrides; this batch does not change `pnpm-lock.yaml`.
+- **Q9.** Yes: write `vitest.config.ts` as a plain ES module, without `__dirname`, so Vite's notice goes away.
+- **Q10.** Keep `watch:tsc` on the extension side only.
+- **Q11.** Out of scope here.
+- **Q12.** State only the options that change behaviour or that the code depends on; leave out those that repeat TypeScript 7's defaults.
+- **Q13.** Keep the three install-script packages allowed as they are.
+- **Q14.** Yes: report esbuild's warnings, and give columns as the problem matcher expects them.
+- **Q15.** Leave the port selection as it is.
