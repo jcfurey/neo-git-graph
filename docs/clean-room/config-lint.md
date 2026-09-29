@@ -712,3 +712,27 @@ Each question states what happens today and decides nothing.
   carry file-wide directives. Should exceptions for single files be in the configuration or in the
   files? (Changing the files is outside this rewrite.)
 - **lint Q17 — obsolete entries.** Drop every entry of section 4?
+
+---
+
+## Decisions
+
+These decisions are the maintainer's answers to the questions above; where they differ from the rest of this specification, they win. The aim is a configuration derived from Branchwise's needs, at about the strictness of today's, not a copy of the current rule list.
+
+- **Q1.** Enable the `correctness`, `suspicious` and `perf` categories at `error` for the plugins the code uses (the core eslint rules, `typescript`, `unicorn`, `oxc`, `import`, `node`). Leave `nursery`, `pedantic`, `style` and `restriction` off as categories. Enable individual rules from them only where Q12 needs them or where the rule guards a mistake the code base has a reason to fear, each with a one-line comment saying why. Turn off, with a comment, any rule that does not apply to this code (such as the `postMessage` target-origin rule, which does not apply to VS Code's API).
+- **Q2.** Add no further plugins in this batch.
+- **Q3.** One `.oxlintrc.json`; remove the `oxlint/*.config.json` files. Branchwise's own `oxlint/webview-text.cjs` stays.
+- **Q4.** No warnings: every rule is `error` or off.
+- **Q5.** Report unused disable directives as errors if the tree has none today; if it has some, remove them in this change.
+- **Q6.** Keep enforcing today's import layout with `eslint-plugin-import`'s ordering rule (3.5), so no file is reformatted.
+- **Q7.** Keep the webview text rule's scope at `src/webview/**/*.tsx`.
+- **Q8.** Keep the handler import rule, with a message in new words.
+- **Q9.** Take oxlint's default fixes.
+- **Q10.** Rely on `.gitignore` for the ignored folders, and also ignore `node_modules/**` explicitly, since oxlint does not skip it on its own. Drop `.pnpm-store` and `.idea`.
+- **Q11.** No type-aware rules; do not add `oxlint-tsgolint`.
+- **Q12.** Yes: the new configuration keeps checking every convention in 3.5 that other specifications state as a premise: the webview text, the import layout, the `node:` prefix, the ban on `../` imports, braces, the `_` prefix for unused names, `console` and `await` in loops only where marked, and the handler rule.
+- **Q13.** No change to `.vscode/` here.
+- **Q14.** `.oxfmtrc.jsonc` gets a `$schema` and states only the options that differ from oxfmt's defaults (`trailingComma`), plus any ignore patterns still needed. Keep `sortPackageJson` at its default, since the manifest's field order relies on it.
+- **Q15.** Enable `no-undef` for all code, and declare the environments instead of turning it off: Node for the extension, scripts and backend tests; the browser for `src/webview` and `tests/webview`; mocha for `tests-ext`; and `acquireVsCodeApi` as a global where the page uses it.
+- **Q16.** Keep one-file exceptions in the configuration as overrides, each with a comment.
+- **Q17.** Yes: drop every obsolete entry in section 4.

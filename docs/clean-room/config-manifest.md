@@ -695,3 +695,18 @@ corrected separately?
 **manifest Q8. A keyword that names the upstream product (M6).** One of today's search keywords is
 the name of the product Branchwise was forked from. It is a common search term for this kind of
 tool, but it is also the upstream name. Should M6's requirement exclude upstream product names?
+
+---
+
+## Decisions
+
+These decisions are the maintainer's answers to the questions above; where they differ from the rest of this specification, they win.
+
+- **Q1.** Remove `contributors`. The upstream projects stay credited where their licence requires and where readers look: `LICENSE` and the README. Update `docs/packaging.md` to match.
+- **Q2.** Leave `author` and `sponsor` absent; `publisher` identifies the maintainer.
+- **Q3.** Keep the deprecated `branchwise.fetchAvatars` setting as it is, so users who still have it set see no unknown-setting warning.
+- **Q4.** Leave `homepage`, `bugs` and `repository` pointing at the current repository; they change when the project moves. Keep `homepage` and `bugs` explicit.
+- **Q5.** Yes. `scripts/check-l10n.js` also checks that every `%key%` in `package.json` exists in `package.nls.json` and that `package.nls.json` holds no key the manifest does not use, reporting in the same form as its other checks, with a test in `scripts/check-l10n.test.cjs`.
+- **Q6.** Keep `test:release` listing its files explicitly.
+- **Q7.** Correct `docs/git-actions.md` in the documentation batch, not here.
+- **Q8.** Yes: keywords name no upstream product.
