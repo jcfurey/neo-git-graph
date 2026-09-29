@@ -506,6 +506,7 @@ describe("what the row shows", () => {
 
   it("describes the uncommitted changes", () => {
     speak({
+      uncommittedChange: "Uncommitted changes in {0} file",
       uncommittedChanges: "Uncommitted changes in {0} files",
       viewWorkingTreeChanges: "Click or press Enter to view uncommitted changes."
     });
@@ -525,6 +526,19 @@ describe("what the row shows", () => {
       ["", false],
       ["", false]
     ]);
+  });
+
+  it("uses the singular for a single changed path", () => {
+    speak({
+      uncommittedChange: "Uncommitted changes in {0} file",
+      uncommittedChanges: "Uncommitted changes in {0} files"
+    });
+    uncommittedChanges.value = 1;
+    const tr = drawOne({ commit: ROWS[0]! });
+
+    const message = tr.cells[1]!.querySelector<HTMLElement>(".flex-1")!;
+    expect(message.querySelector("b")?.textContent).toBe("Uncommitted changes in 1 file");
+    expect(message.title).toBe("Uncommitted changes in 1 file");
   });
 
   it("shows a selected row that is not the tab stop", () => {

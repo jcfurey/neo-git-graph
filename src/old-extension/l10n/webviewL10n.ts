@@ -216,7 +216,8 @@ export function getWebviewLocalizedStrings() {
     detailDate: vscode.l10n.t("Date: {0}"),
     detailCommitter: vscode.l10n.t("Committer: {0}"),
 
-    // Uncommitted changes. {0} is the number of changed paths.
+    // Uncommitted changes. {0} is the number of changed paths; the singular is used for 1.
+    uncommittedChange: vscode.l10n.t("Uncommitted changes in {0} file"),
     uncommittedChanges: vscode.l10n.t("Uncommitted changes in {0} files"),
     viewWorkingTreeChanges: vscode.l10n.t("Click or press Enter to view uncommitted changes."),
     workingTreeHint: vscode.l10n.t(

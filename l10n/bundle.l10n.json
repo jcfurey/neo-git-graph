@@ -200,6 +200,7 @@
   "Author: {0}": "Author: {0}",
   "Date: {0}": "Date: {0}",
   "Committer: {0}": "Committer: {0}",
+  "Uncommitted changes in {0} file": "Uncommitted changes in {0} file",
   "Uncommitted changes in {0} files": "Uncommitted changes in {0} files",
   "Click or press Enter to view uncommitted changes.": "Click or press Enter to view uncommitted changes.",
   "Select a file to view its changes. Conflicted files open the merge editor.": "Select a file to view its changes. Conflicted files open the merge editor.",
