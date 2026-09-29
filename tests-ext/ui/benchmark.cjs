@@ -169,7 +169,7 @@ module.exports = async function benchmark({
       );
       entry.timings.loadMore = await repeat((index) =>
         measure(
-          `[...document.querySelectorAll('main button')].find(button => button.textContent.trim() === 'Load More Commits').click()`,
+          `[...document.querySelectorAll('main button')].find(button => button.textContent.trim() === 'Load Older Commits').click()`,
           `document.querySelectorAll('tbody tr[data-commit-hash]').length === ${size + (index + 1) * 100} && ${settled}`
         )
       );

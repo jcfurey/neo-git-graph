@@ -84,7 +84,13 @@ afterEach(() => {
 
 describe("RefLabel", () => {
   it.each([
-    ["head", "main", true, ["main", "labelCurrentBranch", "origin/main", "worktreeAt"], ["↑2 ↓0"]],
+    [
+      "head",
+      "main",
+      true,
+      ["main", "tooltipCurrentBranch", "origin/main", "worktreeAt"],
+      ["↑2 ↓0"]
+    ],
     ["head", "main", false, ["main", "origin/main", "worktreeAt"], ["↑2 ↓0", "↗"]],
     ["head", "feat", false, ["feat", "origin/feat"], []],
     ["head", "gone", false, ["gone", "origin/gone", "upstreamGone"], []],
@@ -104,14 +110,14 @@ describe("RefLabel", () => {
     repositoryState.value = null;
 
     expect(describeLabel(drawLabel(ref("head", "main"), true))).toEqual({
-      title: ["main", "labelCurrentBranch"],
+      title: ["main", "tooltipCurrentBranch"],
       after: []
     });
   });
 
   it("reads the worktree path literally into the tooltip", () => {
     speak({
-      labelCurrentBranch: "the current branch",
+      tooltipCurrentBranch: "Current branch",
       worktreeAt: "Checked out at {0}"
     });
     repositoryState.value = {

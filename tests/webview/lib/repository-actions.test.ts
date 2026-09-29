@@ -139,6 +139,8 @@ describe("repository dialogs", () => {
       remote: "backup",
       tagName: "v2"
     });
+    // The push is titled by its own label; no separate running text is passed for it.
+    expect(dialog.value).toMatchObject({ kind: "running", message: "pushTag" });
   });
 
   it("requires confirmation after resolving a remote branch with a slash-containing remote name", () => {

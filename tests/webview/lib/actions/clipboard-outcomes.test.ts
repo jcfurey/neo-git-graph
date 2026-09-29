@@ -115,13 +115,13 @@ describe("the outcome", () => {
 
 describe("the failure's title", () => {
   it("puts the type, literally, at every placeholder", async () => {
-    withStrings({ unableToCopyToClipboard: "Unable to Copy {0} to Clipboard {0}" });
+    withStrings({ unableToCopyToClipboard: "Unable to copy the {0} to the clipboard {0}" });
     vi.spyOn(rpcClient, "request").mockResolvedValue(false as never);
 
     await copyToClipboard("Tag $& Name", "v1");
 
     expect(dialog.value).toMatchObject({
-      message: "Unable to Copy Tag $& Name to Clipboard Tag $& Name"
+      message: "Unable to copy the Tag $& Name to the clipboard Tag $& Name"
     });
   });
 });
@@ -131,8 +131,8 @@ describe("copying error details", () => {
 
   beforeEach(() => {
     withStrings({
-      unableToCopyToClipboard: "Unable to Copy {0} to Clipboard",
-      errorDetails: "Error Details",
+      unableToCopyToClipboard: "Unable to copy the {0} to the clipboard",
+      errorDetails: "error details",
       copyError: "Copy Error Details"
     });
     container = document.createElement("div");
@@ -197,7 +197,7 @@ describe("copying error details", () => {
     expect(request).toHaveBeenCalledWith("clipboard.copy", copied);
     expect(dialog.value).toMatchObject({
       kind: "error",
-      message: "Unable to Copy Error Details to Clipboard"
+      message: "Unable to copy the error details to the clipboard"
     });
   });
 });

@@ -114,10 +114,10 @@ describe("layout", () => {
   it("puts the clipped graph before the table and names each part", () => {
     speak({
       graph: "Graph",
-      description: "Description",
+      description: "Message",
       date: "Date",
       author: "Author",
-      commit: "Commit",
+      commit: "ID",
       resizeColumn: "Resize {0} column"
     });
     const rows = [
@@ -153,10 +153,10 @@ describe("layout", () => {
     expect(header.className).toBe("");
     expect([...header.cells].map((cell) => cell.textContent)).toEqual([
       "Graph",
-      "Description",
+      "Message",
       "Date",
       "Author",
-      "Commit"
+      "ID"
     ]);
     const grips = [...header.querySelectorAll<HTMLElement>('[role="separator"]')].map(
       (grip) =>
@@ -165,8 +165,8 @@ describe("layout", () => {
     expect(grips).toEqual([
       "0:Resize Graph column:none",
       "1:Resize Graph column:0",
-      "1:Resize Description column:none",
-      "2:Resize Description column:0",
+      "1:Resize Message column:none",
+      "2:Resize Message column:0",
       "2:Resize Date column:none",
       "3:Resize Date column:0",
       "3:Resize Author column:none",
@@ -189,7 +189,7 @@ describe("layout", () => {
     expect(row("*").textContent).toContain("uncommittedChanges");
     expect(row("a").querySelector("b")?.textContent).toBe("subject of a");
     const label = row("a").querySelector<HTMLElement>('span[title^="main"]');
-    expect(label?.title).toBe("main\nlabelCurrentBranch");
+    expect(label?.title).toBe("main\ntooltipCurrentBranch");
     // The head marker comes first in the description.
     expect(row("a").cells[1]!.firstElementChild!.firstElementChild!.childNodes).toHaveLength(0);
     expect(row("b").querySelector("b")).toBeNull();

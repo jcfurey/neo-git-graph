@@ -4,14 +4,14 @@ Graph preferences belong to a repository path in the current VS Code workspace. 
 keeps its own choices; another workspace or clone starts with defaults. Changing these preferences
 does not check out a branch or change Git refs.
 
-| Choice                                                 | Repository switch                                  | Close and reopen graph / restart VS Code |
-| ------------------------------------------------------ | -------------------------------------------------- | ---------------------------------------- |
-| View mode, focus target, pause state, dimming          | Restored for each repository                       | Restored                                 |
-| Show Remote Branches and each remote's eye toggle      | Restored for each repository                       | Restored                                 |
-| Column widths                                          | Restored for each repository                       | Restored                                 |
-| Active search, named search filters, vertical position | Restored for each repository within the open panel | Reset                                    |
-| Horizontal graph position                              | Reset to the left edge                             | Reset to the left edge                   |
-| Selected commits and expanded details                  | Cleared                                            | Cleared                                  |
+| Choice                                                     | Repository switch                                  | Close and reopen graph / restart VS Code |
+| ---------------------------------------------------------- | -------------------------------------------------- | ---------------------------------------- |
+| View mode, focus target, pause state, dimming              | Restored for each repository                       | Restored                                 |
+| Show Remote Branches in Graph and each remote's eye toggle | Restored for each repository                       | Restored                                 |
+| Column widths                                              | Restored for each repository                       | Restored                                 |
+| Active search, named search filters, vertical position     | Restored for each repository within the open panel | Reset                                    |
+| Horizontal graph position                                  | Reset to the left edge                             | Reset to the left edge                   |
+| Selected commits and expanded details                      | Cleared                                            | Cleared                                  |
 
 Reloading an existing webview retains its search filters and vertical position as well as durable
 preferences. Horizontal panning resets on reload; refreshing loaded history or resizing the graph
@@ -24,12 +24,12 @@ stays cleared when returning to the repository, even though the selected focus m
 
 If a saved focus target was deleted or renamed, focus falls back to the current branch and keeps
 the selected mode, dimming, and pause state. With detached HEAD or no current branch, it falls back
-to **Show All** and clears pause. The fallback is saved, so recreating the old branch does not
+to **All branches** and clears pause. The fallback is saved, so recreating the old branch does not
 silently restore the old target. Renames are not inferred from matching commit hashes.
 
 Hiding the focused remote clears its target. Selecting a hidden remote branch reveals its remote
-and enables **Show Remote Branches**; those updated choices are saved. Turning all remotes off and
-back on preserves each remote's individual eye setting.
+and enables **Show Remote Branches in Graph**; those updated choices are saved. Turning all remotes
+off and back on preserves each remote's individual eye setting.
 
 Deleting a repository's folder removes its saved preferences the next time the Workspace pane loads.
 Existing focus choices in an open panel migrate to workspace storage the next time that repository

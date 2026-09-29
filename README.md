@@ -42,7 +42,7 @@
 - **Remote actions**: Push local branches to a chosen remote, set upstream tracking, pull the current branch with fast-forward only, and fetch updates with optional pruning
 - **Remote branch checkout**: Reuse and fast-forward an existing local branch, or create a new tracking branch
 - **Branches pane**: Browse local branches, remotes, tags and stashes beside the graph; select or focus a branch, check out, fetch or apply inline, and hide individual remotes or all remote branches
-- **Graph view**: See branches, tags, and uncommitted changes in one graph. Click the Uncommitted Changes row (or press Enter) to browse unstaged, staged, untracked, and conflicted files, then select a file to open its diff or merge editor.
+- **Graph view**: See branches, tags, and uncommitted changes in one graph. Click the uncommitted changes row at the top (or press Enter) to browse unstaged, staged, untracked, and conflicted files, then select a file to open its diff or merge editor.
 - **Commit details**: Click a commit to see message, files, and diffs
 - **Branch actions**: Create, checkout, rename, delete, and merge
 - **Tag actions**: Create, delete, and push tags
@@ -101,17 +101,17 @@ All settings use the `branchwise` prefix.
 
 | Setting                       | Default         | Description                                     |
 | ----------------------------- | --------------- | ----------------------------------------------- |
-| `autoCenterCommitDetailsView` | `true`          | Center commit details when opened               |
+| `autoCenterCommitDetailsView` | `true`          | Centre an opened commit's details vertically    |
 | `dateFormat`                  | `"Date & Time"` | `"Date & Time"`, `"Date Only"`, or `"Relative"` |
 | `dateType`                    | `"Author Date"` | `"Author Date"` or `"Commit Date"`              |
 | `fetchAvatars`                | `false`         | No effect; avatars were removed                 |
-| `graphColours`                | 12 defaults     | Colors for graph lines                          |
+| `graphColours`                | 12 defaults     | Colours of the graph's lanes, in order          |
 | `graphStyle`                  | `"rounded"`     | `"rounded"` or `"angular"`                      |
 | `initialLoadCommits`          | `300`           | Commits to load on open                         |
-| `loadMoreCommits`             | `100`           | Commits to load on demand                       |
-| `maxDepthOfRepoSearch`        | `0`             | Folder depth for repo search                    |
+| `loadMoreCommits`             | `100`           | Commits added by Load Older Commits             |
+| `maxDepthOfRepoSearch`        | `0`             | Folder depth searched for repositories          |
 | `showCurrentBranchByDefault`  | `false`         | Show only current branch on open                |
-| `showUncommittedChanges`      | `true`          | Show uncommitted changes node                   |
+| `showUncommittedChanges`      | `true`          | Show the uncommitted changes row                |
 | `tabIconColourTheme`          | `"colour"`      | `"colour"` or `"grey"`                          |
 
 ## Contributing

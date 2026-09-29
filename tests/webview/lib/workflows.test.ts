@@ -4,8 +4,8 @@ import { h, render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import type { RepositoryQueryData, WorkspaceEntry } from "@/backend/types";
-import { openSubmodule } from "@/webview/components/history/WorkflowTools";
+import type { RepositoryQueryData, SyncPlan, WorkspaceEntry } from "@/backend/types";
+import { openSubmodule, SyncReview } from "@/webview/components/history/WorkflowTools";
 import { WorkspacePane } from "@/webview/components/history/WorkspacePane";
 import { chooseBisectCommit } from "@/webview/components/repository/BisectView";
 import { Dialog } from "@/webview/components/ui/Dialog";
@@ -15,6 +15,7 @@ import {
   openContentDialog,
   openContextMenu
 } from "@/webview/lib/actions";
+import { focusedCommit, historyFilter } from "@/webview/lib/navigation";
 import { acceptRemoteActionResult } from "@/webview/lib/remote-actions";
 import { handleRepositoryQuery, requestPanelQuery } from "@/webview/lib/repository-actions";
 import { contextMenu, dialog, selectedRepo } from "@/webview/lib/stores";
@@ -185,6 +186,32 @@ it("preserves selected bisect endpoints per repository and requires Start before
       expectedHead: "c".repeat(40)
     }
   });
+});
+
+it("sends a push review with more outgoing commits than it lists to the branch's history", () => {
+  const local = "c".repeat(40);
+  const plan: SyncPlan = {
+    branch: "main",
+    remote: "origin",
+    remoteBranch: "main",
+    local,
+    remoteHead: null,
+    incoming: { entries: [], more: false },
+    outgoing: { entries: [], more: true },
+    ahead: 150,
+    behind: 0,
+    canFastForward: false
+  };
+  openContentDialog("syncPreview", h("p", {}, "review"));
+  const options = { operation: "push", setUpstream: false, force: false } as const;
+  act(() => render(h(SyncReview, { plan, repo: "/repo", options }), container));
+
+  const labels = [...container.querySelectorAll("button")].map((button) => button.textContent);
+  expect(labels).not.toContain("loadMore");
+  click("showBranchHistory");
+  expect(dialog.value).toBeNull();
+  expect(historyFilter.value.revision).toBe(local);
+  expect(focusedCommit.value).toBe(local);
 });
 
 it("returns keyboard focus to the original control across menu and dialog transitions", async () => {

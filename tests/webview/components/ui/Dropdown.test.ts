@@ -878,8 +878,8 @@ const useStrings = (l10n: typeof window.l10n) =>
 describe("Dropdown with English strings", () => {
   const HINT = "Type to narrow the list, or use the arrow keys.";
   const ENGLISH: Record<string, string> = {
-    filterPlaceholder: "Filter {0}...",
-    noResultsFound: "No results found.",
+    filterPlaceholder: "{0}: type to filter…",
+    noResultsFound: "Nothing matches this filter.",
     dropdownPage: `{0}–{1} of {2}. ${HINT}`
   };
   let echo: typeof window.l10n;
@@ -894,9 +894,9 @@ describe("Dropdown with English strings", () => {
   it("puts the label in the filter's placeholder", () => {
     const view = mount({ options: same("a1") });
     view.open();
-    expect(view.combobox()!.placeholder).toBe("Filter Branch...");
+    expect(view.combobox()!.placeholder).toBe("Branch: type to filter…");
     view.type("zzz");
-    expect(view.combobox()!.nextElementSibling?.textContent).toBe("No results found.");
+    expect(view.combobox()!.nextElementSibling?.textContent).toBe("Nothing matches this filter.");
   });
 
   it("renders the block of DROPDOWN_PAGE options that holds the active one", () => {

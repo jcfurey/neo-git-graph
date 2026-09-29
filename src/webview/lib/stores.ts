@@ -79,7 +79,7 @@ export const focusPaused = signal(false);
 
 export const focusDimming = signal<FocusDimming>("subtle");
 
-/** The global "Show Remote Branches" switch. */
+/** The global "Show Remote Branches in Graph" switch. */
 export const showRemoteBranch = signal(true);
 
 /* Derived values */

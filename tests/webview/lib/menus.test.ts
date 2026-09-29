@@ -305,7 +305,7 @@ describe("commit menu forms", () => {
   it.each([
     ["addTag…", "dialogAddTagSubmit", false],
     ["createBranch…", "dialogCreateBranchSubmit", false],
-    ["checkout…", "dialogYes", false],
+    ["checkout…", "checkout", false],
     ["cherryPick…", "dialogYesCherryPick", false],
     ["revert…", "dialogYesRevert", false],
     ["merge…", "dialogYesMerge", false],
@@ -430,7 +430,7 @@ describe("ref menu forms", () => {
     },
     { gitRef: topic, title: "deleteBranch…", action: "deleteBranch", destructive: true },
     { gitRef: topic, title: "merge…", action: "dialogYesMerge", destructive: false },
-    { gitRef: tag, title: "deleteTag…", action: "dialogYes", destructive: true }
+    { gitRef: tag, title: "deleteTag…", action: "deleteTag", destructive: true }
   ])("$title is confirmed with $action, destructive: $destructive", (row) => {
     const form = chooseForm(refMenu(row.gitRef, false), row.title);
     expect(form.action).toBe(row.action);
