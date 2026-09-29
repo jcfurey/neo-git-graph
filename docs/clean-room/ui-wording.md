@@ -1129,3 +1129,62 @@ Each states the current behaviour; none is decided here.
 - **wording Q24. `package.nls*.json` are not checked** by `scripts/check-l10n.js` (or by anything else): a missing or stale zh setting description goes unnoticed. The new script is specified to behave like the old one. Should it also check them?
 - **wording Q25. Edge cases of `scripts/check-l10n.js`.** A locale key named like a built-in object member (`toString`) is not reported as stale; a non-string value, or the object form that translator comments produce, crashes the script with a stack trace instead of a message; empty translations pass. Keep this behaviour exactly, or tighten it?
 - **wording Q26. Setting values in `package.json`** (`"Date & Time"`, `"Date Only"`, `"Relative"`, `"Author Date"`, `"Commit Date"`, `"rounded"`, `"angular"`, `"colour"`, `"grey"`) are inherited lines and appear in the Settings editor, but they are stored in users' settings, so this specification leaves them alone. Is that right, or should they get `enumItemLabels` with new display text?
+
+---
+
+## Decisions
+
+These decisions are the maintainer's answers to the questions above. Where they differ from anything earlier in this specification, they win. "Code change" means an edit outside the l10n files, kept to what the decision needs.
+
+- **Q1. Coincidences are accepted, not avoided.** Write the clearest text. When that is a generic word or a standard term that happens to equal an upstream line (a column header, a cancel button, a standard Chinese term), keep it; the reviewer lists such lines in `scripts/provenance-reviewed.json`. The signature lines of `webviewL10n.ts` stay as they are.
+- **Q2. Shared bundle entries.** The English of Branchwise's `revertOperation` and `recoveryBranchName` stays. Their bundle entries get fresh zh-cn and zh-tw translations, written from the glossary like every other new translation, replacing the current values without reading them.
+- **Q3. Pairs stay identical.** Each dialog's submit button repeats its menu entry's label (`addTag` / `dialogAddTagSubmit`, `createBranch` / `dialogCreateBranchSubmit`, `renameBranch` / `dialogRenameBranchSubmit`).
+- **Q4. Branchwise's confirmation style.** Questions start with the action's verb and name its object; no question asks whether the user is sure. Confirm buttons carry the action's own label in title case: `dialogYesCherryPick`, `dialogYesRevert`, `dialogYesMerge` and `dialogYesReset` become the short action verbs. `dialogYes` is removed. Code change: the commit checkout dialog submits with `checkout` and the tag deletion dialog with `deleteTag`, as the branch deletion already submits with `deleteBranch`.
+- **Q5. Failure titles use sentence case**, beginning "Unable to", like Branchwise's ten.
+- **Q6. Follow Branchwise.** The verb is "check out" (two words; "Check Out" in title case), the noun "checkout", and "cherry-pick" is always hyphenated ("Cherry-pick" in title case).
+- **Q7. "commit ID"** names a commit's identifier (VS Code's term). zh-cn and zh-tw: 提交 ID.
+- **Q8. Fragments stay composed**, with one exception. `labelTag`, `labelBranch` and `labelCurrentBranch` keep their places in the deletion, merge and reset questions and are written for that role (lower case in English; in zh, a noun phrase that reads well where the question puts it). The tooltip line of `components/commit/RefLabel.tsx` gets its own key in `webviewL10n.ts`, written as a tooltip that names a state (sentence case). The questions keep speaking of the current branch while HEAD is detached, as `menus.md` Q14 left it.
+- **Q9. Spell the word out** ("Repository"). If the header then overflows in the UI harness or at the widths it checks, report it rather than abbreviating.
+- **Q10. Keep VS Code's wording** for `initializeRepo`, since the button runs that command; the coincidence is recorded (Q1).
+- **Q11.** End with `…` (U+2026), keep the placeholder, and write the text so it reads well for each of the three pickers.
+- **Q12. Delete the unused strings**: `portableGitHint`, `dialogPushTagConfirm` and `pushingTag`. Code change: `lib/remote-actions.tsx` no longer passes a fallback title for a tag push.
+- **Q13. Lower-case fragments.** `typeCommitHash`, `typeTagName` and `typeBranchName` are lower-case noun phrases, and Branchwise's `errorDetails` becomes lower case too; it is only ever inserted into this title. Its zh translations keep their values under the new key.
+- **Q14. Speak of the name**, not of characters: the text says the entered name is not valid, and that this is why the action cannot be done.
+- **Q15. Exact within the space.** No option may claim more than Git does: Hard discards uncommitted changes to tracked files and leaves untracked files alone. Say "uncommitted changes" as `explainReset` does, and do not claim that untracked files are removed. Name the moved thing as the branch, without the term HEAD.
+- **Q16. Say that no text diff is available**, which is true for binary files and for files that a `-diff` attribute marks as binary.
+- **Q17. A prompt that labels a field ends with a colon**, as four of Branchwise's five do.
+- **Q18. Capitalization by element.**
+  - **Title case:** buttons, context-menu entries, dialog and pane titles, column headers and picker labels.
+  - **Sentence case:** field labels, checkbox labels, select options, tooltips, accessible names, status and state text, error titles, hints and messages.
+  - **Lower case:** fragments inserted mid-sentence (Q8, Q13).
+  - Branchwise's own strings are not changed to fit, except as these decisions name.
+- **Q19. Spelling.** Use colour, grey, centre, "-ize" and cancelled. Also change "gray" to "grey" in Branchwise's two focus legends (`focusDirectHint`, `focusAncestorsHint`); their zh translations keep their values under the new keys.
+- **Q20. zh renderings for the new translations.** Branchwise's existing translations are not changed.
+
+  | Term                        | zh-cn               | zh-tw               |
+  | --------------------------- | ------------------- | ------------------- |
+  | check out                   | 检出                | 簽出                |
+  | fast-forward                | 快进                | 快轉                |
+  | repository                  | 仓库                | 儲存庫              |
+  | local                       | 本地                | 本機                |
+  | extension                   | 扩展                | 擴充功能            |
+  | colour                      | 颜色                | 色彩                |
+  | graph                       | 分支图              | 分支圖              |
+  | message                     | 消息                | 訊息                |
+  | click                       | 点击                | 點選                |
+  | pane                        | 面板                | 面板                |
+  | working tree                | 工作区              | 工作目錄            |
+  | stage / unstage             | 暂存 / 取消暂存     | 暫存 / 取消暫存     |
+  | clipboard                   | 剪贴板              | 剪貼簿              |
+  | committer                   | 提交者              | 提交者              |
+  | annotated / lightweight tag | 附注标签 / 轻量标签 | 附註標籤 / 輕量標籤 |
+  | binary file                 | 二进制文件          | 二進位檔案          |
+
+  The conventions of §5.2 apply.
+
+- **Q21. Name the accepted forms exactly**, as the setting's pattern in `package.json` intends: `#RRGGBB`, `#RRGGBBAA`, `rgb(r, g, b)` and `rgba(r, g, b)`.
+- **Q22. The push review gets its own string.** Code change: `components/history/WorkflowTools.tsx` reads a new Branchwise key, added to the table that holds the review's other strings, saying that the button shows the branch's history in the graph. `loadMore` is then written for the graph's button alone.
+- **Q23. Leave the earlier specifications as they are**: they record the wording their rewrites were specified against. This document and `docs/provenance.md` say where the wording changed.
+- **Q24. Check the settings translations too.** The new `scripts/check-l10n.js` also checks each `package.nls.<locale>.json` against `package.nls.json` with the same three checks, and prints a line for each file in the same form as for the bundles.
+- **Q25. Tighten the edge cases.** Keys are compared as own properties, so `toString` is reported like any other stale key. A value that is not a string, including the object form, is reported as a problem of that file instead of crashing. An empty translation is reported as missing. Locale files are processed in sorted order. Messages for the existing checks keep their form (§3.5).
+- **Q26. Correct, out of scope.** Setting values are stored in users' settings. They are left to the configuration batch.
