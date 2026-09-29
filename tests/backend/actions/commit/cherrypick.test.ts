@@ -1,5 +1,5 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
+import fs from "node:fs";
+import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -8,36 +8,45 @@ import { createGit } from "@/backend/gitClient";
 
 import { freshRepo, git, gitOutput } from "@tests/backend/helpers";
 
+/**
+ * `side` adds `g` in a commit that `main` lacks. `main` then gets an empty commit of its own, so
+ * that a pick cannot rebuild the picked commit exactly when it happens within the same second.
+ */
 const repo = freshRepo((dir) => {
   git(["checkout", "-q", "-b", "side"], dir);
   fs.writeFileSync(path.join(dir, "g"), "cherry");
   git(["add", "g"], dir);
-  git(["commit", "-m", "cherry commit"], dir);
+  git(["commit", "-q", "-m", "cherry commit"], dir);
   git(["checkout", "-q", "main"], dir);
-  // A different parent makes the picked commit new even within the same second.
-  git(["commit", "--allow-empty", "-m", "main work"], dir);
+  git(["commit", "--allow-empty", "-q", "-m", "main moves on"], dir);
 });
 
+const read = (args: string[]) => gitOutput(args, repo());
+
+const pick = (commitHash: string) =>
+  cherrypickCommit(createGit(repo(), "git"), { commitHash, parentIndex: 0 });
+
 describe("cherrypickCommit", () => {
-  it("applies the commit as a new commit on the current branch", async () => {
-    const main = gitOutput(["rev-parse", "main"], repo());
-    await cherrypickCommit(createGit(repo(), "git"), {
-      commitHash: gitOutput(["rev-parse", "side"], repo()),
-      parentIndex: 0
-    });
-    expect(gitOutput(["rev-parse", "HEAD^"], repo())).toBe(main);
-    expect(gitOutput(["log", "-1", "--format=%s"], repo())).toBe("cherry commit");
+  it.each([
+    ["its full ID", (id: string) => id],
+    ["an abbreviated ID", (id: string) => id.slice(0, 7)]
+  ])("copies a commit named by %s onto the current branch", async (_, spell) => {
+    const picked = read(["rev-parse", "refs/heads/side"]);
+    const tipBefore = read(["rev-parse", "refs/heads/main"]);
+
+    await expect(pick(spell(picked))).resolves.toBeUndefined();
+
+    expect(read(["rev-parse", "HEAD^"])).toBe(tipBefore);
+    expect(read(["log", "-1", "--format=%s"])).toBe("cherry commit");
     expect(fs.readFileSync(path.join(repo(), "g"), "utf8")).toBe("cherry");
-    expect(gitOutput(["rev-parse", "HEAD"], repo())).not.toBe(
-      gitOutput(["rev-parse", "side"], repo())
-    );
+    expect(read(["rev-parse", "HEAD"])).not.toBe(picked);
   });
 
-  it("throws for a nonexistent commit and leaves the branch unchanged", async () => {
-    const main = gitOutput(["rev-parse", "main"], repo());
-    await expect(
-      cherrypickCommit(createGit(repo(), "git"), { commitHash: "0".repeat(40), parentIndex: 0 })
-    ).rejects.toThrow();
-    expect(gitOutput(["rev-parse", "main"], repo())).toBe(main);
+  it("rejects a commit that does not exist and leaves the branch alone", async () => {
+    const tipBefore = read(["rev-parse", "refs/heads/main"]);
+
+    await expect(pick("0".repeat(40))).rejects.toThrow();
+
+    expect(read(["rev-parse", "refs/heads/main"])).toBe(tipBefore);
   });
 });

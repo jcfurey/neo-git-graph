@@ -1,53 +1,76 @@
-import { expect, it, vi } from "vitest";
+// Runs without a DOM on purpose: loading the page logic below must not need `window`.
+import { describe, expect, it, vi } from "vitest";
 
 import type { WebviewConfig } from "@/types";
-import { getWebviewConfig, initializeWebviewConfig } from "@/webview/lib/webview-config";
 
-const config: WebviewConfig = {
-  autoCenterCommitDetailsView: true,
-  dateFormat: "Date & Time",
-  graphColours: [],
-  graphStyle: "rounded",
-  initialLoadCommits: 300,
-  loadMoreCommits: 100,
-  locale: "en",
-  showCurrentBranchByDefault: false
+const first: WebviewConfig = {
+  autoCenterCommitDetailsView: false,
+  dateFormat: "Date Only",
+  graphColours: ["#1f77b4", "#ff7f0e", "#2ca02c"],
+  graphStyle: "angular",
+  initialLoadCommits: 250,
+  loadMoreCommits: 75,
+  locale: "de",
+  showCurrentBranchByDefault: true
 };
-const changed: WebviewConfig = { ...config, dateFormat: "Relative", initialLoadCommits: 500 };
 
-it("initializes the webview configuration once", () => {
-  expect(() => getWebviewConfig()).toThrow("Webview configuration is not initialized");
+const later: WebviewConfig = { ...first, dateFormat: "Relative", initialLoadCommits: 1200 };
 
-  initializeWebviewConfig(config);
+const NOT_INITIALIZED = /^Webview configuration is not initialized$/;
+const ALREADY_INITIALIZED = /^Webview configuration is already initialized$/;
 
-  expect(getWebviewConfig()).toBe(config);
-  expect(() => initializeWebviewConfig(config)).toThrow(
-    "Webview configuration is already initialized"
-  );
+/** A settings holder that nothing has touched yet. */
+async function freshHolder() {
+  vi.resetModules();
+  return import("@/webview/lib/webview-config");
+}
+
+describe("the settings holder", () => {
+  it("holds nothing until it is given settings, and then the very object it was given", async () => {
+    const holder = await freshHolder();
+
+    expect(() => holder.getWebviewConfig()).toThrowError(NOT_INITIALIZED);
+
+    holder.initializeWebviewConfig(first);
+    expect(holder.getWebviewConfig()).toBe(first);
+  });
+
+  it("accepts its first settings only once, keeping them", async () => {
+    const holder = await freshHolder();
+    holder.initializeWebviewConfig(first);
+
+    expect(() => holder.initializeWebviewConfig(first)).toThrowError(ALREADY_INITIALIZED);
+    expect(() => holder.initializeWebviewConfig(later)).toThrowError(ALREADY_INITIALIZED);
+    expect(holder.getWebviewConfig()).toBe(first);
+  });
+
+  it("drops a change that comes before the first settings, and takes one after", async () => {
+    const holder = await freshHolder();
+
+    expect(holder.updateWebviewConfig(later)).toBe(false);
+    expect(() => holder.getWebviewConfig()).toThrowError(NOT_INITIALIZED);
+
+    holder.initializeWebviewConfig(first);
+    expect(holder.getWebviewConfig()).toBe(first);
+
+    expect(holder.updateWebviewConfig(later)).toBe(true);
+    expect(holder.getWebviewConfig()).toBe(later);
+  });
 });
 
-it("ignores a settings change that arrives before the page has its configuration", async () => {
-  vi.resetModules();
-  const fresh = await import("@/webview/lib/webview-config");
+describe("a config.changed notification before the page is initialized", () => {
+  it("is discarded without raising the row count or taking the place of the first settings", async () => {
+    vi.resetModules();
+    const holder = await import("@/webview/lib/webview-config");
+    const { applyWebviewConfig } = await import("@/webview/lib/actions");
+    const { maxCommits } = await import("@/webview/lib/stores");
+    const rowsBefore = maxCommits.peek();
+    expect(rowsBefore).toBeLessThan(later.initialLoadCommits);
 
-  expect(fresh.updateWebviewConfig(changed)).toBe(false);
-  expect(() => fresh.getWebviewConfig()).toThrow("Webview configuration is not initialized");
-  fresh.initializeWebviewConfig(config);
-  expect(fresh.getWebviewConfig()).toBe(config);
+    expect(() => applyWebviewConfig(later)).not.toThrow();
+    expect(maxCommits.peek()).toBe(rowsBefore);
 
-  expect(fresh.updateWebviewConfig(changed)).toBe(true);
-  expect(fresh.getWebviewConfig()).toBe(changed);
-});
-
-it("opens the graph when a config.changed notification beats the initialize response", async () => {
-  vi.resetModules();
-  const fresh = await import("@/webview/lib/webview-config");
-  const { applyWebviewConfig } = await import("@/webview/lib/actions");
-  const { maxCommits } = await import("@/webview/lib/stores");
-  const before = maxCommits.peek();
-
-  expect(() => applyWebviewConfig(changed)).not.toThrow();
-  expect(maxCommits.peek()).toBe(before);
-  expect(() => fresh.initializeWebviewConfig(config)).not.toThrow();
-  expect(fresh.getWebviewConfig()).toBe(config);
+    expect(() => holder.initializeWebviewConfig(first)).not.toThrow();
+    expect(holder.getWebviewConfig()).toBe(first);
+  });
 });

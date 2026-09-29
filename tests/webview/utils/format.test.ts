@@ -4,35 +4,45 @@ import { describe, expect, it } from "vitest";
 import { format } from "@/webview/utils/format";
 
 describe("format", () => {
-  it("returns the template when it holds no placeholder", () => {
-    expect(format("Refresh")).toEqual(["Refresh"]);
+  it("returns a template without placeholders as its only piece", () => {
+    expect(format("Fetch from remote")).toEqual(["Fetch from remote"]);
   });
 
-  it("injects a part in place of its placeholder", () => {
-    expect(format("Add tag to commit {0}", "abcd1234")).toEqual(["Add tag to commit ", "abcd1234"]);
+  it("adds no empty text after a placeholder that ends the template", () => {
+    expect(format("Delete branch {0}", "hotfix/login")).toEqual(["Delete branch ", "hotfix/login"]);
   });
 
-  it("injects a node without turning it into text", () => {
-    const node = h("b", null, "abcd1234");
+  it("puts an element part itself between the text around its placeholder", () => {
+    const tag = h("code", null, "v2.4.0");
 
-    expect(format("Checkout {0}?", node)).toEqual(["Checkout ", node, "?"]);
+    const pieces = format("Push {0} now?", tag);
+
+    expect(pieces).toEqual(["Push ", tag, " now?"]);
+    expect(pieces[1]).toBe(tag);
   });
 
-  it("fills every placeholder by its own index", () => {
-    expect(format("merge {0} into {1}?", "topic", "main")).toEqual([
-      "merge ",
-      "topic",
-      " into ",
-      "main",
-      "?"
+  it("alternates text and parts for placeholders in ascending order", () => {
+    expect(format("Rebase {0} onto {1}.", "feature", "develop")).toEqual([
+      "Rebase ",
+      "feature",
+      " onto ",
+      "develop",
+      "."
     ]);
   });
 
-  it("keeps the order of the parts, not the order of the placeholders", () => {
-    expect(format("{1} then {0}", "second", "first")).toEqual(["first", " then ", "second"]);
+  it("follows the template's order, giving each placeholder the part it numbers", () => {
+    expect(format("{1} before {0}", "alpha", "omega")).toEqual(["omega", " before ", "alpha"]);
   });
 
-  it("drops a placeholder that has no part", () => {
-    expect(format("reset {0} to {1}", "main")).toEqual(["reset ", "main", " to ", undefined]);
+  it("leaves an undefined piece for a placeholder that has no part", () => {
+    const pieces = format("Compare {0} with {1}", "HEAD~2");
+
+    expect(pieces).toEqual(["Compare ", "HEAD~2", " with ", undefined]);
+    expect(pieces).toHaveLength(4);
+  });
+
+  it("does not look for placeholders inside a part", () => {
+    expect(format("{0}: {1}", "{1}", "tail")).toEqual(["{1}", ": ", "tail"]);
   });
 });
