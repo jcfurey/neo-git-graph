@@ -2,390 +2,435 @@ import { describe, expect, it } from "vitest";
 
 import { isColumnWidths, MIN_COLUMN, MIN_DESCRIPTION, moveBoundary } from "@/webview/utils/columns";
 
-const WIDTHS = [100, 120, 120, 90];
-const DESCRIPTION = 400;
+// Stored widths, in slot order: graph, date, author, commit. The description column has no
+// stored width; its measured width is passed on its own. Boundary n is the right edge of header
+// cell n: 0 is graph | description, 1 description | date, 2 date | author, 3 author | commit.
+const layout = [150, 110, 130, 80];
+const description = 360;
 
-/** Four widths with nothing at all in the last slot, as opposed to `undefined`. */
-function withHole() {
-  const widths = [100, 120, 120];
+/** A value the parameter type would refuse, passed on as if it were allowed. */
+function unchecked(value: unknown): Array<number> {
+  return value as Array<number>;
+}
+
+/** Four slots, the last of them never assigned. */
+function withHoleAtEnd(): Array<number> {
+  const widths = [150, 110, 130];
   widths.length = 4;
   return widths;
 }
 
-describe("column minimums", () => {
-  it("keeps stored columns at 40 pixels and the description at 64", () => {
+/** Four slots, none of them assigned. */
+function allHoles(): Array<number> {
+  const widths: Array<number> = [];
+  widths.length = 4;
+  return widths;
+}
+
+function frozenLayout(): Array<number> {
+  return Object.freeze([150, 110, 130, 80]) as Array<number>;
+}
+
+describe("the minimums", () => {
+  it("are 40 pixels for a stored column and 64 for the description", () => {
     expect(MIN_COLUMN).toBe(40);
     expect(MIN_DESCRIPTION).toBe(64);
   });
 });
 
 describe("isColumnWidths", () => {
-  it("takes one usable width per resizable column", () => {
-    expect(isColumnWidths(WIDTHS)).toBe(true);
+  it("accepts one positive, finite number per stored column", () => {
+    expect(isColumnWidths(layout)).toBe(true);
+    expect(isColumnWidths(frozenLayout())).toBe(true);
   });
 
-  it("rejects widths of a table with another number of columns", () => {
-    expect(isColumnWidths([100, 120, 120])).toBe(false);
+  it.each([
+    [[150, 110, 130, 7.25]],
+    [[150.6, 110, 129.4, 80]],
+    [[0.002, 7.25, 39.5, 5e8]],
+    [[Number.MAX_VALUE, 110, 130, 80]],
+    [[Number.MIN_VALUE, 110, 130, 80]]
+  ])("accepts fractions, and widths under the minimum or very large: %j", (widths) => {
+    expect(isColumnWidths(widths)).toBe(true);
   });
 
-  it("rejects a width the table cannot use", () => {
-    expect(isColumnWidths([100, 0, 120, 90])).toBe(false);
-    expect(isColumnWidths([100, Number.NaN, 120, 90])).toBe(false);
+  it.each([
+    ["three", [150, 110, 130]],
+    ["none", []],
+    ["five, as stored before the description lost its width", [150, 360, 110, 130, 80]]
+  ])("refuses %s widths", (_count, widths) => {
+    expect(isColumnWidths(widths)).toBe(false);
   });
 
-  it("rejects missing widths", () => {
+  it.each([
+    ["0", 0],
+    ["-0", -0],
+    ["-3", -3],
+    ["NaN", Number.NaN],
+    ["Infinity", Infinity],
+    ["-Infinity", -Infinity]
+  ])("refuses a width of %s in the last slot", (_label, width) => {
+    expect(isColumnWidths([150, 110, 130, width])).toBe(false);
+  });
+
+  it.each(["150", null, undefined, false, [150]])(
+    "refuses %j in the first slot, without coercing it",
+    (width) => {
+      expect(isColumnWidths(unchecked([width, 110, 130, 80]))).toBe(false);
+    }
+  );
+
+  it("refuses null", () => {
     expect(isColumnWidths(null)).toBe(false);
   });
 
-  it("rejects no widths, and the five widths of the older layout", () => {
-    expect(isColumnWidths([])).toBe(false);
-    expect(isColumnWidths([100, 300, 80, 80, 80])).toBe(false);
+  it.each([
+    ["undefined", undefined],
+    ["a four-character string", "wxyz"],
+    ["a three-character string", "xyz"],
+    ["a number", 7],
+    ["an empty object", {}],
+    ["an object with only a length", { length: 4 }],
+    ["an array-like object", { 0: 150, 1: 110, 2: 130, 3: 80, length: 4 }],
+    ["a typed array", new Float64Array([150, 110, 130, 80])]
+  ])("refuses %s without throwing", (_kind, value) => {
+    expect(() => isColumnWidths(unchecked(value))).not.toThrow();
+    expect(isColumnWidths(unchecked(value))).toBe(false);
   });
 
-  it("rejects negative, negative zero and infinite widths", () => {
-    for (const width of [-1, -0, Infinity, -Infinity]) {
-      expect(isColumnWidths([100, width, 120, 90])).toBe(false);
-    }
+  it("refuses an array with a hole, like one with a bad width", () => {
+    expect(isColumnWidths(withHoleAtEnd())).toBe(false);
+    expect(isColumnWidths(allHoles())).toBe(false);
   });
 
-  it("takes fractions and widths under the minimum, which the table raises when showing them", () => {
-    expect(isColumnWidths([120, 90, 100, 5.5])).toBe(true);
-    expect(isColumnWidths([120.4, 90, 100, 70.6])).toBe(true);
-    expect(isColumnWidths([0.001, 5.5, 39.9, 1e9])).toBe(true);
-    expect(isColumnWidths(Object.freeze([100, 120, 120, 90]) as Array<number>)).toBe(true);
-  });
+  it("leaves its argument as it was", () => {
+    const widths = [150, 110, 130, 80];
 
-  it("rejects stored values that are not numbers without converting them", () => {
-    for (const width of ["100", null, undefined, true, [100]]) {
-      expect(isColumnWidths([width, 120, 120, 90] as Array<number>)).toBe(false);
-    }
-  });
-
-  it("returns false rather than throwing for stored values that are not arrays", () => {
-    const stored: Array<unknown> = [
-      undefined,
-      "abcd",
-      "abc",
-      5,
-      {},
-      { length: 4 },
-      { 0: 100, 1: 120, 2: 120, 3: 90, length: 4 }
-    ];
-    for (const value of stored) {
-      expect(isColumnWidths(value as Array<number> | null)).toBe(false);
-    }
-  });
-
-  it("rejects widths with a slot left empty", () => {
-    const empty: Array<number> = [];
-    empty.length = 4;
-
-    expect(isColumnWidths(withHole())).toBe(false);
-    expect(isColumnWidths(empty)).toBe(false);
-  });
-
-  it("leaves the widths it checks unchanged", () => {
-    const widths = [100, 120, 120, 90];
     isColumnWidths(widths);
 
-    expect(widths).toEqual([100, 120, 120, 90]);
+    expect(widths).toEqual([150, 110, 130, 80]);
   });
 });
 
 describe("moveBoundary", () => {
-  it("widens the graph column, and leaves the other columns alone", () => {
-    expect(moveBoundary(WIDTHS, 0, 30, DESCRIPTION)).toEqual({
-      widths: [130, 120, 120, 90],
-      moved: 30
+  describe("within the limits", () => {
+    it.each([
+      ["graph | description, rightwards", 0, 25, [175, 110, 130, 80]],
+      ["description | date, rightwards", 1, 15, [150, 95, 130, 80]],
+      ["description | date, leftwards", 1, -35, [150, 145, 130, 80]],
+      ["date | author, rightwards", 2, 30, [150, 140, 100, 80]],
+      ["author | commit, leftwards", 3, -20, [150, 110, 110, 100]]
+    ])("moves %s by the full request", (_boundary, boundary, delta, widths) => {
+      expect(moveBoundary(layout, boundary, delta, description)).toEqual({ widths, moved: delta });
     });
-  });
 
-  it("keeps the graph column at its minimum width", () => {
-    expect(moveBoundary(WIDTHS, 0, -200, DESCRIPTION)).toEqual({
-      widths: [40, 120, 120, 90],
-      moved: -60
-    });
-  });
-
-  it("keeps the description column at its minimum width", () => {
-    expect(moveBoundary(WIDTHS, 0, 500, 100)).toEqual({
-      widths: [136, 120, 120, 90],
-      moved: 36
-    });
-  });
-
-  it("widens the description column at the cost of the date column", () => {
-    expect(moveBoundary(WIDTHS, 1, 20, DESCRIPTION)).toEqual({
-      widths: [100, 100, 120, 90],
-      moved: 20
-    });
-  });
-
-  it("keeps the date column at its minimum width", () => {
-    expect(moveBoundary(WIDTHS, 1, 300, DESCRIPTION)).toEqual({
-      widths: [100, 40, 120, 90],
-      moved: 80
-    });
-  });
-
-  it("takes from one column what it gives to the other", () => {
-    expect(moveBoundary(WIDTHS, 2, 25, DESCRIPTION)).toEqual({
-      widths: [100, 145, 95, 90],
-      moved: 25
-    });
-    expect(moveBoundary(WIDTHS, 3, -15, DESCRIPTION)).toEqual({
-      widths: [100, 120, 105, 105],
-      moved: -15
-    });
-  });
-
-  it("stops at the minimum width of the column it takes from", () => {
-    expect(moveBoundary(WIDTHS, 3, 300, DESCRIPTION)).toEqual({
-      widths: [100, 120, 170, 40],
-      moved: 50
-    });
-  });
-
-  it("holds the boundary when both columns are already too narrow", () => {
-    expect(moveBoundary([40, 40, 40, 40], 0, 30, 0)).toEqual({
-      widths: [40, 40, 40, 40],
-      moved: 0
-    });
-  });
-
-  it("leaves the given widths unchanged", () => {
-    moveBoundary(WIDTHS, 2, 25, DESCRIPTION);
-
-    expect(WIDTHS).toEqual([100, 120, 120, 90]);
-  });
-
-  it("goes exactly as far as the minimums allow", () => {
-    expect(moveBoundary(WIDTHS, 0, -60, DESCRIPTION)).toEqual({
-      widths: [40, 120, 120, 90],
-      moved: -60
-    });
-    expect(moveBoundary(WIDTHS, 0, 336, DESCRIPTION)).toEqual({
-      widths: [436, 120, 120, 90],
-      moved: 336
-    });
-  });
-
-  it("moves only away from a description at its minimum", () => {
-    expect(moveBoundary(WIDTHS, 0, 10, 64)).toEqual({ widths: WIDTHS, moved: 0 });
-    expect(moveBoundary(WIDTHS, 0, -10, 64)).toEqual({ widths: [90, 120, 120, 90], moved: -10 });
-    expect(moveBoundary(WIDTHS, 1, -10, 64)).toEqual({ widths: WIDTHS, moved: 0 });
-  });
-
-  it("widens the date column at the cost of the description, down to its minimum", () => {
-    expect(moveBoundary(WIDTHS, 1, -20, DESCRIPTION)).toEqual({
-      widths: [100, 140, 120, 90],
-      moved: -20
-    });
-    expect(moveBoundary(WIDTHS, 1, -500, DESCRIPTION)).toEqual({
-      widths: [100, 456, 120, 90],
-      moved: -336
-    });
-  });
-
-  it("stops at the minimum of either stored column beside the boundary", () => {
-    expect(moveBoundary(WIDTHS, 2, -81, DESCRIPTION)).toEqual({
-      widths: [100, 40, 200, 90],
-      moved: -80
-    });
-    expect(moveBoundary(WIDTHS, 2, 81, DESCRIPTION)).toEqual({
-      widths: [100, 200, 40, 90],
-      moved: 80
-    });
-    expect(moveBoundary(WIDTHS, 3, -300, DESCRIPTION)).toEqual({
-      widths: [100, 120, 40, 170],
-      moved: -80
-    });
-  });
-
-  it("gives a stored column under its minimum its width back, even against the request", () => {
-    for (const delta of [-30, 0]) {
-      expect(moveBoundary([10, 120, 120, 90], 0, delta, DESCRIPTION)).toEqual({
-        widths: [40, 120, 120, 90],
-        moved: 30
+    it("takes a boundary of -0 as boundary 0", () => {
+      expect(moveBoundary(layout, -0, 12, description)).toEqual({
+        widths: [162, 110, 130, 80],
+        moved: 12
       });
-    }
-    expect(moveBoundary([100, 30, 120, 90], 2, -50, DESCRIPTION)).toEqual({
-      widths: [100, 40, 110, 90],
-      moved: 10
     });
-    expect(moveBoundary([100, 20, 120, 90], 1, 30, DESCRIPTION)).toEqual({
-      widths: [100, 40, 120, 90],
-      moved: -20
-    });
-  });
 
-  it("gives a description under its minimum its width back, even against the request", () => {
-    expect(moveBoundary(WIDTHS, 0, 10, 50)).toEqual({ widths: [86, 120, 120, 90], moved: -14 });
-    expect(moveBoundary(WIDTHS, 1, -10, 50)).toEqual({ widths: [100, 106, 120, 90], moved: 14 });
-  });
-
-  it("goes further than asked to give the description its minimum back", () => {
-    expect(moveBoundary(WIDTHS, 0, -8, 50)).toEqual({ widths: [86, 120, 120, 90], moved: -14 });
-  });
-
-  it("holds the boundary when no position gives both columns their minimum", () => {
-    expect(moveBoundary([10, 120, 120, 90], 0, 50, 80)).toEqual({
-      widths: [10, 120, 120, 90],
-      moved: 0
-    });
-    expect(moveBoundary([60, 120, 120, 90], 0, 0, 30)).toEqual({
-      widths: [60, 120, 120, 90],
-      moved: 0
-    });
-    expect(moveBoundary([100, 30, 45, 90], 2, 0, DESCRIPTION)).toEqual({
-      widths: [100, 30, 45, 90],
-      moved: 0
-    });
-    expect(moveBoundary([100, 20, 120, 90], 1, -100, 50)).toEqual({
-      widths: [100, 20, 120, 90],
-      moved: 0
-    });
-  });
-
-  it("takes the only position that gives both columns their minimum", () => {
-    expect(moveBoundary([10, 120, 120, 90], 0, 50, 94)).toEqual({
-      widths: [40, 120, 120, 90],
-      moved: 30
-    });
-  });
-
-  it("ignores the description between two stored columns", () => {
-    for (const description of [Number.NaN, Infinity, 0]) {
-      expect(moveBoundary(WIDTHS, 2, 10, description)).toEqual({
-        widths: [100, 130, 110, 90],
-        moved: 10
+    it("ignores an unusable width that is not beside the boundary", () => {
+      expect(moveBoundary([150, 110, Infinity, 80], 0, 12, description)).toEqual({
+        widths: [162, 110, Infinity, 80],
+        moved: 12
       });
-    }
-    expect(moveBoundary(WIDTHS, 3, 50, 0)).toEqual({ widths: [100, 120, 170, 40], moved: 50 });
+    });
+
+    it("works on frozen widths, since it never writes to them", () => {
+      expect(moveBoundary(frozenLayout(), 2, 18, description)).toEqual({
+        widths: [150, 128, 112, 80],
+        moved: 18
+      });
+      expect(moveBoundary(frozenLayout(), 0, 18, description)).toEqual({
+        widths: [168, 110, 130, 80],
+        moved: 18
+      });
+    });
+
+    it.each([Number.NaN, Infinity, -Infinity, 0])(
+      "ignores the description, here %d, between two stored columns",
+      (unusable) => {
+        expect(moveBoundary(layout, 2, 14, unusable)).toEqual({
+          widths: [150, 124, 116, 80],
+          moved: 14
+        });
+        expect(moveBoundary(layout, 3, 40, unusable)).toEqual({
+          widths: [150, 110, 170, 40],
+          moved: 40
+        });
+      }
+    );
   });
 
-  it("moves nothing for a boundary the table does not have", () => {
-    for (const boundary of [4, 7, -1, 1.5, Number.NaN, Infinity]) {
-      expect(moveBoundary(WIDTHS, boundary, 10, DESCRIPTION)).toEqual({ widths: WIDTHS, moved: 0 });
-    }
-    expect(moveBoundary(WIDTHS, -0, 10, DESCRIPTION)).toEqual({
-      widths: [110, 120, 120, 90],
-      moved: 10
+  describe("at a minimum", () => {
+    it.each([
+      ["graph, past its minimum", 0, -300, description, [40, 110, 130, 80], -110],
+      ["graph, exactly to its minimum", 0, -110, description, [40, 110, 130, 80], -110],
+      ["the description, exactly to its minimum", 0, 296, description, [446, 110, 130, 80], 296],
+      ["a narrower description, past its minimum", 0, 400, 120, [206, 110, 130, 80], 56],
+      ["date, from the description side", 1, 250, description, [150, 40, 130, 80], 70],
+      ["the description, from the date side", 1, -450, description, [150, 406, 130, 80], -296],
+      ["date, one pixel past it", 2, -71, description, [150, 40, 200, 80], -70],
+      ["date, exactly", 2, -70, description, [150, 40, 200, 80], -70],
+      ["author, one pixel past it", 2, 91, description, [150, 200, 40, 80], 90],
+      ["author, exactly", 2, 90, description, [150, 200, 40, 80], 90],
+      ["commit", 3, 200, description, [150, 110, 170, 40], 40],
+      ["author, from the commit side", 3, -250, description, [150, 110, 40, 170], -90]
+    ])("stops at %s", (_what, boundary, delta, measured, widths, moved) => {
+      expect(moveBoundary(layout, boundary, delta, measured)).toEqual({ widths, moved });
+    });
+
+    it("lets a description of exactly 64 grow, but not shrink", () => {
+      expect(moveBoundary(layout, 0, 7, 64)).toEqual({ widths: [150, 110, 130, 80], moved: 0 });
+      expect(moveBoundary(layout, 0, -7, 64)).toEqual({ widths: [143, 110, 130, 80], moved: -7 });
+      expect(moveBoundary(layout, 1, -7, 64)).toEqual({ widths: [150, 110, 130, 80], moved: 0 });
+      expect(moveBoundary(layout, 1, 7, 64)).toEqual({ widths: [150, 103, 130, 80], moved: 7 });
     });
   });
 
-  it("moves nothing unless there is one width per resizable column", () => {
-    expect(moveBoundary([], 0, 10, DESCRIPTION)).toEqual({ widths: [], moved: 0 });
-    expect(moveBoundary([100], 0, 10, DESCRIPTION)).toEqual({ widths: [100], moved: 0 });
-    expect(moveBoundary([100, 120], 1, 10, DESCRIPTION)).toEqual({ widths: [100, 120], moved: 0 });
-    expect(moveBoundary([100, 120], 2, 10, DESCRIPTION)).toEqual({ widths: [100, 120], moved: 0 });
-    for (const boundary of [0, 4]) {
-      expect(moveBoundary([100, 120, 120, 90, 80], boundary, 10, DESCRIPTION)).toEqual({
-        widths: [100, 120, 120, 90, 80],
+  describe("beside a column under its minimum", () => {
+    it.each([-20, 0])("widens a narrow graph back to 40 when asked for %d", (delta) => {
+      expect(moveBoundary([25, 110, 130, 80], 0, delta, description)).toEqual({
+        widths: [40, 110, 130, 80],
+        moved: 15
+      });
+    });
+
+    it("widens a narrow date back to 40 against a request from either side", () => {
+      expect(moveBoundary([150, 22, 130, 80], 2, -45, description)).toEqual({
+        widths: [150, 40, 112, 80],
+        moved: 18
+      });
+      expect(moveBoundary([150, 28, 130, 80], 1, 25, description)).toEqual({
+        widths: [150, 40, 130, 80],
+        moved: -12
+      });
+    });
+
+    it("widens a narrow description back to 64 against the request", () => {
+      expect(moveBoundary(layout, 0, 12, 52)).toEqual({ widths: [138, 110, 130, 80], moved: -12 });
+      expect(moveBoundary(layout, 1, -8, 52)).toEqual({ widths: [150, 98, 130, 80], moved: 12 });
+    });
+
+    it("goes further than asked when the request falls short of the minimum", () => {
+      expect(moveBoundary(layout, 0, -5, 52)).toEqual({ widths: [138, 110, 130, 80], moved: -12 });
+    });
+
+    it("restores a negative description from either side", () => {
+      expect(moveBoundary(layout, 0, 12, -4)).toEqual({ widths: [82, 110, 130, 80], moved: -68 });
+      expect(moveBoundary(layout, 1, 12, -4)).toEqual({ widths: [150, 42, 130, 80], moved: 68 });
+    });
+
+    it("restores a stored width of zero or below like any narrow one", () => {
+      expect(moveBoundary([0, 110, 130, 80], 0, 0, description)).toEqual({
+        widths: [40, 110, 130, 80],
+        moved: 40
+      });
+      expect(moveBoundary([-15, 110, 130, 80], 0, 5, description)).toEqual({
+        widths: [40, 110, 130, 80],
+        moved: 55
+      });
+      expect(moveBoundary([150, 110, 130, -8], 3, 0, description)).toEqual({
+        widths: [150, 110, 82, 40],
+        moved: -48
+      });
+    });
+
+    it("finds the one position that suits both minimums", () => {
+      // Graph 25 + 15 = 40 and description 79 - 15 = 64.
+      expect(moveBoundary([25, 110, 130, 80], 0, 40, 79)).toEqual({
+        widths: [40, 110, 130, 80],
+        moved: 15
+      });
+    });
+  });
+
+  describe("when both minimums cannot be met", () => {
+    it.each([
+      ["graph at its minimum, description far under it", [40, 55, 60, 40], 0, 20, 5],
+      ["graph and description both short, one pixel apart", [25, 110, 130, 80], 0, 40, 75],
+      ["a request of 0", [55, 110, 130, 80], 0, 0, 45],
+      ["date and author both short", [150, 33, 44, 80], 2, 0, description],
+      ["description and date both short", [150, 28, 130, 80], 1, -90, 58],
+      ["a negative description", layout, 0, 12, -60]
+    ])("leaves everything in place: %s", (_case, widths, boundary, delta, measured) => {
+      expect(moveBoundary(widths, boundary, delta, measured)).toEqual({
+        widths: [...widths],
         moved: 0
       });
-    }
-  });
-
-  it("keeps fractions as they are", () => {
-    expect(moveBoundary([100.5, 120, 120, 90], 0, 10.25, DESCRIPTION)).toEqual({
-      widths: [110.75, 120, 120, 90],
-      moved: 10.25
-    });
-    expect(moveBoundary(WIDTHS, 2, 0.3, DESCRIPTION)).toEqual({
-      widths: [100, 120.3, 119.7, 90],
-      moved: 0.3
-    });
-    expect(moveBoundary([100, 40.5, 120, 90], 1, 10, DESCRIPTION)).toEqual({
-      widths: [100, 40, 120, 90],
-      moved: 0.5
     });
   });
 
-  it("moves nothing for a request that is not a finite number", () => {
-    for (const delta of [Number.NaN, Infinity, -Infinity]) {
-      for (const boundary of [0, 1, 2, 3]) {
-        expect(moveBoundary(WIDTHS, boundary, delta, DESCRIPTION)).toEqual({
-          widths: WIDTHS,
+  describe("with an unusable input", () => {
+    it.each([4, 6, -1, -3, 0.5, 2.5, Number.NaN, Infinity, -Infinity])(
+      "leaves everything in place for boundary %s",
+      (boundary) => {
+        expect(moveBoundary(layout, boundary, 12, description)).toEqual({
+          widths: [150, 110, 130, 80],
           moved: 0
         });
       }
-    }
+    );
+
+    it("does not convert a boundary given as a string", () => {
+      const boundary = "1" as unknown as number;
+
+      expect(moveBoundary(layout, boundary, 12, description)).toEqual({
+        widths: [150, 110, 130, 80],
+        moved: 0
+      });
+    });
+
+    it.each([Number.NaN, Infinity, -Infinity])(
+      "leaves every boundary in place for a request of %d",
+      (delta) => {
+        for (const boundary of [0, 1, 2, 3]) {
+          expect(moveBoundary(layout, boundary, delta, description)).toEqual({
+            widths: [150, 110, 130, 80],
+            moved: 0
+          });
+        }
+      }
+    );
+
+    it.each([Number.NaN, Infinity, -Infinity])(
+      "leaves the description's boundaries in place for a description of %d",
+      (measured) => {
+        for (const boundary of [0, 1]) {
+          expect(moveBoundary(layout, boundary, 9, measured)).toEqual({
+            widths: [150, 110, 130, 80],
+            moved: 0
+          });
+        }
+      }
+    );
+
+    it("does not take an infinite description as room for an infinite request", () => {
+      expect(moveBoundary(layout, 1, -Infinity, Infinity)).toEqual({
+        widths: [150, 110, 130, 80],
+        moved: 0
+      });
+    });
+
+    it.each([Number.NaN, Infinity, -Infinity])(
+      "leaves a boundary in place beside a stored width of %d",
+      (bad) => {
+        const cases: Array<[Array<number>, number, number]> = [
+          [[bad, 110, 130, 80], 0, 12],
+          [[150, bad, 130, 80], 1, 12],
+          [[150, bad, 130, 80], 2, 12],
+          [[150, 110, bad, 80], 2, -12],
+          [[150, 110, bad, 80], 3, 12],
+          [[150, 110, 130, bad], 3, -12]
+        ];
+        for (const [widths, boundary, delta] of cases) {
+          expect(moveBoundary(widths, boundary, delta, description)).toEqual({
+            widths: [...widths],
+            moved: 0
+          });
+        }
+      }
+    );
+
+    it("leaves a boundary in place beside a hole", () => {
+      expect(moveBoundary(withHoleAtEnd(), 3, 12, description)).toEqual({
+        widths: [150, 110, 130, undefined],
+        moved: 0
+      });
+    });
   });
 
-  it("moves nothing beside a description that is not a finite number", () => {
-    for (const description of [Number.NaN, Infinity, -Infinity]) {
-      for (const boundary of [0, 1]) {
-        expect(moveBoundary(WIDTHS, boundary, 10, description)).toEqual({
-          widths: WIDTHS,
+  describe("with widths of another length", () => {
+    it.each([
+      [[], [0]],
+      [[150], [0]],
+      [
+        [150, 110],
+        [1, 2]
+      ],
+      [
+        [150, 110, 130],
+        [0, 2]
+      ],
+      [
+        [150, 110, 130, 80, 70],
+        [0, 4]
+      ]
+    ])("leaves %j in place", (widths, boundaries) => {
+      for (const boundary of boundaries) {
+        expect(moveBoundary(widths, boundary, 12, description)).toEqual({
+          widths: [...widths],
           moved: 0
         });
       }
-    }
-    expect(moveBoundary(WIDTHS, 1, -Infinity, Infinity)).toEqual({ widths: WIDTHS, moved: 0 });
-  });
-
-  it("moves nothing beside a stored width that is not a finite number", () => {
-    for (const width of [Number.NaN, Infinity]) {
-      expect(moveBoundary([width, 120, 120, 90], 0, 10, DESCRIPTION)).toEqual({
-        widths: [width, 120, 120, 90],
-        moved: 0
-      });
-      expect(moveBoundary([100, width, 120, 90], 1, 10, DESCRIPTION)).toEqual({
-        widths: [100, width, 120, 90],
-        moved: 0
-      });
-      expect(moveBoundary([100, width, 120, 90], 2, 10, DESCRIPTION)).toEqual({
-        widths: [100, width, 120, 90],
-        moved: 0
-      });
-      expect(moveBoundary([100, 120, 120, width], 3, -10, DESCRIPTION)).toEqual({
-        widths: [100, 120, 120, width],
-        moved: 0
-      });
-    }
-    expect(moveBoundary(withHole(), 3, 10, DESCRIPTION)).toEqual({
-      widths: [100, 120, 120, undefined],
-      moved: 0
     });
   });
 
-  it("still moves a boundary whose columns are usable when another width is not", () => {
-    expect(moveBoundary([100, 120, 120, Infinity], 0, 10, DESCRIPTION)).toEqual({
-      widths: [110, 120, 120, Infinity],
-      moved: 10
+  describe("with fractions", () => {
+    it("adds and takes exactly the fraction asked for", () => {
+      expect(moveBoundary([150.25, 110, 130, 80], 0, 12.5, description)).toEqual({
+        widths: [162.75, 110, 130, 80],
+        moved: 12.5
+      });
+      // The doubles nearest 110 + 0.7 and 130 - 0.7, which print as written.
+      expect(moveBoundary(layout, 2, 0.7, description)).toEqual({
+        widths: [150, 110.7, 129.3, 80],
+        moved: 0.7
+      });
+    });
+
+    it("stops a fraction of a pixel short when that reaches the minimum", () => {
+      expect(moveBoundary([150, 40.75, 130, 80], 1, 12, description)).toEqual({
+        widths: [150, 40, 130, 80],
+        moved: 0.75
+      });
     });
   });
 
-  it("reports no move as positive zero", () => {
-    expect(Object.is(moveBoundary([40, 120, 120, 90], 0, -8, DESCRIPTION).moved, 0)).toBe(true);
-    expect(Object.is(moveBoundary(WIDTHS, 4, 10, DESCRIPTION).moved, 0)).toBe(true);
-    expect(Object.is(moveBoundary(WIDTHS, 0, Number.NaN, DESCRIPTION).moved, 0)).toBe(true);
-    for (const boundary of [0, 1, 2, 3]) {
-      expect(moveBoundary(WIDTHS, boundary, -0, DESCRIPTION)).toEqual({ widths: WIDTHS, moved: 0 });
-    }
-  });
-
-  it("never changes the given widths, and always returns new ones", () => {
-    const widths = [100, 120, 120, 90];
-    for (const boundary of [0, 1, 2, 3, 9]) {
-      expect(moveBoundary(widths, boundary, 20, DESCRIPTION).widths).not.toBe(widths);
-      expect(moveBoundary(widths, boundary, 0, DESCRIPTION).widths).not.toBe(widths);
-    }
-
-    expect(widths).toEqual([100, 120, 120, 90]);
-  });
-
-  it("moves frozen widths", () => {
-    const widths = Object.freeze([100, 120, 120, 90]) as Array<number>;
-
-    expect(moveBoundary(widths, 2, 10, DESCRIPTION)).toEqual({
-      widths: [100, 130, 110, 90],
-      moved: 10
+  describe("the sign of a zero move", () => {
+    it.each([
+      ["a boundary pinned at a minimum", [40, 110, 130, 80], 0, -6],
+      ["a request stopped by a minimum on the right", [150, 110, 130, 40], 3, 5],
+      ["a boundary out of range", layout, 4, 12],
+      ["a request that is not a number", layout, 0, Number.NaN]
+    ])("is positive for %s", (_case, widths, boundary, delta) => {
+      expect(Object.is(moveBoundary(widths, boundary, delta, description).moved, 0)).toBe(true);
     });
-    expect(moveBoundary(widths, 0, 10, DESCRIPTION)).toEqual({
-      widths: [110, 120, 120, 90],
-      moved: 10
+
+    it.each([0, 1, 2, 3])("is positive for a request of -0 at boundary %i", (boundary) => {
+      const result = moveBoundary(layout, boundary, -0, description);
+
+      expect(result).toEqual({ widths: [150, 110, 130, 80], moved: 0 });
+      expect(Object.is(result.moved, 0)).toBe(true);
+    });
+  });
+
+  describe("the caller's array", () => {
+    it("is left as it was after a real move", () => {
+      expect(moveBoundary(layout, 2, 30, description).moved).toBe(30);
+
+      expect(layout).toEqual([150, 110, 130, 80]);
+    });
+
+    it("never comes back as the result, moved or not", () => {
+      for (const boundary of [0, 1, 2, 3, 9]) {
+        for (const delta of [20, 0]) {
+          const widths = [150, 110, 130, 80];
+
+          const result = moveBoundary(widths, boundary, delta, description);
+
+          expect(result.widths).not.toBe(widths);
+          expect(widths).toEqual([150, 110, 130, 80]);
+        }
+      }
+    });
+
+    it("never comes back as the result when the widths are unusable", () => {
+      for (const widths of [[], [Number.NaN, 110, 130, 80]]) {
+        expect(moveBoundary(widths, 0, 12, description).widths).not.toBe(widths);
+      }
     });
   });
 });
