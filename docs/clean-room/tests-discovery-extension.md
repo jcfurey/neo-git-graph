@@ -778,3 +778,18 @@ exists instead of overwriting it.
   waits are 200 ms and 300 ms. They passed with room to spare here (D3, the slowest, took 974 ms),
   but they are the only margins on slower CI machines and on Windows and macOS. Keep them, or widen
   them?
+
+---
+
+## Decisions
+
+These decisions are the maintainer's answers to the questions above; where they differ from the rest of this specification, they win. Every new test must be able to fail when the behaviour it names breaks, and the new Vitest files together must cover at least what the coverage section reports for each product file.
+
+- **Q1.** Keep every export of the stand-in, with the same names and shapes; other tests load it and product modules may read its members at import time.
+- **Q2.** Leave `legacy-host.md` as it is. Its Decisions section records the change, and earlier specifications stay as the record of what they specified.
+- **Q3.** Keep the watcher mute checks in the bridge test file, where they exercise the bridge's use of the watcher.
+- **Q4.** Keep the smoke check and add the two cheap ones: every walkthrough ID the extension opens exists in the manifest, and the documentation file it opens exists in the package.
+- **Q5.** Drop `tests-ext/repoManager.test.ts`. `tests/extension/repo-manager-records.test.ts` checks the same behaviour.
+- **Q6.** Make every path the test's own: fresh temporary folders, and missing paths made under them, never fixed paths such as `/tmp/...` or `/repo`.
+- **Q7.** Give the `.git` predicates a fixture in which each can fail on its own.
+- **Q8.** Replace fixed waits with polling up to a deadline, and give the deadlines room for a slow CI machine (at least five seconds for the panel).

@@ -763,3 +763,19 @@ Current behaviour is stated for each; nothing is decided here.
   makes the same check together with the border class and the tooltip. Should the rewrite keep
   `RefLabel.test.ts` as specified in §5, widen it (for example with §7 item 16), or should the
   maintainer drop it?
+
+---
+
+## Decisions
+
+These decisions are the maintainer's answers to the questions above; where they differ from the rest of this specification, they win. Every new test must be able to fail when the behaviour it names breaks.
+
+- **Q1.** Keep the per-file jsdom opt-in, as the rest of the webview tests do.
+- **Q2.** Make it explicit, once, in the new `menus.test.ts`: loading `menus.tsx` and the stores reads no string from `window.l10n`.
+- **Q3.** The project-wide gate is enough, but the new `menus.test.ts` must still reach the functions that only these files reach today (the Cherry-pick and Revert submit handlers for fewer than two parents and for a merge, the parent label with a message, and a rename submitted with the branch's current name). Check with `pnpm run test:coverage` that `menus.tsx` stays at 100% of functions.
+- **Q4.** Keep the remote checkout checks in `menus.test.ts`; they are driven through the menus.
+- **Q5.** Keep one refusal round trip; for the other entries check only the requests.
+- **Q6.** Check behaviour through text, roles and attributes where they show it. Use class names only where the class is itself the behaviour and nothing else shows it.
+- **Q7.** Leave `menus.md` as it is; `ui-wording.md` records the changed confirm buttons, and earlier specifications stay as records.
+- **Q8.** Delete `tests/webview/components/commit/RefLabel.test.ts`: `RefLabelDetails.test.ts` already checks everything it checks.
+- **Gaps.** Add gaps 13 and 14 of §7.3 to the new `CommitRow.test.ts`: the row button's menu has the commit menu's entries in order, and a row without refs has no refs region.

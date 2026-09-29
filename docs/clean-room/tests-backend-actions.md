@@ -498,3 +498,19 @@ Numbered for reference; nothing here is decided.
 - **tests-a Q5.** The checkout fixture of §2.4 sets `branch.autoSetupMerge=true`, which is Git's default. With it, Git sets up tracking by itself whenever a branch is started from `refs/remotes/origin/…`, so K3's upstream check would pass even if the product stopped asking for tracking explicitly. With `false` it would not (observed with Git 2.55: no upstream is set). Neither `true`, `always` nor `false` makes K11's no-upstream check sensitive to the product's explicit choice, because Git 2.55 set up no tracking from a ref of an unconfigured remote under any of them. Should the fixture use `false`, at least for K3?
 - **tests-a Q6.** A local checkout (`remoteBranch: null`) of a branch that never existed is refused with "The branch changed. Refresh the graph and try again." (K4). The wording suits a branch deleted since the graph was loaded, less so a name that was never a branch. This is a product question; it matters for the tests only if Q1 decides to match that message.
 - **tests-a Q7.** Some checks here repeat checks in neighbouring files that are not being rewritten: K1 (switch to an existing branch) is also in `branch/localSwitch.test.ts`, and K3 (new branch from a remote-tracking branch, tracking it) in `branch/remoteCheckout.test.ts`. §1.1 asks for every check to survive. Should the rewrite keep these duplicates, or may it drop a check that another file makes?
+
+---
+
+## Decisions
+
+These decisions are the maintainer's answers to the questions above; where they differ from the rest of this specification, they win. Every new test must be able to fail when the behaviour it names breaks, and the new files together must cover at least what the coverage section reports for each product file.
+
+- **Q1.** Where the product writes its own message, check that text exactly. Where the message is Git's, check only that the call rejects, and what did not change.
+- **Q2.** Yes: remove every folder with `fs.rmSync(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })`, and make clone, bare and temporary paths canonical with `fs.realpathSync.native`.
+- **Q3.** Register the fake-Git conflict case on every platform and skip it on Windows with `it.skipIf(...)`, with a comment saying why, so the report shows it as skipped.
+- **Q4.** Yes: ask Git for untracked files explicitly (`status --porcelain --untracked-files=all`), so the hostile configuration cannot hide them.
+- **Q5.** Yes: that case uses `branch.autoSetupMerge=false`, so only the product can have set up the tracking.
+- **Q6.** The product's wording is out of scope here; tests check it as it is (Q1).
+- **Q7.** Drop checks that repeat `localSwitch.test.ts` and `remoteCheckout.test.ts` unless they add an angle those files lack.
+- **Gaps.** Add the cheap ones the specification marks, including a tag created on a commit other than HEAD and a check that the actions resolve to `undefined`.
+- **`workflows.test.ts` and `repository.test.ts`.** Restructure only the shared repository variable and its set-up and clean-up; change no test.

@@ -557,3 +557,21 @@ Current behaviour is stated; nothing here is decided.
 **tests-q Q10. One mutable repository is shared by five branch-list cases.** BZ is changed by every case that uses it, and each case restores `main` in a `finally`. They pass in any order today, but a failure that leaves a rebase or bisect in progress can make the remaining cases fail too. `freshRepo` exists for per-test repositories. Keep the shared repository (faster), or build BZ per case?
 
 **tests-q Q11. Overlapping branch-list cases.** B-4 (detached at the commit's ID in DH) and B-9 (detached at `HEAD` in BZ) check the same state; B-1 and B-2 use the same call. Merge them in the rewrite, or keep them apart?
+
+---
+
+## Decisions
+
+These decisions are the maintainer's answers to the questions above; where they differ from the rest of this specification, they win. Throughout, every new test must be able to fail when the behaviour it names breaks, and the new files together must cover at least what §4 reports for each product file.
+
+- **Q1.** The non-repository case uses a fresh empty folder of its own, with `GIT_CEILING_DIRECTORIES` set to that folder's parent for the call and `GIT_DIR` and `GIT_WORK_TREE` unset, so a temp folder inside a work tree cannot change the result.
+- **Q2.** Drop the repeated shape checks, keeping one. Give the branch filter, remote-off and commit-date cases fixtures in which the wrong result differs from the right one: commits that the filter or the remote setting must leave out, and author dates that differ from committer dates. The parameter that changes nothing observable is either given a case where its effect shows, or not tested.
+- **Q3.** Tell the two date types apart with commits whose author and committer dates differ, and assert line counts and the body exactly.
+- **Q4.** Move the checks of `sourceFile`, `loadHistory` and `loadRestorePlan` to a new `tests/backend/queries/history.test.ts`, named for the module they test.
+- **Q5.** Assert on what the product returns, not on Git's own wording, and clear any signing configuration injected through the environment (`GIT_CONFIG_COUNT` and the `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*` pairs) for the test.
+- **Q6.** Remove every folder a test creates, with `fs.rmSync(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })`, and make every temporary path canonical with `fs.realpathSync.native`.
+- **Q7.** Keep the fallback for Git without `init -b`; it is cheap.
+- **Q8.** Keep the repository-level signing settings: the hostile-configuration run can override the global ones.
+- **Q9.** Leave `makeRepo`'s dates as they are. A test that needs two related repositories clones one from the other instead of relying on equal root commits.
+- **Q10.** Cases that change the repository each get their own; read-only cases may share one.
+- **Q11.** Remove the overlapping cases, keeping the one that checks more.
