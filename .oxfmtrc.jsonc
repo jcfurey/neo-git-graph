@@ -1,7 +1,6 @@
 {
-  "printWidth": 100,
-  "useTabs": false,
-  "tabWidth": 2,
-  "ignorePatterns": [".pnpm-store/**", ".idea/**", "out/**", "node_modules/**", "**/*.ctx.md"],
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  // Multi-line lists, objects, parameters and imports end without a comma. Every other option is
+  // at oxfmt's default, which the tree already follows.
   "trailingComma": "none"
 }
