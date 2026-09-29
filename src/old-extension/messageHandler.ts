@@ -51,8 +51,8 @@ import type { RequestMessage, ResponseMessage } from "@/types";
  * first meets them, so the entries stay in this order and no other file of the module adds a key.
  */
 const text = {
-  addedIn: (hash: string) => vscode.l10n.t("Added in {0}", hash),
-  deletedIn: (hash: string) => vscode.l10n.t("Deleted in {0}", hash),
+  addedIn: (hash: string) => vscode.l10n.t("Added by {0}", hash),
+  deletedIn: (hash: string) => vscode.l10n.t("Deleted by {0}", hash),
   busy: () =>
     vscode.l10n.t("Another Git operation is running in this repository. Wait for it to finish."),
   cancelled: () => vscode.l10n.t("The Git operation was cancelled."),

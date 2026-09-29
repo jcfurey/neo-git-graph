@@ -26,6 +26,7 @@ export function getWorkflowLocalizedStrings() {
     ),
     incomingCommits: vscode.l10n.t("Incoming Commits"),
     outgoingCommits: vscode.l10n.t("Outgoing Commits"),
+    showBranchHistory: vscode.l10n.t("Show Branch History in Graph"),
     noRemoteBranch: vscode.l10n.t(
       "No fetched remote branch. A push creates it if it does not exist."
     ),

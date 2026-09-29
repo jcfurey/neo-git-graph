@@ -268,7 +268,7 @@ export function SyncReview({
                   focusHistory(plan.local);
                 }}
               >
-                {window.l10n.loadMore}
+                {window.l10n.showBranchHistory}
               </Button>
             )}
           </section>
