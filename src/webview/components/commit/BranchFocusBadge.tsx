@@ -13,8 +13,8 @@ export function BranchFocusBadge({ branch }: { branch: string }) {
       }`}
       data-focus-branch={branch}
       data-focus-paused={paused}
-      title={(paused ? window.l10n.branchFocusPaused : window.l10n.branchFocus).replace(
-        "{0}",
+      // A function replacement inserts the name as written, even when it contains `$`.
+      title={(paused ? window.l10n.branchFocusPaused : window.l10n.branchFocus).replace("{0}", () =>
         branch.replace(/^remotes\//, "")
       )}
     >

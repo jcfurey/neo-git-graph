@@ -2,6 +2,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { logger } from "@/extension/util/logger";
 import {
   muteGitRepoWatcher,
   selectWatchedRepo,
@@ -89,14 +90,17 @@ describe("webviewBridgeFactory", () => {
     expect(dispose).toHaveBeenCalledOnce();
   });
 
-  it("propagates handler errors", async () => {
+  // Decision bridge Q1: a failing handler is logged with its command, never left unhandled.
+  it("logs handler errors instead of propagating them", async () => {
     const { bridge, receive } = createBridge();
     const failure = new Error("failed");
     bridge.onMessage("selectRepo", async () => {
       throw failure;
     });
 
-    await expect(receive({ command: "selectRepo", repo: "/repo" })).rejects.toBe(failure);
+    await expect(receive({ command: "selectRepo", repo: "/repo" })).resolves.toBeUndefined();
+    // The watcher of this file's missing /repo may warn as well, so only this failure is checked.
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("selectRepo"), failure);
   });
 
   it("keeps watching while requests run and after they finish", async () => {

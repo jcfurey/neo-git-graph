@@ -1624,5 +1624,49 @@
       "...parts: Array<ComponentChildren>",
       "): Array<ComponentChildren> {"
     ]
+  },
+  "src/old-extension/diffDocProvider.ts": {
+    "commit": "7645b5c85a23bd8237198e498680017c2ac06bdf",
+    "specification": "docs/clean-room/diff-docs.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported classes, functions and signatures callers depend on, or short generic statements and option names the specification requires, which leave little other way to write them.",
+    "lines": [
+      "export function encodeDiffDocUri(repo: string, path: string, commit: string): vscode.Uri {",
+      "export class DiffDocProvider implements vscode.TextDocumentContentProvider {"
+    ]
+  },
+  "src/old-extension/messageHandler.ts": {
+    "commit": "727d4a0d7853172d2a0805e779720ee8be78cbfc",
+    "specification": "docs/clean-room/legacy-host.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported classes, functions and signatures callers depend on, or short generic statements and option names the specification requires, which leave little other way to write them.",
+    "lines": [
+      "export function registerMessageHandlers(",
+      "bridge: WebviewBridge,",
+      "let status: string | null = null;",
+      "let status: string | null = null;",
+      "dateType: config.dateType(),",
+      "showUncommittedChanges: config.showUncommittedChanges()",
+      "gitPath: config.gitPath()",
+      "return {"
+    ]
+  },
+  "src/old-extension/webviewBridge.ts": {
+    "commit": "727d4a0d7853172d2a0805e779720ee8be78cbfc",
+    "specification": "docs/clean-room/legacy-host.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported classes, functions and signatures callers depend on, or short generic statements and option names the specification requires, which leave little other way to write them.",
+    "lines": [
+      "const handlers = new Map<string, (msg: RequestMessage) => void | Promise<void>>();",
+      "return {",
+      "handlers.set(command, handler as (msg: RequestMessage) => void | Promise<void>);"
+    ]
+  },
+  "src/old-extension/extensionState.ts": {
+    "commit": "727d4a0d7853172d2a0805e779720ee8be78cbfc",
+    "specification": "docs/clean-room/legacy-host.md",
+    "note": "Written from the specification without sight of the old module. These lines are the exported classes, functions and signatures callers depend on, or short generic statements and option names the specification requires, which leave little other way to write them.",
+    "lines": [
+      "export class ExtensionState {",
+      "constructor(context: ExtensionContext) {",
+      "this.workspaceState = context.workspaceState;"
+    ]
   }
 }

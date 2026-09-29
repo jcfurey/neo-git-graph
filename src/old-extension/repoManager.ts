@@ -1,70 +1,86 @@
 import { access } from "node:fs/promises";
 
-import { ExtensionState } from "@/old-extension/extensionState";
+import type { ExtensionState } from "@/old-extension/extensionState";
 import type { GitRepoSet, GitRepoState } from "@/types";
 
-function sortRepos(repos: GitRepoSet) {
-  const repoPaths = Object.keys(repos).toSorted();
-  const sorted: GitRepoSet = {};
-  for (const repoPath of repoPaths) {
-    const repo = repos[repoPath];
-    if (repo !== undefined) {
-      sorted[repoPath] = repo;
-    }
+/** The saved view state of every repository, for the life of the extension. */
+export type RepoManager = {
+  /** A new object with every record, keyed by repository path in ascending order. */
+  getRepos: () => GitRepoSet;
+  /** Forget the repositories whose folders are gone, and resolve to their paths. */
+  pruneMissing: () => Promise<string[]>;
+  /** Keep `state` itself as the record of `repo`. */
+  setRepoState: (repo: string, state: GitRepoState) => void;
+  /**
+   * Hide exactly `names`, sorted and without repeats. Returns the new record, or undefined when
+   * the saved list already reads the same.
+   */
+  updateHiddenRemotes: (repo: string, names: string[]) => GitRepoState | undefined;
+};
+
+/**
+ * Only an error saying that the path, or a folder on the way to it, does not exist proves that a
+ * repository is gone. A denied or unavailable drive may come back, so its records stay.
+ */
+const GONE = new Set(["ENOENT", "ENOTDIR"]);
+
+async function isGone(folder: string): Promise<boolean> {
+  try {
+    await access(folder);
+    return false;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | undefined)?.code;
+    return code !== undefined && GONE.has(code);
   }
-  return sorted;
 }
 
-/** The state the editor keeps for each repository this workspace has shown. */
-export function createRepoManager(extensionState: ExtensionState) {
-  let repos = extensionState.getRepos();
+/**
+ * Keep the records that `extensionState` holds, reading its storage once and writing every change
+ * straight back. Records are compared by identity elsewhere, so a record is replaced by a new
+ * object when it changes and otherwise kept as it is.
+ */
+export function createRepoManager(extensionState: ExtensionState): RepoManager {
+  // Insertion order is the order in which repositories were first saved.
+  const records = new Map(Object.entries(extensionState.getRepos()));
 
-  function getRepos() {
-    return sortRepos(repos);
-  }
+  const persist = () => extensionState.saveRepos(Object.fromEntries(records));
 
-  /** Forget saved state for repositories whose folders no longer exist. */
-  async function pruneMissing() {
-    const missing = await Promise.all(
-      Object.keys(repos).map((repo) =>
-        access(repo).then(
-          () => null,
-          () => repo
-        )
-      )
-    );
-    const stale = missing.filter((repo): repo is string => repo !== null);
-    if (stale.length > 0) {
-      for (const repo of stale) {
-        delete repos[repo];
-      }
-      extensionState.saveRepos(repos);
-    }
-    return stale;
-  }
-
-  function setRepoState(repo: string, state: GitRepoState) {
-    repos[repo] = state;
-    extensionState.saveRepos(repos);
-  }
-
-  function updateHiddenRemotes(repo: string, names: string[]): GitRepoState | undefined {
-    const state = repos[repo] ?? { columnWidths: null };
-    const hiddenRemotes = [...new Set(names)].toSorted();
-    if (JSON.stringify(state.hiddenRemotes ?? []) === JSON.stringify(hiddenRemotes)) {
-      return undefined;
-    }
-    const next = { ...state, hiddenRemotes };
-    setRepoState(repo, next);
-    return next;
-  }
+  const setRepoState = (repo: string, state: GitRepoState) => {
+    records.set(repo, state);
+    persist();
+  };
 
   return {
-    getRepos,
-    pruneMissing,
+    getRepos: () => {
+      const sorted = [...records].toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+      return Object.fromEntries(sorted);
+    },
+
+    pruneMissing: async () => {
+      const folders = [...records.keys()];
+      const gone = await Promise.all(folders.map(isGone));
+      const removed = folders.filter((_, index) => gone[index]);
+      if (removed.length > 0) {
+        for (const folder of removed) {
+          records.delete(folder);
+        }
+        persist();
+      }
+      return removed;
+    },
+
     setRepoState,
-    updateHiddenRemotes
+
+    updateHiddenRemotes: (repo, names) => {
+      const wanted = [...new Set(names)].toSorted();
+      const saved = records.get(repo);
+      const current = saved?.hiddenRemotes ?? [];
+      if (current.length === wanted.length && current.every((name, i) => name === wanted[i])) {
+        return undefined;
+      }
+      const record: GitRepoState = { ...(saved ?? { columnWidths: null }), hiddenRemotes: wanted };
+      setRepoState(repo, record);
+      return record;
+    }
   };
 }
-
-export type RepoManager = ReturnType<typeof createRepoManager>;
