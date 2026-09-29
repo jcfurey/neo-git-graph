@@ -759,3 +759,25 @@ shell automatically. Only direnv users need it; it caches into `.direnv/` (11.2 
 | `flake.lock`                    | 2   | 1   | 0   | 3       |
 | `.envrc`                        | 1   | 0   | 0   | 1       |
 | **Total**                       | 88  | 59  | 17  | 164     |
+
+---
+
+## Decisions
+
+These decisions are the maintainer's answers to the questions above; where they differ from the rest of this specification, they win.
+
+- **Q1.** Keep the four check names and the pull-request trigger exactly; a ruleset that requires them is still intended.
+- **Q2.** Keep the `release` environment and the secret names.
+- **Q3.** Keep the split: third-party actions pinned to a commit with the version in a comment, GitHub's own actions at major tags. Upgrade nothing in this batch.
+- **Q4.** Keep both ecosystems, the weekly interval and the grouping.
+- **Q5.** Keep the branch filter.
+- **Q6.** Give the lint job and the publish job a time limit, and the publish workflow a concurrency group that never cancels a publish in progress.
+- **Q7.** Keep only what is dictated: `* text=auto eol=lf`. Drop the binary patterns and `*.vsix`.
+- **Q8.** Drop the four exclusion settings that have no effect.
+- **Q9.** Use the current key, `js/ts.tsc.autoDetect`.
+- **Q10.** The build task's matcher must treat the build as finished only when every bundle has been built. Coordinate with the build script (`config-build.md`), which may print one start and one end line for the whole build. The tsc watcher may cover the root project only.
+- **Q11.** Drop `!README.md`.
+- **Q12.** Drop the Nix and direnv set-up: remove `flake.nix`, `flake.lock` and `.envrc`, remove `.direnv/` from `.gitignore`, and remove the Nix alternative from `docs/testing.md`. Nothing in CI uses it, and its lock file cannot be regenerated here.
+- **Q13.** Moot after Q12.
+- **Q14.** Keep the single launch configuration.
+- **Q15.** Keep the reviewer's approval for dry runs.
