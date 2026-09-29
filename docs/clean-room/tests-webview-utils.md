@@ -1003,3 +1003,21 @@ file for them (a new file, outside the seven being replaced), or rely on the oth
 `src/webview/lib/menus.tsx`. `columns.ts`, `ref.ts`, `format.ts` and `webview-config.ts` are fully
 covered by these files alone, and `rpc-client.ts` nearly so (§8). Should the rewrite add thresholds
 for them in `vitest.config.ts`, or leave the configuration as it is?
+
+---
+
+## Decisions
+
+These decisions are the maintainer's answers to the questions above; where they differ from the rest of this specification, they win. Every new test must be able to fail when the behaviour it names breaks, and the new files together must cover at least what the coverage section reports for each product file.
+
+- **Q1.** Keep the interface of `setup.ts` and `test-utils.ts` exactly as §2 gives it. Lines that the interface forces and that happen to match upstream are listed as reviewed coincidences after review.
+- **Q2.** Pick new example values of the same kind that test the same rules: new ref names (valid and invalid for the same reasons), new format templates and parts, new column widths and fixtures, new settings values. Keep a value only where the product dictates it, such as a setting's name or an RPC method name.
+- **Q3.** Keep the current behaviour: importing the setup module again after `vi.resetModules()` creates a new `vscodeApi` and replaces the global.
+- **Q4.** No. Load them statically or lazily, whichever is simpler; no test depends on it.
+- **Q5.** Keep the `dispatchMessages` option with its current effect; it is part of the interface.
+- **Q6.** Yes. Add `tests/webview/test-helpers.test.ts`, checking the properties §2 records that other tests rely on:
+  - every configuration value is present, and the object is not frozen;
+  - `window.l10n` returns each key's own name and stays configurable;
+  - mocks are not cleared between tests;
+  - the other properties the specification names as relied on but unpinned.
+- **Q7.** No coverage thresholds in this batch; `vitest.config.ts` belongs to the configuration batch.
