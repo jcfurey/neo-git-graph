@@ -12,6 +12,10 @@
  * of every key it has, and must use exactly the placeholders (`{0}`, `{1}`, …) of each English
  * string, in any order and as often as it likes. Every value must be a string.
  *
+ * `package.nls.json` is also checked against `package.json`, the manifest whose `%key%` strings
+ * it resolves: every key the manifest refers to must be in it, and it may hold no key the
+ * manifest does not refer to. Its problems are reported with the English file's own.
+ *
  * A file that passes prints one line to standard output; a file that fails prints its name and
  * one line per problem to standard error, and the script exits with 1 once every file is checked.
  * Unreadable files and invalid JSON are not reported this way: they stop the script with Node's
@@ -20,10 +24,18 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-/** Each kind of translation file: where it lives, its English file, and its own names. */
+/**
+ * Each kind of translation file: where it lives, its English file, its own names, and the file
+ * whose `%key%` strings the English file resolves, if any.
+ */
 const GROUPS = [
   { dir: "l10n", english: "bundle.l10n.json", locale: /^bundle\.l10n\..+\.json$/s },
-  { dir: ".", english: "package.nls.json", locale: /^package\.nls\..+\.json$/s }
+  {
+    dir: ".",
+    english: "package.nls.json",
+    locale: /^package\.nls\..+\.json$/s,
+    manifest: "package.json"
+  }
 ];
 
 /** A placeholder is a number in braces; any other brace is ordinary text. */
@@ -47,6 +59,45 @@ function englishProblems(english) {
   return Object.keys(english)
     .filter((key) => typeof english[key] !== "string")
     .map((key) => `not a string: "${key}"`);
+}
+
+/**
+ * The keys that the manifest's `%key%` strings refer to, each listed once in the order it first
+ * appears. As in VS Code, a reference is a whole string value of at least two characters that
+ * starts and ends with `%`, anywhere in the manifest; the key is what lies between them.
+ */
+function manifestKeys(manifest) {
+  const keys = new Set();
+  const visit = (value) => {
+    if (typeof value === "string") {
+      if (value.length > 1 && value.startsWith("%") && value.endsWith("%")) {
+        keys.add(value.slice(1, -1));
+      }
+    } else if (value !== null && typeof value === "object") {
+      for (const item of Object.values(value)) {
+        visit(item);
+      }
+    }
+  };
+  visit(manifest);
+  return [...keys];
+}
+
+/**
+ * Problems of an English file against the manifest that refers to it, both parsed, in report
+ * order: keys the manifest refers to that the English lacks (in the manifest's order), then keys
+ * the manifest does not refer to (in English order).
+ */
+function manifestProblems(english, manifest) {
+  const referenced = manifestKeys(manifest);
+  return [
+    ...referenced
+      .filter((key) => !Object.hasOwn(english, key))
+      .map((key) => `missing (used in package.json): "${key}"`),
+    ...Object.keys(english)
+      .filter((key) => !referenced.includes(key))
+      .map((key) => `unused (not in package.json): "${key}"`)
+  ];
 }
 
 /**
@@ -110,8 +161,10 @@ function translationFiles(root, group) {
 }
 
 /**
- * Check every translation file under `root` (the repository root), writing report lines with
- * `out` and `err`, one call per line. Each file's lines are written as soon as it is checked.
+ * Check every translation file under `root` (the repository root), and each English file against
+ * the manifest that refers to it, writing report lines with `out` and `err`, one call per line.
+ * An English file is reported only when it fails. Each file's lines are written as soon as it is
+ * checked.
  * Returns the exit code: 1 if any file failed, else 0.
  */
 function checkTranslations(root, out, err) {
@@ -128,6 +181,11 @@ function checkTranslations(root, out, err) {
     const names = translationFiles(root, group);
     const english = readObject(path.join(root, group.dir, group.english));
     const englishFaults = englishProblems(english);
+    if (group.manifest !== undefined) {
+      englishFaults.push(
+        ...manifestProblems(english, readObject(path.join(root, group.dir, group.manifest)))
+      );
+    }
     if (englishFaults.length > 0) {
       fail(group.english, englishFaults);
     }
@@ -151,7 +209,14 @@ function checkTranslations(root, out, err) {
   return failed ? 1 : 0;
 }
 
-module.exports = { checkTranslations, englishProblems, placeholders, translationProblems };
+module.exports = {
+  checkTranslations,
+  englishProblems,
+  manifestKeys,
+  manifestProblems,
+  placeholders,
+  translationProblems
+};
 
 if (require.main === module) {
   process.exitCode = checkTranslations(path.join(__dirname, ".."), console.log, console.error);

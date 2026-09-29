@@ -9,26 +9,17 @@
   ],
   "keywords": [
     "branch",
+    "commit",
     "git",
-    "git graph",
-    "git history",
-    "git log"
+    "graph",
+    "history",
+    "log"
   ],
   "homepage": "https://github.com/jcfurey/neo-git-graph",
   "bugs": {
     "url": "https://github.com/jcfurey/neo-git-graph/issues"
   },
   "license": "MIT",
-  "contributors": [
-    {
-      "name": "Michael Hutchison",
-      "url": "https://github.com/mhutchie"
-    },
-    {
-      "name": "Asis Pattisahusiwa",
-      "url": "https://github.com/asispts"
-    }
-  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/jcfurey/neo-git-graph.git"
@@ -36,35 +27,35 @@
   "publisher": "jcfurey",
   "main": "./out/extension.js",
   "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('out', { recursive: true, force: true })\"",
+    "clean:all": "node -e \"const fs = require('node:fs'); for (const entry of ['out', 'tests-ext/out', '.vscode-test', 'test-results', ...fs.readdirSync('.').filter((name) => name.endsWith('.vsix'))]) fs.rmSync(entry, { recursive: true, force: true })\"",
+    "compile": "pnpm run clean && node esbuild.js",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc -p . --watch",
     "typecheck": "tsc -p . && tsc -p src/webview && tsc -p tests && tsc -p tests/webview && tsc -p tests-ext --noEmit",
-    "vscode:prepublish": "pnpm run clean && pnpm run package",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt --check",
+    "format:fix": "oxfmt",
     "package": "pnpm run typecheck && pnpm run lint && node esbuild.js --production",
+    "vscode:prepublish": "pnpm run clean && pnpm run package",
     "package:vsix": "node scripts/check-release.cjs && vsce package --no-dependencies",
+    "test": "vitest run",
+    "test:coverage": "vitest run --project webview --coverage",
+    "compile-tests": "tsc -p tests-ext/tsconfig.json && tsc-alias -p tests-ext/tsconfig.json",
+    "test:ext": "pnpm run compile && pnpm run compile-tests && vscode-test",
+    "test:ui-harness": "node --test tests-ext/ui/diagnostics.unit.cjs && node esbuild.js --production && pnpm run compile-tests && node scripts/test-ui-harness.cjs",
+    "test:lint-rules": "node --test oxlint/webview-text.test.cjs",
+    "test:release": "node --test scripts/check-l10n.test.cjs scripts/check-release.test.cjs scripts/markdown-links.test.cjs scripts/provenance.test.cjs",
+    "test:package": "node scripts/test-package.cjs",
+    "benchmark": "node scripts/benchmark.mjs",
+    "benchmark:ui": "node esbuild.js --production && node scripts/benchmark-ui.cjs",
+    "l10n:export": "vscode-l10n-dev export --outDir ./l10n ./src && oxfmt ./l10n/bundle.l10n.json",
+    "l10n:check": "pnpm run l10n:export && git diff --exit-code -- l10n/bundle.l10n.json && node scripts/check-l10n.js",
     "check:release": "node scripts/check-release.cjs",
     "check:links": "node scripts/markdown-links.cjs",
     "check:provenance": "node scripts/provenance.cjs --check",
-    "provenance": "node scripts/provenance.cjs",
-    "test:release": "node --test scripts/check-l10n.test.cjs scripts/check-release.test.cjs scripts/markdown-links.test.cjs scripts/provenance.test.cjs",
-    "test:package": "node scripts/test-package.cjs",
-    "clean": "node -e \"require('fs').rmSync('out',{recursive:true,force:true})\"",
-    "clean:all": "node -e \"const fs=require('fs');for(const p of ['out','tests-ext/out','.vscode-test','test-results',...fs.readdirSync('.').filter(f=>f.endsWith('.vsix'))])fs.rmSync(p,{recursive:true,force:true})\"",
-    "compile": "pnpm run clean && node esbuild.js",
-    "test": "vitest run --project backend && vitest run --project extension && vitest run --project webview",
-    "test:coverage": "vitest run --project webview --coverage",
-    "benchmark": "node scripts/benchmark.mjs",
-    "benchmark:ui": "node esbuild.js --production && node scripts/benchmark-ui.cjs",
-    "test:ext": "pnpm run compile && pnpm run compile-tests && vscode-test",
-    "test:ui-harness": "node --test tests-ext/ui/diagnostics.unit.cjs && node esbuild.js --production && pnpm run compile-tests && node scripts/test-ui-harness.cjs",
-    "compile-tests": "tsc -p tests-ext/tsconfig.json && tsc-alias -p tests-ext/tsconfig.json",
-    "watch:esbuild": "node esbuild.js --watch",
-    "watch:tsc": "tsc -p . --watch",
-    "format": "oxfmt --check",
-    "format:fix": "oxfmt .",
-    "lint": "oxlint",
-    "test:lint-rules": "node --test oxlint/webview-text.test.cjs",
-    "lint:fix": "oxlint --fix",
-    "l10n:export": "vscode-l10n-dev export --outDir ./l10n ./src && oxfmt ./l10n/bundle.l10n.json",
-    "l10n:check": "pnpm run l10n:export && git diff --exit-code ./l10n/bundle.l10n.json && node scripts/check-l10n.js"
+    "provenance": "node scripts/provenance.cjs"
   },
   "dependencies": {
     "@preact/signals": "^2.11.1",
@@ -98,8 +89,8 @@
   "contributes": {
     "commands": [
       {
-        "category": "Branchwise",
         "command": "branchwise.view",
+        "category": "Branchwise",
         "title": "%command.view%",
         "icon": {
           "light": "resources/webview-icon-light.svg",
@@ -107,23 +98,23 @@
         }
       },
       {
-        "category": "Branchwise",
         "command": "branchwise.fileHistory",
+        "category": "Branchwise",
         "title": "%command.fileHistory%"
       },
       {
-        "category": "Branchwise",
         "command": "branchwise.showBranches",
+        "category": "Branchwise",
         "title": "%command.showBranches%"
       },
       {
-        "category": "Branchwise",
         "command": "branchwise.openDocumentation",
+        "category": "Branchwise",
         "title": "%command.openDocumentation%"
       },
       {
-        "category": "Branchwise",
         "command": "branchwise.openWalkthrough",
+        "category": "Branchwise",
         "title": "%command.openWalkthrough%"
       }
     ],
@@ -139,28 +130,30 @@
         {
           "command": "branchwise.fileHistory",
           "group": "git",
-          "when": "!explorerResourceIsFolder && (resourceScheme == file || resourceScheme == vscode-remote)"
+          "when": "(resourceScheme == file || resourceScheme == vscode-remote) && !explorerResourceIsFolder"
         }
       ],
       "editor/title/context": [
         {
           "command": "branchwise.fileHistory",
           "group": "git",
-          "when": "!explorerResourceIsFolder && (resourceScheme == file || resourceScheme == vscode-remote)"
+          "when": "resourceScheme == file || resourceScheme == vscode-remote"
         }
       ]
     },
     "configuration": {
-      "type": "object",
       "title": "Branchwise",
+      "type": "object",
       "properties": {
         "branchwise.autoCenterCommitDetailsView": {
+          "description": "%config.autoCenterCommitDetailsView%",
           "type": "boolean",
-          "default": true,
-          "description": "%config.autoCenterCommitDetailsView%"
+          "default": true
         },
         "branchwise.dateFormat": {
+          "description": "%config.dateFormat%",
           "type": "string",
+          "default": "Date & Time",
           "enum": [
             "Date & Time",
             "Date Only",
@@ -170,12 +163,12 @@
             "%config.dateFormat.dateTime%",
             "%config.dateFormat.dateOnly%",
             "%config.dateFormat.relative%"
-          ],
-          "default": "Date & Time",
-          "description": "%config.dateFormat%"
+          ]
         },
         "branchwise.dateType": {
+          "description": "%config.dateType%",
           "type": "string",
+          "default": "Author Date",
           "enum": [
             "Author Date",
             "Commit Date"
@@ -183,23 +176,17 @@
           "enumDescriptions": [
             "%config.dateType.authorDate%",
             "%config.dateType.commitDate%"
-          ],
-          "default": "Author Date",
-          "description": "%config.dateType%"
+          ]
         },
         "branchwise.fetchAvatars": {
-          "type": "boolean",
-          "default": false,
           "description": "%config.fetchAvatars%",
-          "deprecationMessage": "%config.fetchAvatars.deprecation%"
+          "deprecationMessage": "%config.fetchAvatars.deprecation%",
+          "type": "boolean",
+          "default": false
         },
         "branchwise.graphColours": {
+          "description": "%config.graphColours%",
           "type": "array",
-          "items": {
-            "type": "string",
-            "description": "%config.graphColours.item%",
-            "pattern": "^\\s*(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|rgb[a]?\\s*\\(\\d{1,3},\\s*\\d{1,3},\\s*\\d{1,3}\\))\\s*$"
-          },
           "default": [
             "#0085d9",
             "#d9008f",
@@ -214,10 +201,16 @@
             "#6f24d6",
             "#ffcc00"
           ],
-          "description": "%config.graphColours%"
+          "items": {
+            "description": "%config.graphColours.item%",
+            "type": "string",
+            "pattern": "^\\s*(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|rgba?\\s*\\(\\d{1,3},\\s*\\d{1,3},\\s*\\d{1,3}\\))\\s*$"
+          }
         },
         "branchwise.graphStyle": {
+          "description": "%config.graphStyle%",
           "type": "string",
+          "default": "rounded",
           "enum": [
             "rounded",
             "angular"
@@ -225,40 +218,40 @@
           "enumDescriptions": [
             "%config.graphStyle.rounded%",
             "%config.graphStyle.angular%"
-          ],
-          "default": "rounded",
-          "description": "%config.graphStyle%"
+          ]
         },
         "branchwise.initialLoadCommits": {
+          "description": "%config.initialLoadCommits%",
           "type": "integer",
-          "minimum": 1,
           "default": 300,
-          "description": "%config.initialLoadCommits%"
+          "minimum": 1
         },
         "branchwise.loadMoreCommits": {
+          "description": "%config.loadMoreCommits%",
           "type": "integer",
-          "minimum": 1,
           "default": 100,
-          "description": "%config.loadMoreCommits%"
+          "minimum": 1
         },
         "branchwise.maxDepthOfRepoSearch": {
+          "description": "%config.maxDepthOfRepoSearch%",
           "type": "integer",
-          "minimum": 0,
           "default": 0,
-          "description": "%config.maxDepthOfRepoSearch%"
+          "minimum": 0
         },
         "branchwise.showCurrentBranchByDefault": {
+          "description": "%config.showCurrentBranchByDefault%",
           "type": "boolean",
-          "default": false,
-          "description": "%config.showCurrentBranchByDefault%"
+          "default": false
         },
         "branchwise.showUncommittedChanges": {
+          "description": "%config.showUncommittedChanges%",
           "type": "boolean",
-          "default": true,
-          "description": "%config.showUncommittedChanges%"
+          "default": true
         },
         "branchwise.tabIconColourTheme": {
+          "description": "%config.tabIconColourTheme%",
           "type": "string",
+          "default": "colour",
           "enum": [
             "colour",
             "grey"
@@ -266,9 +259,7 @@
           "enumDescriptions": [
             "%config.tabIconColourTheme.colour%",
             "%config.tabIconColourTheme.grey%"
-          ],
-          "default": "colour",
-          "description": "%config.tabIconColourTheme%"
+          ]
         }
       }
     },
