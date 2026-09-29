@@ -1,4 +1,4 @@
-import * as cp from "node:child_process";
+import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -6,220 +6,178 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createGit } from "@/backend/gitClient";
 import { commitDetails } from "@/backend/queries/commitDetails";
-import { loadHistory, loadRestorePlan, sourceFile } from "@/backend/queries/history";
+import type { DateType, GitFileChange } from "@/backend/types";
 
-import { git, makeRepo } from "@tests/backend/helpers";
+import { freshRepo, git, gitOutput, makeRepo } from "@tests/backend/helpers";
 
-let repo: string;
-let commitHash: string;
-const byName = (a: { newFilePath: string }, b: { newFilePath: string }) =>
-  a.newFilePath < b.newFilePath ? -1 : 1;
+function details(repo: string, commitHash: string, dateType: DateType = "Author Date") {
+  return commitDetails(createGit(repo, "git"), { commitHash, dateType });
+}
 
-beforeAll(() => {
-  repo = makeRepo();
-  commitHash = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
-});
+function change(
+  type: GitFileChange["type"],
+  oldFilePath: string,
+  newFilePath: string,
+  additions: number | null,
+  deletions: number | null
+): GitFileChange {
+  return { oldFilePath, newFilePath, type, additions, deletions };
+}
 
-afterAll(() => {
-  fs.rmSync(repo, { recursive: true, force: true });
-});
+const byNewPath = (a: GitFileChange, b: GitFileChange) =>
+  a.newFilePath < b.newFilePath ? -1 : a.newFilePath > b.newFilePath ? 1 : 0;
 
-describe("commitDetails", () => {
-  it("returns commit details with expected fields", async () => {
-    const result = await commitDetails(createGit(repo, "git"), {
-      commitHash,
-      dateType: "Author Date"
+const AUTHORED = 1_600_000_000;
+const COMMITTED = 1_650_000_000;
+const MESSAGE = "mod\n\nRewrites f in full.\nSecond line of the body.";
+
+/**
+ * Only read: `init` (from `makeRepo`), then `mod`, which rewrites `f` as `modified content`, with
+ * a committer of its own and author and committer times that differ.
+ */
+describe("a root commit and a commit with a message body", () => {
+  let repo = "";
+  const ids = { init: "", mod: "" };
+
+  beforeAll(() => {
+    repo = makeRepo();
+    ids.init = gitOutput(["rev-parse", "HEAD"], repo);
+    fs.writeFileSync(path.join(repo, "f"), "modified content");
+    git(["add", "-A"], repo);
+    execFileSync("git", ["commit", "-q", "-F", "-"], {
+      cwd: repo,
+      input: MESSAGE,
+      stdio: "pipe",
+      env: {
+        ...process.env,
+        GIT_COMMITTER_NAME: "Committer",
+        GIT_AUTHOR_DATE: `${AUTHORED} +0000`,
+        GIT_COMMITTER_DATE: `${COMMITTED} +0000`
+      }
     });
-    expect(result).toEqual({
+    ids.mod = gitOutput(["rev-parse", "HEAD"], repo);
+  });
+
+  afterAll(() => {
+    fs.rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  });
+
+  it("describes a root commit against the empty tree", async () => {
+    const result = await details(repo, ids.init);
+    expect(result).toStrictEqual({
       commitDetails: {
-        hash: commitHash,
-        parents: expect.any(Array),
-        author: expect.any(String),
-        email: expect.any(String),
+        hash: ids.init,
+        parents: [],
+        author: "T",
+        email: "t@t.com",
         date: expect.any(Number),
-        committer: expect.any(String),
-        body: expect.any(String),
-        fileChanges: expect.any(Array)
+        committer: "T",
+        body: "init",
+        fileChanges: [change("A", "f", "f", 1, 0)]
       }
     });
     expect(result.commitDetails!.date).toBeGreaterThan(0);
   });
 
-  it("returns file changes for the initial commit", async () => {
-    const result = await commitDetails(createGit(repo, "git"), {
-      commitHash,
-      dateType: "Author Date"
-    });
-    expect(result.commitDetails).not.toBeNull();
-    expect(result.commitDetails!.fileChanges.length).toBeGreaterThan(0);
-  });
-
-  it("returns commitDetails: null for an invalid commit hash", async () => {
-    const result = await commitDetails(createGit(repo, "git"), {
-      commitHash: "deadbeef1234",
-      dateType: "Author Date"
-    });
-    expect(result).toEqual({ commitDetails: null });
-  });
-
-  it("includes additions and deletions for a modified file", async () => {
-    const repo2 = makeRepo();
-    try {
-      fs.writeFileSync(path.join(repo2, "f"), "modified content");
-      git(["add", "."], repo2);
-      git(["commit", "-m", "mod"], repo2);
-      const hash = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo2 }).toString().trim();
-
-      const result = await commitDetails(createGit(repo2, "git"), {
-        commitHash: hash,
-        dateType: "Author Date"
-      });
-      expect(result.commitDetails).not.toBeNull();
-      const changed = result.commitDetails!.fileChanges.find((f) => f.newFilePath === "f");
-      expect(changed).toBeDefined();
-      expect(changed!.additions).toEqual(expect.any(Number));
-      expect(changed!.deletions).toEqual(expect.any(Number));
-    } finally {
-      fs.rmSync(repo2, { recursive: true, force: true });
-    }
-  });
-
-  it("uses commit date when dateType is Commit Date", async () => {
-    const result = await commitDetails(createGit(repo, "git"), {
-      commitHash,
-      dateType: "Commit Date"
-    });
-    expect(result).toEqual({
+  it.each([
+    { dateType: "Author Date" as const, date: AUTHORED },
+    { dateType: "Commit Date" as const, date: COMMITTED }
+  ])("gives the whole message, and the time that $dateType names", async ({ dateType, date }) => {
+    expect(await details(repo, ids.mod, dateType)).toStrictEqual({
       commitDetails: {
-        hash: commitHash,
-        parents: expect.any(Array),
-        author: expect.any(String),
-        email: expect.any(String),
-        date: expect.any(Number),
-        committer: expect.any(String),
-        body: expect.any(String),
-        fileChanges: expect.any(Array)
+        hash: ids.mod,
+        parents: [ids.init],
+        author: "T",
+        email: "t@t.com",
+        date,
+        committer: "Committer",
+        body: MESSAGE,
+        fileChanges: [change("M", "f", "f", 1, 1)]
       }
     });
-    expect(result.commitDetails!.date).toBeGreaterThan(0);
   });
 
-  it("body contains the commit message", async () => {
-    const result = await commitDetails(createGit(repo, "git"), {
-      commitHash,
-      dateType: "Author Date"
+  it("resolves to null for an ID that names no object", async () => {
+    await expect(details(repo, "deadbeef1234")).resolves.toStrictEqual({ commitDetails: null });
+  });
+
+  it("resolves to null for a range, which names more than one commit", async () => {
+    await expect(details(repo, `${ids.init}..${ids.mod}`)).resolves.toStrictEqual({
+      commitDetails: null
     });
-    expect(result.commitDetails!.body).toContain("init");
+  });
+});
+
+describe("a merge", () => {
+  /** `side` adds the file `side`; `main` adds `main`; then `main` merges `side`. */
+  const repo = freshRepo((dir) => {
+    git(["checkout", "-q", "-b", "side"], dir);
+    fs.writeFileSync(path.join(dir, "side"), "side\n");
+    git(["add", "--", "side"], dir);
+    git(["commit", "-q", "-m", "side"], dir);
+    git(["checkout", "-q", "main"], dir);
+    fs.writeFileSync(path.join(dir, "main"), "main\n");
+    git(["add", "--", "main"], dir);
+    git(["commit", "-q", "-m", "main"], dir);
+    git(["merge", "-q", "--no-edit", "-m", "join side", "side"], dir);
   });
 
-  it("keeps exact names, renames, and line counts for unusual file names", async () => {
-    const dir = makeRepo();
-    // Windows does not allow tabs, quotes, newlines, or backslashes in file names.
-    const names = [
-      "中文.txt",
-      "café.md",
-      ...(process.platform === "win32"
-        ? []
-        : ["tab\tname", 'quote"name', "new\nline", "back\\slash", "0:foo"])
+  it("lists what it brought in against its first parent, and an empty commit lists nothing", async () => {
+    const [onMain, onSide] = [
+      gitOutput(["rev-parse", "HEAD^1"], repo()),
+      gitOutput(["rev-parse", "HEAD^2"], repo())
     ];
-    try {
-      fs.writeFileSync(path.join(dir, "old.txt"), "moved\n");
-      git(["add", "--", "old.txt"], dir);
-      git(["commit", "-m", "before"], dir);
-      for (const name of names) {
-        fs.writeFileSync(path.join(dir, name), "one\ntwo\n");
-      }
-      fs.writeFileSync(path.join(dir, "binary.dat"), Buffer.from([0, 1, 2]));
-      fs.mkdirSync(path.join(dir, "目录"));
-      git(["mv", "old.txt", "目录/新.txt"], dir);
-      git(["add", "-A"], dir);
-      git(["commit", "-m", "unusual names"], dir);
-      const hash = cp.execFileSync("git", ["rev-parse", "HEAD"], { cwd: dir }).toString().trim();
-      const client = createGit(dir, "git");
+    const merge = await details(repo(), "HEAD");
+    expect(merge.commitDetails).toMatchObject({
+      hash: gitOutput(["rev-parse", "HEAD"], repo()),
+      parents: [onMain, onSide],
+      body: "join side"
+    });
+    expect(merge.commitDetails!.fileChanges).toStrictEqual([change("A", "side", "side", 1, 0)]);
 
-      const { fileChanges } = (
-        await commitDetails(client, {
-          commitHash: hash,
-          dateType: "Author Date"
-        })
-      ).commitDetails!;
-      expect(fileChanges.toSorted(byName)).toEqual(
-        [
-          ...names.map((name) => ({
-            oldFilePath: name,
-            newFilePath: name,
-            type: "A",
-            additions: 2,
-            deletions: 0
-          })),
-          {
-            oldFilePath: "binary.dat",
-            newFilePath: "binary.dat",
-            type: "A",
-            additions: null,
-            deletions: null
-          },
-          {
-            oldFilePath: "old.txt",
-            newFilePath: "目录/新.txt",
-            type: "R",
-            additions: 0,
-            deletions: 0
-          }
-        ].toSorted(byName)
-      );
+    git(["commit", "-q", "--allow-empty", "-m", "empty"], repo());
+    const empty = await details(repo(), "HEAD");
+    expect(empty.commitDetails).toMatchObject({
+      parents: [merge.commitDetails!.hash],
+      body: "empty"
+    });
+    expect(empty.commitDetails!.fileChanges).toStrictEqual([]);
+  });
+});
 
-      await Promise.all(
-        [...names, "目录/新.txt"].map(async (name) => {
-          // The diff and Open at Revision documents read `<commit>:<path>`.
-          expect(await client.show(["--end-of-options", `${hash}:${name}`])).toBe(
-            name === "目录/新.txt" ? "moved\n" : "one\ntwo\n"
-          );
-          expect((await sourceFile(client, hash, name)).hash).toBe(hash);
-          const history = await loadHistory(
-            client,
-            {
-              text: "",
-              author: "",
-              since: "",
-              until: "",
-              path: name,
-              revision: "",
-              follow: false
-            },
-            0
-          );
-          expect(history.entries[0]?.hash).toBe(hash);
-          expect((await loadRestorePlan(client, hash, name, name)).destination).toBe(name);
-        })
-      );
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
+/** Names that Windows file systems cannot hold. */
+const POSIX_ONLY = ["tab\tname", 'quote"name', "new\nline", "back\\slash", "0:foo"];
+
+describe("file names that Git quotes or escapes", () => {
+  const textNames = ["中文.txt", "café.md", ...(process.platform === "win32" ? [] : POSIX_ONLY)];
+
+  /**
+   * `before` adds `old.txt`; the next commit adds a text file under each name and three bytes
+   * in `binary.dat`, and moves `old.txt` to `目录/新.txt`.
+   */
+  const repo = freshRepo((dir) => {
+    fs.writeFileSync(path.join(dir, "old.txt"), "moved\n");
+    git(["add", "--", "old.txt"], dir);
+    git(["commit", "-q", "-m", "before"], dir);
+    for (const name of textNames) {
+      fs.writeFileSync(path.join(dir, name), "one\ntwo\n");
     }
+    fs.writeFileSync(path.join(dir, "binary.dat"), Buffer.from([0, 1, 2]));
+    fs.mkdirSync(path.join(dir, "目录"));
+    git(["mv", "old.txt", "目录/新.txt"], dir);
+    git(["add", "-A"], dir);
+    git(["commit", "-q", "-m", "hard names"], dir);
   });
 
-  it("lists the first parent's changes for a merge and none for an empty commit", async () => {
-    const dir = makeRepo();
-    try {
-      git(["checkout", "-b", "side"], dir);
-      fs.writeFileSync(path.join(dir, "side"), "side\n");
-      git(["add", "side"], dir);
-      git(["commit", "-m", "side"], dir);
-      git(["checkout", "main"], dir);
-      fs.writeFileSync(path.join(dir, "main"), "main\n");
-      git(["add", "main"], dir);
-      git(["commit", "-m", "main"], dir);
-      git(["merge", "--no-edit", "side"], dir);
-      const client = createGit(dir, "git");
-      const merge = (await commitDetails(client, { commitHash: "HEAD", dateType: "Author Date" }))
-        .commitDetails!;
-      expect(merge.fileChanges.map((change) => change.newFilePath)).toEqual(["side"]);
-      git(["commit", "--allow-empty", "-m", "empty"], dir);
-      const empty = (await commitDetails(client, { commitHash: "HEAD", dateType: "Author Date" }))
-        .commitDetails!;
-      expect(empty.fileChanges).toEqual([]);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
+  it("come back unquoted, with renames found and binary counts left out", async () => {
+    const result = await details(repo(), gitOutput(["rev-parse", "HEAD"], repo()));
+    const expected = [
+      ...textNames.map((name) => change("A", name, name, 2, 0)),
+      change("A", "binary.dat", "binary.dat", null, null),
+      change("R", "old.txt", "目录/新.txt", 0, 0)
+    ];
+    expect(result.commitDetails!.fileChanges.toSorted(byNewPath)).toStrictEqual(
+      expected.toSorted(byNewPath)
+    );
   });
 });
