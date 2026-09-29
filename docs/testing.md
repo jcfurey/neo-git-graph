@@ -1,7 +1,7 @@
 # VS Code UI tests
 
 Use Node.js 24 and the pnpm version pinned in `package.json`. Corepack, which ships with Node.js,
-provides it; the Nix development shell (`flake.nix`) is an alternative:
+provides it:
 
 ```sh
 corepack enable pnpm
@@ -11,8 +11,8 @@ pnpm run test:ext
 
 Scripts and CI-like shells have no terminal to answer prompts. Set
 `COREPACK_ENABLE_DOWNLOAD_PROMPT=0` so Corepack downloads the pinned pnpm without asking. If pnpm
-stops because `node_modules` was installed from another store, for example from the Nix shell,
-reinstall with `pnpm install --frozen-lockfile --config.confirm-modules-purge=false`. After that,
+stops because `node_modules` was installed from another store, reinstall with
+`pnpm install --frozen-lockfile --config.confirm-modules-purge=false`. After that,
 `pnpm run format`, `pnpm test`, and `pnpm run typecheck` run without a terminal.
 `pnpm run clean:all` removes build output, downloaded VS Code test builds, test results, and
 packaged VSIX files.
