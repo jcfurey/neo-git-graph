@@ -60,6 +60,25 @@ longer in the tree is not traced. The rules below are what make a replacement in
    baseline, and adds the module to the log below. Inherited tests are
    replaced the same way, with the behaviour they check as the specification.
 
+## Rewording user-interface text
+
+Text the user reads cannot be reimplemented like code, so it is written again in new words:
+
+1. **Specify.** The specification describes each inherited string without quoting it: where it
+   appears, what it must tell the user, what fills its placeholders, and what limits its length.
+   It also sets out a style guide and glossaries drawn only from Branchwise's own strings and
+   translations.
+2. **Blank.** Before the writer starts, each inherited string is replaced by a placeholder and its
+   translations are removed, so the writer never sees them.
+3. **Write.** The writer writes the English and every translation from the specification, then
+   updates the tests and documents that quote the old text.
+4. **Record.** A common word or a standard term can match the old text exactly ("Cancel", 日期).
+   After review, such lines are listed like any other coincidence. The removal and the new text
+   are committed together, so that blame can find those matches.
+
+[ui-wording.md](clean-room/ui-wording.md) is the first such rewording. Specifications written
+before it quote the wording they were written against.
+
 ## End state
 
 When `pnpm run provenance` reports no inherited lines and the logged rewrites cover the modules
@@ -172,3 +191,11 @@ the code came from and how it was replaced.
 | `src/old-extension/webviewBridge.ts`                  | [legacy-host.md](clean-room/legacy-host.md)               | `727d4a0`    |
 | `src/old-extension/repoManager.ts`                    | [legacy-host.md](clean-room/legacy-host.md)               | `727d4a0`    |
 | `src/old-extension/extensionState.ts`                 | [legacy-host.md](clean-room/legacy-host.md)               | `727d4a0`    |
+| `src/old-extension/l10n/webviewL10n.ts`               | [ui-wording.md](clean-room/ui-wording.md)                 | `e0f6c50`    |
+| `l10n/bundle.l10n.json`                               | [ui-wording.md](clean-room/ui-wording.md)                 | `e0f6c50`    |
+| `l10n/bundle.l10n.zh-cn.json`                         | [ui-wording.md](clean-room/ui-wording.md)                 | `e0f6c50`    |
+| `l10n/bundle.l10n.zh-tw.json`                         | [ui-wording.md](clean-room/ui-wording.md)                 | `e0f6c50`    |
+| `package.nls.json`                                    | [ui-wording.md](clean-room/ui-wording.md)                 | `e0f6c50`    |
+| `package.nls.zh-cn.json`                              | [ui-wording.md](clean-room/ui-wording.md)                 | `e0f6c50`    |
+| `package.nls.zh-tw.json`                              | [ui-wording.md](clean-room/ui-wording.md)                 | `e0f6c50`    |
+| `scripts/check-l10n.js`                               | [ui-wording.md](clean-room/ui-wording.md)                 | `d67507c`    |

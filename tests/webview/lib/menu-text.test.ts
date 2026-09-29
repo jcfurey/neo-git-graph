@@ -77,43 +77,43 @@ describe("English titles", () => {
   it.each([0, 1, 2])("lists the commit menu of a commit with %i parents", (count) => {
     const parentHashes = ["a".repeat(40), "b".repeat(40)].slice(0, count);
     expect(titles(menus.commitMenu({ ...commit, parentHashes }, new Map()))).toBe(
-      "Add Tag… | Create Branch… | --- | Checkout… | Cherry Pick… | Revert… | --- | " +
-        "Merge into current branch… | Reset current branch to this Commit… | --- | " +
+      "Create Tag… | Create Branch… | --- | Check Out… | Cherry-pick… | Revert… | --- | " +
+        "Merge into Current Branch… | Reset Current Branch to This Commit… | --- | " +
         "Edit commits after this (interactive rebase)… | " +
         "Fold staged changes into this commit (fixup)… | Compare with… | " +
-        "Use as Good Bisect Commit | Use as Bad Bisect Commit | Copy Commit Hash to Clipboard"
+        "Use as Good Bisect Commit | Use as Bad Bisect Commit | Copy Commit ID"
     );
   });
 
   it("lists the menu of a branch that is not checked out", () => {
     expect(titles(menus.refMenu(topic, false))).toBe(
       "Focus this branch | Compare with… | --- | Configure Upstream… | Create Worktree… | " +
-        "Move the current branch onto this (rebase)… | Checkout Branch | Push Branch… | " +
-        "Rename Branch… | Delete Branch… | Merge into current branch… | --- | " +
-        "Copy Branch Name to Clipboard"
+        "Move the current branch onto this (rebase)… | Check Out Branch | Push Branch… | " +
+        "Rename Branch… | Delete Local Branch… | Merge into Current Branch… | --- | " +
+        "Copy Branch Name"
     );
   });
 
   it("lists the menu of the checked-out branch", () => {
     expect(titles(menus.refMenu(main, true))).toBe(
       "Focus this branch | Compare with… | --- | Configure Upstream… | Create Worktree… | " +
-        "Push Branch… | Pull Branch… | Rename Branch… | --- | Copy Branch Name to Clipboard"
+        "Push Branch… | Pull Branch… | Rename Branch… | --- | Copy Branch Name"
     );
   });
 
   it.each([false, true])("lists the menus of remote branches and tags (%s)", (isHead) => {
     expect(titles(menus.refMenu(remote, isHead))).toBe(
       "Focus this branch | Compare with… | --- | Move the current branch onto this (rebase)… | " +
-        "Create Worktree… | Delete Remote Branch… | Fetch… | Checkout Branch… | --- | " +
-        "Copy Branch Name to Clipboard"
+        "Create Worktree… | Delete Remote Branch… | Fetch… | Check Out Branch… | --- | " +
+        "Copy Branch Name"
     );
     expect(titles(menus.refMenu({ ...remote, name: "origin/HEAD" }, isHead))).toBe(
       "Compare with… | --- | Move the current branch onto this (rebase)… | Create Worktree… | " +
-        "Fetch… | --- | Copy Branch Name to Clipboard"
+        "Fetch… | --- | Copy Branch Name"
     );
     expect(titles(menus.refMenu(tag, isHead))).toBe(
-      "Compare with… | --- | Delete Tag… | Push Tag… | Delete Remote Tag… | --- | " +
-        "Copy Tag Name to Clipboard"
+      "Compare with… | --- | Delete Local Tag… | Push Tag to Remote… | Delete Remote Tag… | " +
+        "--- | Copy Tag Name"
     );
   });
 });
@@ -124,39 +124,43 @@ describe("English questions", () => {
   const current = "<b>the current branch</b>";
 
   it.each<[string, () => Array<ContextMenuEntry>, string]>([
-    ["Add Tag…", () => menus.commitMenu(commit, new Map()), `Add tag to commit ${hashName}`],
+    [
+      "Create Tag…",
+      () => menus.commitMenu(commit, new Map()),
+      `Create a tag on commit ${hashName}`
+    ],
     [
       "Create Branch…",
       () => menus.commitMenu(commit, new Map()),
-      `Enter the name of the branch ${hashName}`
+      `Enter a name for a new branch at commit ${hashName} (the branch is not checked out):`
     ],
     [
-      "Checkout…",
+      "Check Out…",
       () => menus.commitMenu(commit, new Map()),
-      `Are you sure you want to checkout commit ${hashName}? This will result in a 'detached HEAD' state.` +
+      `Check out commit ${hashName}? This detaches HEAD: no branch will be checked out, and new commits will not be on any branch.` +
         explain(
           "You can build and test here. Create a branch from this commit to keep new work, or check out a branch to return."
         )
     ],
     [
-      "Cherry Pick…",
+      "Cherry-pick…",
       () => menus.commitMenu(commit, new Map()),
-      `Are you sure you want to cherry pick commit ${hashName}?`
+      `Cherry-pick commit ${hashName}? Its changes are applied to the current branch as a new commit.`
     ],
     [
       "Revert…",
       () => menus.commitMenu(commit, new Map()),
-      `Are you sure you want to revert commit ${hashName}?`
+      `Revert commit ${hashName}? A new commit that undoes its changes is added to the current branch.`
     ],
     [
-      "Merge into current branch…",
+      "Merge into Current Branch…",
       () => menus.commitMenu(commit, new Map()),
-      `Are you sure you want to merge ${hashName} into ${current}?`
+      `Merge ${hashName} into ${current}?`
     ],
     [
-      "Reset current branch to this Commit…",
+      "Reset Current Branch to This Commit…",
       () => menus.commitMenu(commit, new Map()),
-      `Are you sure you want to reset ${current} to commit ${hashName}?` +
+      `Reset ${current} to commit ${hashName}?` +
         explain(
           "Soft and mixed keep your files. Hard discards uncommitted changes. The previous position stays in the reflog, so Recover lost commits can bring it back."
         )
@@ -164,26 +168,22 @@ describe("English questions", () => {
     [
       "Rename Branch…",
       () => menus.refMenu(topic, false),
-      "Enter the new name for the branch <b><i>topic</i></b>:"
+      "Enter a new name for branch <b><i>topic</i></b>:"
     ],
     [
-      "Delete Branch…",
+      "Delete Local Branch…",
       () => menus.refMenu(topic, false),
-      "Are you sure you want to delete the branch <b><i>topic</i></b>?" +
+      "Delete local branch <b><i>topic</i></b>?" +
         explain(
           "The commits stay in the repository for a while. Recover lost commits lists the branch tip if you need it back."
         )
     ],
     [
-      "Merge into current branch…",
+      "Merge into Current Branch…",
       () => menus.refMenu(topic, false),
-      `Are you sure you want to merge <b><i>topic</i></b> into ${current}?`
+      `Merge <b><i>topic</i></b> into ${current}?`
     ],
-    [
-      "Delete Tag…",
-      () => menus.refMenu(tag, false),
-      "Are you sure you want to delete the tag <b><i>v1.0</i></b>?"
-    ]
+    ["Delete Local Tag…", () => menus.refMenu(tag, false), "Delete local tag <b><i>v1.0</i></b>?"]
   ])("asks %s with emphasis on the names", (title, entries, expected) => {
     entries()
       .find((entry) => entry?.title === title)!
@@ -200,18 +200,18 @@ describe("English copy failures", () => {
   it.each<[() => Array<ContextMenuEntry>, string, string]>([
     [
       () => menus.commitMenu(commit, new Map()),
-      "Copy Commit Hash to Clipboard",
-      "Unable to Copy Commit Hash to Clipboard"
+      "Copy Commit ID",
+      "Unable to copy the commit ID to the clipboard"
     ],
     [
       () => menus.refMenu(remote, false),
-      "Copy Branch Name to Clipboard",
-      "Unable to Copy Branch Name to Clipboard"
+      "Copy Branch Name",
+      "Unable to copy the branch name to the clipboard"
     ],
     [
       () => menus.refMenu(tag, false),
-      "Copy Tag Name to Clipboard",
-      "Unable to Copy Tag Name to Clipboard"
+      "Copy Tag Name",
+      "Unable to copy the tag name to the clipboard"
     ]
   ])("reports a failed %#: %s", async (entries, title, message) => {
     entries()

@@ -88,7 +88,7 @@ test("hands the page its strings and settings", async () => {
     result: { l10n: Record<string, string>; config: unknown };
   };
   expect(response.success).toBe(true);
-  expect(response.result.l10n["repo"]).toBe("Repo");
+  expect(response.result.l10n["repo"]).toBe("Repository");
   expect(Object.keys(response.result.l10n).length).toBeGreaterThan(100);
   expect(response.result.config).toEqual({
     autoCenterCommitDetailsView: true,

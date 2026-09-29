@@ -34,7 +34,7 @@ export function RefLabel({ gitRef, active }: { gitRef: GitRef; active: boolean }
 
   const lines = [gitRef.name];
   if (active) {
-    lines.push(l10n.labelCurrentBranch);
+    lines.push(l10n.tooltipCurrentBranch);
   }
   if (branch !== undefined && branch.upstream !== "") {
     lines.push(branch.upstream);

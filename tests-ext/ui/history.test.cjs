@@ -709,7 +709,7 @@ suite("Branchwise workflow UI", function () {
     await until(
       () =>
         graph.evaluate(
-          `document.querySelector('tr[data-commit-hash="*"]')?.textContent.includes('Uncommitted Changes (3)')`
+          `document.querySelector('tr[data-commit-hash="*"]')?.textContent.includes('Uncommitted changes in 3 files')`
         ),
       "changed file count"
     );
@@ -779,8 +779,8 @@ suite("Branchwise workflow UI", function () {
     await finished();
     assert.equal(git(["config", "branch.main.remote"]), "upstream");
     await contextRef("v-ui");
-    await menu("Push Tag…");
-    await button("Push Tag");
+    await menu("Push Tag to Remote…");
+    await button("Push Tag to Remote");
     await finished();
     assert.equal(git(["tag", "--list"], bare), "v-ui");
     await contextRef("v-ui");
@@ -873,9 +873,9 @@ suite("Branchwise workflow UI", function () {
 
     await openRepo(dir);
     for (const [open, item] of [
-      [() => contextRef("held-tag"), "Delete Tag…"],
-      [() => contextRef("held-branch"), "Delete Branch…"],
-      [() => contextCommit("held-base"), "Reset current branch to this Commit…"]
+      [() => contextRef("held-tag"), "Delete Local Tag…"],
+      [() => contextRef("held-branch"), "Delete Local Branch…"],
+      [() => contextCommit("held-base"), "Reset Current Branch to This Commit…"]
     ]) {
       await open();
       await holdEnter(item);
@@ -903,10 +903,10 @@ suite("Branchwise workflow UI", function () {
 
     // A fresh Enter on the confirm button still confirms.
     await contextRef("held-tag");
-    await menu("Delete Tag…");
+    await menu("Delete Local Tag…");
     await until(async () => (await focused()) === "Cancel", "tag deletion focuses Cancel");
     await keypress("Tab", 8);
-    assert.equal(await focused(), "Yes");
+    assert.equal(await focused(), "Delete Local Tag");
     await keypress("Enter");
     await finished();
     assert.equal(git(["tag", "--list"], dir), "");
@@ -920,12 +920,12 @@ suite("Branchwise workflow UI", function () {
     commit("f", "main side");
     await button("Refresh");
     await contextRef("ui-conflict");
-    await menu("Merge into current branch…");
-    await button("Yes, merge");
+    await menu("Merge into Current Branch…");
+    await button("Merge");
     await until(
       () =>
         graph.evaluate(
-          'document.querySelector("[role=dialog]")?.innerText.includes("Unable to Merge")'
+          'document.querySelector("[role=dialog]")?.innerText.includes("Unable to merge the branch")'
         ),
       "merge rejection"
     );
@@ -1610,7 +1610,7 @@ suite("Branchwise workflow UI", function () {
       );
       assert.doesNotMatch(
         await graph.evaluate('document.querySelector("main").innerText'),
-        /No commits yet/
+        /has no commits yet/
       );
     } finally {
       fs.writeFileSync(included, "[core]\n");
@@ -1724,7 +1724,7 @@ suite("Branchwise workflow UI", function () {
       !!document.querySelector('[data-focus-branch="topic"][data-focus-paused="true"]') &&
       document.querySelector('select[aria-label="Dimming"]')?.value === 'strong' &&
       ${eye}?.getAttribute('aria-pressed') === 'false' && !${remoteRow} &&
-      ${nav}?.querySelector('button[aria-label="Show Remote Branches"]')?.getAttribute('aria-pressed') === '${remotesShown}'
+      ${nav}?.querySelector('button[aria-label="Show Remote Branches in Graph"]')?.getAttribute('aria-pressed') === '${remotesShown}'
     `),
         "first repository preferences"
       );
@@ -1751,7 +1751,7 @@ suite("Branchwise workflow UI", function () {
       })()`);
       await button("Pause focus");
       await button("Show remote origin in the graph");
-      await button("Show Remote Branches", nav);
+      await button("Show Remote Branches in Graph", nav);
       await checkFirst();
       await pan();
       const position = await graph.evaluate(
@@ -1785,12 +1785,12 @@ suite("Branchwise workflow UI", function () {
       await checkFirst();
       await checkStart();
       // Turning all remotes on must retain the individual hidden choice.
-      await button("Show Remote Branches", nav);
+      await button("Show Remote Branches in Graph", nav);
       await checkFirst(true);
       await button("Show remote origin in the graph");
       await until(() => graph.evaluate(remoteRow), "remote restored after panel recreation");
       await button("Show remote origin in the graph");
-      await button("Show Remote Branches", nav);
+      await button("Show Remote Branches in Graph", nav);
       await pan();
       await graph.evaluate("window.__preferenceReloadMarker = true");
       await vscode.commands.executeCommand("workbench.action.webview.reloadWebviewAction");
@@ -1900,7 +1900,7 @@ suite("Branchwise workflow UI", function () {
       "search respects hidden remote"
     );
     await button("Return to Graph");
-    await headerChoice("Branch", "Show All");
+    await headerChoice("Branch", "All branches");
     await graph.evaluate(`document.querySelector('header button[title="*"]').click()`);
     assert.equal(
       await graph.evaluate(
@@ -1934,12 +1934,12 @@ suite("Branchwise workflow UI", function () {
         ),
       "hiding selected remote clears selection"
     );
-    await button("Show Remote Branches", nav);
+    await button("Show Remote Branches in Graph", nav);
     await until(
       () => graph.evaluate(`!${visible(origin)} && !${visible(upstream)} && ${visible(base)}`),
       "all remotes hidden"
     );
-    await button("Show Remote Branches", nav);
+    await button("Show Remote Branches in Graph", nav);
     await until(
       () => graph.evaluate(`!${visible(origin)} && ${visible(upstream)}`),
       "individual choice retained after global toggle"
@@ -2561,7 +2561,7 @@ suite("Branchwise workflow UI", function () {
       () => graph.evaluate(`!!document.querySelector('header button[title="pane-feature"]')`),
       "graph filtered to pane-feature"
     );
-    await button("Show All", nav);
+    await button("All branches", nav);
     await until(
       () => graph.evaluate(`!!document.querySelector('header button[title="*"]')`),
       "graph shows all branches"
@@ -2583,7 +2583,7 @@ suite("Branchwise workflow UI", function () {
         ),
       "remote branch selected and shown again"
     );
-    await button("Show All", nav);
+    await button("All branches", nav);
     await graph.evaluate(`${nav}.querySelector('input').focus()`);
     const page = connections[0];
     const screenshot = await page.call("Page.captureScreenshot");

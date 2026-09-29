@@ -33,12 +33,12 @@ function changed(
 
 /** English text for the strings the tree reads, with every other key naming itself. */
 const ENGLISH: Record<string, string> = {
-  tooltipAddition: "{0} addition",
-  tooltipAdditions: "{0} additions",
-  tooltipDeletion: "{0} deletion",
-  tooltipDeletions: "{0} deletions",
-  tooltipBinaryFile: "This is a binary file, unable to view diff.",
-  tooltipRenamedTo: "{0} was renamed to {1}"
+  tooltipAddition: "{0} line added",
+  tooltipAdditions: "{0} lines added",
+  tooltipDeletion: "{0} line deleted",
+  tooltipDeletions: "{0} lines deleted",
+  tooltipBinaryFile: "Git has no text diff for this file, so there is nothing to open.",
+  tooltipRenamedTo: "Renamed from {0} to {1}"
 };
 
 /** The key-name strings `setupWebviewTest` installs, put back after a test swaps them. */
@@ -313,10 +313,10 @@ describe("files", () => {
     const tooltips = (name: string) =>
       [...entry(name).querySelectorAll("[title]")].map((node) => node.getAttribute("title"));
 
-    expect(tooltips("one")).toEqual(["1 addition", "1 deletion"]);
-    expect(tooltips("zero")).toEqual(["0 additions", "0 deletions"]);
-    expect(tooltips("many")).toEqual(["1234 additions", "2 deletions"]);
-    expect(tooltips("single")).toEqual(["1 addition", "0 deletions"]);
+    expect(tooltips("one")).toEqual(["1 line added", "1 line deleted"]);
+    expect(tooltips("zero")).toEqual(["0 lines added", "0 lines deleted"]);
+    expect(tooltips("many")).toEqual(["1234 lines added", "2 lines deleted"]);
+    expect(tooltips("single")).toEqual(["1 line added", "0 lines deleted"]);
   });
 
   it("marks a rename with its change letter and both paths", () => {
@@ -331,11 +331,13 @@ describe("files", () => {
     const marker = (name: string) =>
       [...entry(name).querySelectorAll("span")].find((span) => span.textContent === "R");
 
-    expect(marker("path.ts")?.title).toBe("old/path.ts was renamed to new/path.ts");
+    expect(marker("path.ts")?.title).toBe("Renamed from old/path.ts to new/path.ts");
     expect(entry("path.ts").textContent).toBe("path.tsR(+2|-3)");
-    expect(marker("rb.png")?.title).toBe("ra.png was renamed to rb.png");
+    expect(marker("rb.png")?.title).toBe("Renamed from ra.png to rb.png");
     expect(entry("rb.png").textContent).toBe("rb.pngR");
-    expect(entry("rb.png").title).toBe("This is a binary file, unable to view diff.");
+    expect(entry("rb.png").title).toBe(
+      "Git has no text diff for this file, so there is nothing to open."
+    );
     for (const name of ["m.ts", "a.ts", "d.ts"]) {
       expect(marker(name)).toBeUndefined();
     }
@@ -353,11 +355,11 @@ describe("files", () => {
     const renameTitle = (name: string) =>
       [...entry(name).querySelectorAll("span")].find((span) => span.textContent === "R")?.title;
 
-    expect(renameTitle("c.txt")).toBe("a$$b.txt was renamed to c.txt");
-    expect(renameTitle("r")).toBe("p$&q was renamed to r");
-    expect(renameTitle("n$'ew.ts")).toBe("o.ts was renamed to n$'ew.ts");
-    expect(renameTitle("y.txt")).toBe("x{1}.txt was renamed to y.txt");
-    expect(renameTitle("z.txt")).toBe("$`{0} was renamed to z.txt");
+    expect(renameTitle("c.txt")).toBe("Renamed from a$$b.txt to c.txt");
+    expect(renameTitle("r")).toBe("Renamed from p$&q to r");
+    expect(renameTitle("n$'ew.ts")).toBe("Renamed from o.ts to n$'ew.ts");
+    expect(renameTitle("y.txt")).toBe("Renamed from x{1}.txt to y.txt");
+    expect(renameTitle("z.txt")).toBe("Renamed from $`{0} to z.txt");
   });
 
   it("shows names as text, never as markup", () => {

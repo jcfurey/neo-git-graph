@@ -147,7 +147,7 @@ function checkoutCommit(hash: string) {
       window.l10n.explainDetachedHead
     ),
     inputs: [],
-    action: window.l10n.dialogYes,
+    action: window.l10n.checkout,
     source: commitMenuSource(hash),
     onSubmit: () => runAction({ command: "checkoutCommit", commitHash: hash })
   });
@@ -330,7 +330,7 @@ function deleteTag(gitRef: GitRef) {
   openFormDialog({
     message: format(window.l10n.dialogDeleteConfirm, window.l10n.labelTag, named(gitRef.name)),
     inputs: [],
-    action: window.l10n.dialogYes,
+    action: window.l10n.deleteTag,
     source: refMenuSource(gitRef),
     destructive: true,
     onSubmit: () => runAction({ command: "deleteTag", tagName: gitRef.name })

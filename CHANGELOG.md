@@ -21,6 +21,7 @@ Branchwise was named (neo) Git Graph, `jcfurey.neo-git-graph`, through its 0.9.6
 - Name the fork's maintainer in CODEOWNERS and override development dependencies with high-severity advisories (js-yaml, vite, serialize-javascript) and a moderate one (qs).
 - Publish from a protected `release` environment after checking both registry tokens, pin third-party actions to commit SHAs, update the artifact actions, and allow a manual dry run of the release workflow.
 - Remove the unused avatar code, its storage, and the Clear Avatar Cache command; activation deletes the old avatar cache once, and the deprecated `fetchAvatars` setting has no effect.
+- Reword the graph's buttons, menus, dialogs, error titles, tooltips and settings descriptions, with new Simplified and Traditional Chinese translations. Confirmations name their action instead of asking whether you are sure, and their buttons repeat the action instead of saying Yes. Error titles use sentence case, the pickers say **Repository**, the commit columns are **Message** and **ID**, **Load More Commits** is **Load Older Commits**, the reset options say exactly what each mode keeps, and the uncommitted changes row counts files in the singular for one file. The translation check also covers the settings translations, and it reports empty or malformed entries instead of passing or crashing.
 
 ### Fixed
 

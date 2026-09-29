@@ -10,7 +10,7 @@ Inside the graph, a hint above the commit list says how to reach a commit's acti
 
 ## Branches pane
 
-**Branches** toggles a pane beside the graph with four sections: local branches, remotes, tags and stashes. Each section collapses independently, and the filter box narrows all of them at once. Clicking a local or remote branch selects its history using the header's **View** choice, and **Show All** restores every branch without dimming. Clicking a tag opens the graph at that commit. Clicking a stash opens its diff.
+**Branches** toggles a pane beside the graph with four sections: local branches, remotes, tags and stashes. Each section collapses independently, and the filter box narrows all of them at once. Clicking a local or remote branch selects its history using the header's **View** choice, and **All branches** restores every branch without dimming. Clicking a tag opens the graph at that commit. Clicking a stash opens its diff.
 
 The **View** selector offers three ways to read a selected branch:
 
@@ -18,19 +18,19 @@ The **View** selector offers three ways to read a selected branch:
 - **Focus direct history** keeps every visible branch in place. The selected branch's first-parent history stays in full colour, merged-in history uses muted colour, and commits outside its ancestry turn gray.
 - **Focus all ancestors** also keeps the surrounding branches, but gives merged-in history full colour.
 
-Focus changes the view without checking out a branch. When enabled from **Show All**, it starts with the checked-out branch when available. Switching focus between branches keeps the rows and lanes in place. **Clear focus** restores full colour, and the view choice is remembered per repository. Hovering, keyboard focus, selection and the checked-out commit retain clear text and markers. Search still filters the visible commits; in focus views it searches across branches and colours matches using their actual ancestry, even when connecting commits are outside the page.
+Focus changes the view without checking out a branch. When enabled from **All branches**, it starts with the checked-out branch when available. Switching focus between branches keeps the rows and lanes in place. **Clear focus** restores full colour, and the view choice is remembered per repository. Hovering, keyboard focus, selection and the checked-out commit retain clear text and markers. Search still filters the visible commits; in focus views it searches across branches and colours matches using their actual ancestry, even when connecting commits are outside the page.
 
 Right-click a local or remote branch label in the graph, or a branch in the Branches pane, and choose **Focus this branch**. It enables direct-history focus or keeps your existing ancestor mode, and resumes focus if paused. A **Focus** badge marks the target in both places, separately from the bold checked-out branch.
 
 Use **Pause focus** to temporarily restore every branch's colours, then **Resume focus** to return to the same target and mode. The badge reads **Paused** while paused. **Dimming → Subtle / Strong** adjusts the graph lines and commit dots; text stays readable at either strength. The target, dimming strength and pause state are remembered per repository. **Clear focus** removes the target and its badges.
 
-Every row carries the same context menu as the matching label in the graph, reached by right-click or its trailing menu button. The most common action is also inline: **Checkout** on a branch, **Fetch** on a remote, **Show in Graph** on a tag, and **Apply** or **Pop** on a stash. The **+** buttons create a branch at HEAD, add a remote, or save a stash.
+Every row carries the same context menu as the matching label in the graph, reached by right-click or its trailing menu button. The most common action is also inline: **Check Out** on a branch, **Fetch** on a remote, **Show in Graph** on a tag, and **Apply** or **Pop** on a stash. The **+** buttons create a branch at HEAD, add a remote, or save a stash.
 
 Each remote has an eye button that hides its graph labels and commits reachable only through that remote. Shared history, local branches and tags remain visible. Hidden remote branches stay listed but dimmed; selecting or focusing one shows that remote again. Individual choices are saved per repository and also apply to history searches. Explicit commit or revision lookups can still open hidden history.
 
 Hidden choices are restored when you reopen the graph. Renaming a remote through the extension keeps its visibility choice; removing it clears that choice. On refresh, choices for groups that no longer exist are removed, while groups with remaining remote-tracking refs keep their choice. A remote renamed outside the extension appears as a new, visible group.
 
-The eye button on the **Remotes** section hides all remote branches temporarily. Showing them again preserves the individual hidden choices. Hiding a remote whose branch is selected clears that selection to **Show All** without checking out another branch. The settings cog in the header holds the global toggle and a shortcut to the extension's settings.
+The eye button on the **Remotes** section hides all remote branches temporarily. Showing them again preserves the individual hidden choices. Hiding a remote whose branch is selected clears that selection to **All branches** without checking out another branch. The settings cog in the header holds the global toggle and a shortcut to the extension's settings.
 
 ## Wide graphs
 
@@ -38,11 +38,11 @@ Branch lines stay within the **Graph** column, including after column resizing. 
 
 The column headings and graph scrollbar stay below the main controls as you scroll down the history, including when the controls wrap in a narrow window. Normal mouse-wheel scrolling still moves vertically.
 
-Clicking or keyboard-navigating to a commit brings its lane into view with the smallest necessary horizontal movement. To find it again after panning, use the crosshair button beside **Description**, labelled **Reveal selected lane**. Refreshing or resizing keeps your manual position where the graph still fits; switching repositories resets it. Revealing a lane leaves the branch, checkout, focus mode, and commit text position unchanged.
+Clicking or keyboard-navigating to a commit brings its lane into view with the smallest necessary horizontal movement. To find it again after panning, use the crosshair button beside **Message**, labelled **Reveal selected lane**. Refreshing or resizing keeps your manual position where the graph still fits; switching repositories resets it. Revealing a lane leaves the branch, checkout, focus mode, and commit text position unchanged.
 
 ## Loading errors
 
-If Git cannot load the graph, the view shows the error and a **Retry** button. Repair the reported problem, such as an unavailable repository, Git executable, or invalid Git configuration, then retry. **No commits yet** is reserved for a successful load of a repository without commits.
+If Git cannot load the graph, the view shows the error and a **Retry** button. Repair the reported problem, such as an unavailable repository, Git executable, or invalid Git configuration, then retry. **This repository has no commits yet** is reserved for a successful load of a repository without commits.
 
 ## Remotes and tracking
 

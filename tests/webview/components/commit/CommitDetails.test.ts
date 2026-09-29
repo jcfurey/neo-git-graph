@@ -32,8 +32,8 @@ vi.mock("@/webview/utils/fileTree", async (original) => {
 });
 
 const ENGLISH = {
-  detailCommit: "Commit: {0}",
-  detailParents: "Parents: {0}",
+  detailCommit: "Commit ID: {0}",
+  detailParents: "Parent commits: {0}",
   detailAuthor: "Author: {0}",
   detailDate: "Date: {0}",
   detailCommitter: "Committer: {0}",
@@ -276,8 +276,11 @@ describe("commit facts", () => {
     drawUnderOwner(h(CommitDetails, { details: sample() }));
 
     expect(facts()).toEqual([
-      { label: "Commit: ", text: `Commit: ${"c".repeat(40)}` },
-      { label: "Parents: ", text: `Parents: ${"p".repeat(40)}, ${"q".repeat(40)}` },
+      { label: "Commit ID: ", text: `Commit ID: ${"c".repeat(40)}` },
+      {
+        label: "Parent commits: ",
+        text: `Parent commits: ${"p".repeat(40)}, ${"q".repeat(40)}`
+      },
       { label: "Author: ", text: "Author: Ann <x> <ann+tag@ex ample.com>" },
       { label: "Date: ", text: "Date: Tuesday, November 14, 2023 at 10:13:20 PM UTC" },
       { label: "Committer: ", text: "Committer: Bob" }

@@ -1668,5 +1668,117 @@
       "constructor(context: ExtensionContext) {",
       "this.workspaceState = context.workspaceState;"
     ]
+  },
+  "src/old-extension/l10n/webviewL10n.ts": {
+    "commit": "e0f6c50a0c38cfa51f0b8f2a37a47161eaab3c96",
+    "specification": "docs/clean-room/ui-wording.md",
+    "note": "The exported signature callers depend on, and strings whose clearest wording is a common word or phrase: column headers, the branch picker, buttons, field labels, commit-detail labels, and VS Code's own command title for Initialize Repository (Decisions Q1, Q10).",
+    "lines": [
+      "export function getWebviewLocalizedStrings() {",
+      "return {",
+      "branch: vscode.l10n.t(\"Branch\"),",
+      "refresh: vscode.l10n.t(\"Refresh\"),",
+      "close: vscode.l10n.t(\"Close\"),",
+      "graph: vscode.l10n.t(\"Graph\"),",
+      "date: vscode.l10n.t(\"Date\"),",
+      "author: vscode.l10n.t(\"Author\"),",
+      "initializeRepo: vscode.l10n.t(\"Initialize Repository\"),",
+      "createBranch: vscode.l10n.t(\"Create Branch\"),",
+      "revert: vscode.l10n.t(\"Revert\"),",
+      "renameBranch: vscode.l10n.t(\"Rename Branch\"),",
+      "labelCurrentBranch: vscode.l10n.t(\"the current branch\"),",
+      "dialogAddTagMessage: vscode.l10n.t(\"Message\"),",
+      "dialogAddTagOptional: vscode.l10n.t(\"Optional\"),",
+      "dialogCreateBranchSubmit: vscode.l10n.t(\"Create Branch\"),",
+      "dialogCheckoutConfirm: vscode.l10n.t(",
+      "dialogRenameBranchSubmit: vscode.l10n.t(\"Rename Branch\"),",
+      "dialogCancel: vscode.l10n.t(\"Cancel\"),",
+      "dialogDismiss: vscode.l10n.t(\"Dismiss\"),",
+      "detailAuthor: vscode.l10n.t(\"Author: {0}\"),",
+      "detailDate: vscode.l10n.t(\"Date: {0}\"),",
+      "detailCommitter: vscode.l10n.t(\"Committer: {0}\"),",
+      "export type LocalizedStrings = ReturnType<typeof getWebviewLocalizedStrings>;"
+    ]
+  },
+  "l10n/bundle.l10n.json": {
+    "commit": "e0f6c50a0c38cfa51f0b8f2a37a47161eaab3c96",
+    "specification": "docs/clean-room/ui-wording.md",
+    "note": "Generated from the source: the common words of webviewL10n.ts, and Branch Name, which Branchwise's own recoveryBranchName uses (Decisions Q1, Q2).",
+    "lines": [
+      "\"Branch\": \"Branch\",",
+      "\"Refresh\": \"Refresh\",",
+      "\"Close\": \"Close\",",
+      "\"Graph\": \"Graph\",",
+      "\"Date\": \"Date\",",
+      "\"Author\": \"Author\",",
+      "\"Initialize Repository\": \"Initialize Repository\",",
+      "\"Create Branch\": \"Create Branch\",",
+      "\"Revert\": \"Revert\",",
+      "\"Rename Branch\": \"Rename Branch\",",
+      "\"the current branch\": \"the current branch\",",
+      "\"Optional\": \"Optional\",",
+      "\"Cancel\": \"Cancel\",",
+      "\"Dismiss\": \"Dismiss\",",
+      "\"Author: {0}\": \"Author: {0}\",",
+      "\"Date: {0}\": \"Date: {0}\",",
+      "\"Committer: {0}\": \"Committer: {0}\",",
+      "\"Branch Name\": \"Branch Name\","
+    ]
+  },
+  "l10n/bundle.l10n.zh-cn.json": {
+    "commit": "e0f6c50a0c38cfa51f0b8f2a37a47161eaab3c96",
+    "specification": "docs/clean-room/ui-wording.md",
+    "note": "Fresh translations of those common words that equal the standard terms of the glossary (§5.1, Decisions Q1, Q20).",
+    "lines": [
+      "\"Branch\": \"分支\",",
+      "\"Refresh\": \"刷新\",",
+      "\"Close\": \"关闭\",",
+      "\"Graph\": \"分支图\",",
+      "\"Date\": \"日期\",",
+      "\"Author\": \"作者\",",
+      "\"Initialize Repository\": \"初始化仓库\",",
+      "\"Create Branch\": \"创建分支\",",
+      "\"Revert\": \"还原\",",
+      "\"Rename Branch\": \"重命名分支\",",
+      "\"the current branch\": \"当前分支\",",
+      "\"Optional\": \"可选\",",
+      "\"Cancel\": \"取消\",",
+      "\"Author: {0}\": \"作者：{0}\",",
+      "\"Date: {0}\": \"日期：{0}\",",
+      "\"Committer: {0}\": \"提交者：{0}\","
+    ]
+  },
+  "l10n/bundle.l10n.zh-tw.json": {
+    "commit": "e0f6c50a0c38cfa51f0b8f2a37a47161eaab3c96",
+    "specification": "docs/clean-room/ui-wording.md",
+    "note": "Fresh translations of those common words that equal the standard terms of the glossary (§5.1, Decisions Q1, Q20).",
+    "lines": [
+      "\"Branch\": \"分支\",",
+      "\"Refresh\": \"重新整理\",",
+      "\"Close\": \"關閉\",",
+      "\"Graph\": \"分支圖\",",
+      "\"Date\": \"日期\",",
+      "\"Author\": \"作者\",",
+      "\"Create Branch\": \"建立分支\",",
+      "\"Revert\": \"還原\",",
+      "\"Rename Branch\": \"重新命名分支\",",
+      "\"the current branch\": \"目前分支\",",
+      "\"Cancel\": \"取消\",",
+      "\"Author: {0}\": \"作者：{0}\",",
+      "\"Date: {0}\": \"日期：{0}\",",
+      "\"Committer: {0}\": \"提交者：{0}\","
+    ]
+  },
+  "scripts/check-l10n.js": {
+    "commit": "d67507cea1bb72b1d94526bbc7d9cc45d6a65ba7",
+    "specification": "docs/clean-room/ui-wording.md",
+    "note": "Module imports, an empty list, and two report messages the specification requires word for word (§3.5).",
+    "lines": [
+      "const fs = require(\"node:fs\");",
+      "const path = require(\"node:path\");",
+      "const problems = [];",
+      "problems.push(`stale (not in English): \"${key}\"`);",
+      "problems.push(`missing translation: \"${key}\"`);"
+    ]
   }
 }

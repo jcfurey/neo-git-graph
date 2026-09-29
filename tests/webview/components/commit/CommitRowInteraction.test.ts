@@ -470,7 +470,7 @@ describe("what the row shows", () => {
     expect(line.firstElementChild!.childNodes).toHaveLength(0);
     expect(line.querySelector(".flex-1 > b")?.textContent).toBe("Fix <b>it</b>");
     expect(tr.cells[1]!.querySelector('span[title^="main"]')!.getAttribute("title")).toBe(
-      "main\nlabelCurrentBranch"
+      "main\ntooltipCurrentBranch"
     );
   });
 
@@ -506,7 +506,8 @@ describe("what the row shows", () => {
 
   it("describes the uncommitted changes", () => {
     speak({
-      uncommittedChanges: "Uncommitted Changes ({0})",
+      uncommittedChange: "Uncommitted changes in {0} file",
+      uncommittedChanges: "Uncommitted changes in {0} files",
       viewWorkingTreeChanges: "Click or press Enter to view uncommitted changes."
     });
     const tr = drawOne({ commit: ROWS[0]!, expanded: true });
@@ -515,8 +516,8 @@ describe("what the row shows", () => {
     expect(tr.getAttribute("data-emphasized")).toBe("true");
     expect(tr.getAttribute("aria-selected")).toBe("true");
     const message = tr.cells[1]!.querySelector<HTMLElement>(".flex-1")!;
-    expect(message.querySelector("b")?.textContent).toBe("Uncommitted Changes (3)");
-    expect(message.title).toBe("Uncommitted Changes (3)");
+    expect(message.querySelector("b")?.textContent).toBe("Uncommitted changes in 3 files");
+    expect(message.title).toBe("Uncommitted changes in 3 files");
     expect(tr.querySelector("button")).toBeNull();
     expect(
       [...tr.cells].slice(2).map((cell) => [cell.textContent, cell.hasAttribute("title")])
@@ -525,6 +526,19 @@ describe("what the row shows", () => {
       ["", false],
       ["", false]
     ]);
+  });
+
+  it("uses the singular for a single changed path", () => {
+    speak({
+      uncommittedChange: "Uncommitted changes in {0} file",
+      uncommittedChanges: "Uncommitted changes in {0} files"
+    });
+    uncommittedChanges.value = 1;
+    const tr = drawOne({ commit: ROWS[0]! });
+
+    const message = tr.cells[1]!.querySelector<HTMLElement>(".flex-1")!;
+    expect(message.querySelector("b")?.textContent).toBe("Uncommitted changes in 1 file");
+    expect(message.title).toBe("Uncommitted changes in 1 file");
   });
 
   it("shows a selected row that is not the tab stop", () => {

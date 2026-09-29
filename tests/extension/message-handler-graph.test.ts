@@ -295,8 +295,8 @@ describe("saving view state", () => {
 
 describe("commit diffs", () => {
   it.each([
-    ["A", "dir/new.txt", "dir/new.txt", "new.txt (Added in 01234567)"],
-    ["D", "old/gone/old.txt", "old/gone/old.txt", "old.txt (Deleted in 01234567)"],
+    ["A", "dir/new.txt", "dir/new.txt", "new.txt (Added by 01234567)"],
+    ["D", "old/gone/old.txt", "old/gone/old.txt", "old.txt (Deleted by 01234567)"],
     ["M", "m.txt", "m.txt", "m.txt (01234567^ ↔ 01234567)"],
     ["R", "a/from.txt", "b/to.txt", "to.txt (01234567^ ↔ 01234567)"]
   ])("title a change of type %s after its file", async (type, oldFilePath, newFilePath, title) => {

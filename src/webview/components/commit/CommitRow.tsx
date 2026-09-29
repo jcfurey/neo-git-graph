@@ -66,6 +66,12 @@ function orderRefs(refs: Array<GitRef>, headBranch: string | null) {
   return current <= 0 ? refs : [refs[current]!, ...refs.filter((_ref, index) => index !== current)];
 }
 
+/** The text of the uncommitted-changes row for `count` changed paths, singular for one. */
+function uncommittedText(count: number) {
+  const l10n = window.l10n;
+  return format(count === 1 ? l10n.uncommittedChange : l10n.uncommittedChanges, count).join("");
+}
+
 /** A signal that holds whether `test` passes, so a row re-renders only when its answer changes. */
 function useWatch(test: () => boolean, key: string) {
   return useMemo(() => computed(test), [key]).value;
@@ -102,9 +108,7 @@ export function CommitRow({
   const selected = useWatch(() => selectedCommits.value.some((entry) => entry.hash === hash), hash);
   const l10n = window.l10n;
 
-  const message = uncommitted
-    ? format(l10n.uncommittedChanges, uncommittedChanges.value).join("")
-    : commit.message;
+  const message = uncommitted ? uncommittedText(uncommittedChanges.value) : commit.message;
   const date = uncommitted ? null : getCommitDate(commit.date);
   const emphasized = isHead || uncommitted || expanded || selected || menuOpen;
   const background =

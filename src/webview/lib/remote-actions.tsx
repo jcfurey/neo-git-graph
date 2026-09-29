@@ -80,10 +80,14 @@ function usesNetwork(command: RemoteCommand) {
   }
 }
 
+/**
+ * Run `command` through Git Activity. The operation is titled by its own label; `message` is
+ * used only where that label is missing or empty.
+ */
 export function sendRemoteAction(
   command: RemoteCommand,
   repo: string,
-  message: string,
+  message: string = window.l10n.runningGitAction,
   options: {
     background?: boolean;
     otherRepo?: boolean;
@@ -273,11 +277,7 @@ export function handleLoadRemotes(message: QueryResult<"loadRemotes">) {
       source: null,
       onSubmit: ([destination]) => {
         if (action === "tagPush") {
-          send(
-            { command: "pushTag", requestId, remote: destination, tagName: name },
-            repo,
-            window.l10n.pushingTag
-          );
+          send({ command: "pushTag", requestId, remote: destination, tagName: name }, repo);
         } else {
           openFormDialog({
             message: format(
