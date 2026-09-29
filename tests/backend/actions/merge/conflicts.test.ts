@@ -1,89 +1,120 @@
-import { execFileSync } from "node:child_process";
-import * as fs from "node:fs";
-import * as path from "node:path";
+import fs from "node:fs";
+import path from "node:path";
 
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { mergeBranch, mergeCommit } from "@/backend/actions/merge";
 import { createGit } from "@/backend/gitClient";
 
-import { git, makeRepo } from "@tests/backend/helpers";
+import { git, gitOutput, makeRepo } from "@tests/backend/helpers";
 
-let repo: string;
-let bin: string;
+const STOPPED_ON_CONFLICTS =
+  "The merge stopped on conflicts. Resolve and stage the conflicted files, then continue or abort the merge from the status strip.";
+
+/**
+ * A stand-in for a Git that answers in another language: it runs the real Git, prints everything
+ * it said on standard output alone, with the English conflict wording translated, and exits with
+ * Git's status.
+ */
+const TRANSLATING_GIT = `#!/bin/sh
+said=$(git "$@" 2>&1)
+status=$?
+printf '%s\\n' "$said" | sed -e 's/CONFLICT/KONFLIKT/g' -e 's/Automatic merge failed/Automatischer Merge fehlgeschlagen/g'
+exit $status
+`;
+
+/** `main` and `topic` each rewrote `f` differently, so merging one into the other conflicts. */
+let repo = "";
+/** An empty folder beside the repository, for the translating executable. */
+let binFolder = "";
+
+function commitF(text: string) {
+  fs.writeFileSync(path.join(repo, "f"), text);
+  git(["commit", "-q", "-am", `f says ${text}`], repo);
+}
 
 beforeEach(() => {
   repo = makeRepo();
-  bin = fs.mkdtempSync(path.join(path.dirname(repo), "ngg-git-"));
-  git(["checkout", "-b", "topic"], repo);
-  fs.writeFileSync(path.join(repo, "f"), "topic");
-  git(["commit", "-am", "topic"], repo);
-  git(["checkout", "main"], repo);
-  fs.writeFileSync(path.join(repo, "f"), "main");
-  git(["commit", "-am", "main"], repo);
+  binFolder = fs.realpathSync.native(fs.mkdtempSync(path.join(path.dirname(repo), "ngg-git-")));
+  git(["checkout", "-q", "-b", "topic"], repo);
+  commitF("topic");
+  git(["checkout", "-q", "main"], repo);
+  commitF("main");
 });
 
 afterEach(() => {
-  fs.rmSync(repo, { recursive: true, force: true });
-  fs.rmSync(bin, { recursive: true, force: true });
+  for (const dir of [binFolder, repo]) {
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  }
 });
 
-/** Git whose messages are translated, as with a non-English locale. */
-function translatedGit() {
-  const file = path.join(bin, "git");
-  fs.writeFileSync(
-    file,
-    [
-      "#!/bin/sh",
-      'output=$(git "$@" 2>&1)',
-      "status=$?",
-      "printf '%s\\n' \"$output\" | sed -e 's/CONFLICT/KONFLIKT/g' -e 's/Automatic merge failed/Automatischer Merge fehlgeschlagen/g'",
-      'exit "$status"'
-    ].join("\n"),
-    { mode: 0o755 }
-  );
-  return file;
+function translatingGit() {
+  const executable = path.join(binFolder, "git");
+  fs.writeFileSync(executable, TRANSLATING_GIT);
+  fs.chmodSync(executable, 0o755);
+  return executable;
 }
 
-const binaries: Array<[string, () => string]> = [
-  ["English", () => "git"],
-  // Windows cannot run the shell script as a Git executable.
-  ...(process.platform === "win32" ? [] : [["translated", translatedGit] as [string, () => string]])
-];
+const mergeInProgress = () => fs.existsSync(path.join(repo, ".git", "MERGE_HEAD"));
 
-it.each(binaries)("reports a conflicted merge with %s output", async (_, binary) => {
-  const executable = binary();
-  await expect(
-    mergeBranch(
-      createGit(repo, executable),
-      { branchName: "topic", createNewCommit: true },
-      executable
-    )
-  ).rejects.toThrow("The merge stopped on conflicts");
-  expect(fs.existsSync(path.join(repo, ".git", "MERGE_HEAD"))).toBe(true);
+/** The reason a promise was rejected with, which must be an `Error`. */
+async function rejectionOf(promise: Promise<unknown>) {
+  const reason = await promise.then(
+    () => "resolved",
+    (error: unknown) => error
+  );
+  expect(reason).toBeInstanceOf(Error);
+  return reason as Error;
+}
+
+/** Both merge actions report a stopped merge by Git's state, whatever `executable` prints. */
+async function expectConflictsRecognised(executable: string) {
+  const branchMerge = mergeBranch(
+    createGit(repo, executable),
+    { branchName: "topic", createNewCommit: true },
+    executable
+  );
+  expect((await rejectionOf(branchMerge)).message).toBe(STOPPED_ON_CONFLICTS);
+  expect(mergeInProgress()).toBe(true);
+
   git(["merge", "--abort"], repo);
+  expect(mergeInProgress()).toBe(false);
 
-  const topic = execFileSync("git", ["rev-parse", "topic"], { cwd: repo }).toString().trim();
-  await expect(
-    mergeCommit(
-      createGit(repo, executable),
-      { commitHash: topic, createNewCommit: false },
-      executable
-    )
-  ).rejects.toThrow("The merge stopped on conflicts");
+  const commitMerge = mergeCommit(
+    createGit(repo, executable),
+    { commitHash: gitOutput(["rev-parse", "refs/heads/topic"], repo), createNewCommit: false },
+    executable
+  );
+  expect((await rejectionOf(commitMerge)).message).toBe(STOPPED_ON_CONFLICTS);
+  expect(mergeInProgress()).toBe(true);
+}
+
+describe("a merge that stops on conflicts", () => {
+  it("is reported as such with Git's own output", async () => {
+    await expectConflictsRecognised("git");
+  });
+
+  // Node starts executables on Windows without a POSIX shell, so a `#!` script cannot stand in
+  // for git.exe there; the case is registered anyway, so reports show it as skipped.
+  it.skipIf(process.platform === "win32")(
+    "is reported as such when Git's messages are translated",
+    async () => {
+      await expectConflictsRecognised(translatingGit());
+    }
+  );
 });
 
-it("reports other merge failures with Git's own message", async () => {
-  fs.writeFileSync(path.join(repo, "f"), "uncommitted");
-  const error = await mergeBranch(
-    createGit(repo, "git"),
-    { branchName: "topic", createNewCommit: true },
-    "git"
-  ).catch((reason: unknown) => reason);
-  // Git's message is in the user's language, so only check that it is Git's, not ours.
-  expect(error).toBeInstanceOf(Error);
-  expect((error as Error).message).not.toContain("The merge stopped on conflicts");
-  expect((error as Error).message.trim()).not.toBe("");
-  expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe("uncommitted");
-  expect(fs.existsSync(path.join(repo, ".git", "MERGE_HEAD"))).toBe(false);
+describe("a merge that fails for another reason", () => {
+  it("rejects with Git's text, not the conflict message, and starts no merge", async () => {
+    fs.writeFileSync(path.join(repo, "f"), "uncommitted");
+
+    const error = await rejectionOf(
+      mergeBranch(createGit(repo, "git"), { branchName: "topic", createNewCommit: true }, "git")
+    );
+
+    expect(error.message).not.toContain("The merge stopped on conflicts");
+    expect(error.message.trim()).not.toBe("");
+    expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe("uncommitted");
+    expect(mergeInProgress()).toBe(false);
+  });
 });

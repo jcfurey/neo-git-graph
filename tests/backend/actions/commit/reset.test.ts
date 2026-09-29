@@ -1,5 +1,5 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
+import fs from "node:fs";
+import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -9,41 +9,55 @@ import type { GitResetMode } from "@/backend/types";
 
 import { freshRepo, git, gitOutput } from "@tests/backend/helpers";
 
-// The first commit has f = "x"; the second, checked out, has f = "y".
+// `f` holds "x" in the first commit and "y" in the second, which is HEAD; nothing is pending.
 const repo = freshRepo((dir) => {
   fs.writeFileSync(path.join(dir, "f"), "y");
-  git(["commit", "-am", "second"], dir);
+  git(["commit", "-q", "-am", "f becomes y"], dir);
 });
 
-async function reset(resetMode: GitResetMode) {
-  const first = gitOutput(["rev-parse", "HEAD^"], repo());
-  await resetToCommit(createGit(repo(), "git"), { commitHash: first, resetMode });
+const read = (args: string[]) => gitOutput(args, repo());
+
+const reset = (commitHash: string, resetMode: GitResetMode) =>
+  resetToCommit(createGit(repo(), "git"), { commitHash, resetMode });
+
+/** Where HEAD is, and what `f` holds in the index and in the work tree. */
+function state() {
   return {
-    moved: gitOutput(["rev-parse", "HEAD"], repo()) === first,
-    index: gitOutput(["show", ":f"], repo()),
-    worktree: fs.readFileSync(path.join(repo(), "f"), "utf8")
+    head: read(["rev-parse", "HEAD"]),
+    staged: read(["cat-file", "blob", ":0:f"]),
+    workTree: fs.readFileSync(path.join(repo(), "f"), "utf8")
   };
 }
 
 describe("resetToCommit", () => {
-  // Each mode keeps a different part of the newer commit.
-  it("soft-resets HEAD and keeps the index and working tree", async () => {
-    expect(await reset("soft")).toEqual({ moved: true, index: "y", worktree: "y" });
+  it.each<[GitResetMode, string, string]>([
+    ["soft", "y", "y"],
+    ["mixed", "x", "y"],
+    ["hard", "x", "x"]
+  ])(
+    "a %s reset moves HEAD back and leaves f staged as %j and on disk as %j",
+    async (mode, staged, workTree) => {
+      const target = read(["rev-parse", "HEAD^"]);
+
+      await expect(reset(target, mode)).resolves.toBeUndefined();
+
+      expect(state()).toEqual({ head: target, staged, workTree });
+    }
+  );
+
+  it("accepts an abbreviated commit ID", async () => {
+    const target = read(["rev-parse", "HEAD^"]);
+
+    await expect(reset(target.slice(0, 7), "hard")).resolves.toBeUndefined();
+
+    expect(state()).toEqual({ head: target, staged: "x", workTree: "x" });
   });
 
-  it("mixed-resets HEAD and the index and keeps the working tree", async () => {
-    expect(await reset("mixed")).toEqual({ moved: true, index: "x", worktree: "y" });
-  });
+  it("rejects a commit that does not exist and leaves HEAD alone", async () => {
+    const headBefore = read(["rev-parse", "HEAD"]);
 
-  it("hard-resets HEAD, the index, and the working tree", async () => {
-    expect(await reset("hard")).toEqual({ moved: true, index: "x", worktree: "x" });
-  });
+    await expect(reset("0".repeat(40), "hard")).rejects.toThrow();
 
-  it("throws for an unknown commit and leaves HEAD in place", async () => {
-    const head = gitOutput(["rev-parse", "HEAD"], repo());
-    await expect(
-      resetToCommit(createGit(repo(), "git"), { commitHash: "0".repeat(40), resetMode: "hard" })
-    ).rejects.toThrow();
-    expect(gitOutput(["rev-parse", "HEAD"], repo())).toBe(head);
+    expect(read(["rev-parse", "HEAD"])).toBe(headBefore);
   });
 });

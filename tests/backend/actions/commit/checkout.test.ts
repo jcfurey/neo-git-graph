@@ -5,21 +5,29 @@ import { createGit } from "@/backend/gitClient";
 
 import { freshRepo, git, gitOutput } from "@tests/backend/helpers";
 
-const repo = freshRepo((dir) => git(["commit", "--allow-empty", "-m", "second"], dir));
+// `main` gains an empty second commit, so its tip and its parent differ.
+const repo = freshRepo((dir) => git(["commit", "--allow-empty", "-q", "-m", "second"], dir));
+
+const read = (args: string[]) => gitOutput(args, repo());
+
+const checkout = (commitHash: string) => checkoutCommit(createGit(repo(), "git"), { commitHash });
 
 describe("checkoutCommit", () => {
-  it("checks out a commit with a detached HEAD", async () => {
-    const first = gitOutput(["rev-parse", "HEAD^"], repo());
-    await checkoutCommit(createGit(repo(), "git"), { commitHash: first });
-    expect(gitOutput(["rev-parse", "HEAD"], repo())).toBe(first);
-    expect(() => gitOutput(["symbolic-ref", "-q", "HEAD"], repo())).toThrow();
-    expect(gitOutput(["rev-parse", "main"], repo())).not.toBe(first);
+  it("detaches HEAD at the commit and leaves the branch where it was", async () => {
+    const target = read(["rev-parse", "HEAD^"]);
+    const branchTip = read(["rev-parse", "refs/heads/main"]);
+
+    await expect(checkout(target)).resolves.toBeUndefined();
+
+    expect(read(["rev-parse", "HEAD"])).toBe(target);
+    // A detached HEAD is not a symbolic ref, so Git exits non-zero and the helper throws.
+    expect(() => read(["symbolic-ref", "--quiet", "HEAD"])).toThrow();
+    expect(read(["rev-parse", "refs/heads/main"])).toBe(branchTip);
   });
 
-  it("throws for a nonexistent commit and stays on the branch", async () => {
-    await expect(
-      checkoutCommit(createGit(repo(), "git"), { commitHash: "0".repeat(40) })
-    ).rejects.toThrow();
-    expect(gitOutput(["symbolic-ref", "HEAD"], repo())).toBe("refs/heads/main");
+  it("rejects a commit that does not exist and stays on the branch", async () => {
+    await expect(checkout("0".repeat(40))).rejects.toThrow();
+
+    expect(read(["symbolic-ref", "HEAD"])).toBe("refs/heads/main");
   });
 });

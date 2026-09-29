@@ -20,7 +20,8 @@ import type { RepositoryAction } from "@/backend/types";
 
 import { makeRepo } from "@tests/backend/helpers";
 
-let repo: string;
+// The running test's own repository, as `makeRepo` gave it; the `beforeEach` below sets it anew.
+let repo = "";
 let dirs: string[];
 const git = () => createGit(repo, "git");
 const read = (args: string[], cwd = repo) =>

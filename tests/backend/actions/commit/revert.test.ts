@@ -1,5 +1,5 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
+import fs from "node:fs";
+import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -8,26 +8,37 @@ import { createGit } from "@/backend/gitClient";
 
 import { freshRepo, git, gitOutput } from "@tests/backend/helpers";
 
+// HEAD is a commit that adds `g`.
 const repo = freshRepo((dir) => {
   fs.writeFileSync(path.join(dir, "g"), "revert-me");
   git(["add", "g"], dir);
-  git(["commit", "-m", "second commit"], dir);
+  git(["commit", "-q", "-m", "add g"], dir);
 });
 
+const read = (args: string[]) => gitOutput(args, repo());
+
+const revert = (commitHash: string) =>
+  revertCommit(createGit(repo(), "git"), { commitHash, parentIndex: 0 });
+
 describe("revertCommit", () => {
-  it("adds a commit that undoes the reverted one", async () => {
-    const reverted = gitOutput(["rev-parse", "HEAD"], repo());
-    await revertCommit(createGit(repo(), "git"), { commitHash: reverted, parentIndex: 0 });
-    expect(gitOutput(["rev-parse", "HEAD^"], repo())).toBe(reverted);
+  it.each([
+    ["its full ID", (id: string) => id],
+    ["an abbreviated ID", (id: string) => id.slice(0, 7)]
+  ])("commits the undoing of a commit named by %s", async (_, spell) => {
+    const reverted = read(["rev-parse", "HEAD"]);
+
+    await expect(revert(spell(reverted))).resolves.toBeUndefined();
+
+    expect(read(["rev-parse", "HEAD^"])).toBe(reverted);
     expect(fs.existsSync(path.join(repo(), "g"))).toBe(false);
-    expect(gitOutput(["status", "--porcelain"], repo())).toBe("");
+    expect(read(["status", "--porcelain", "--untracked-files=all"])).toBe("");
   });
 
-  it("throws for a nonexistent commit and leaves the branch unchanged", async () => {
-    const head = gitOutput(["rev-parse", "HEAD"], repo());
-    await expect(
-      revertCommit(createGit(repo(), "git"), { commitHash: "0".repeat(40), parentIndex: 0 })
-    ).rejects.toThrow();
-    expect(gitOutput(["rev-parse", "HEAD"], repo())).toBe(head);
+  it("rejects a commit that does not exist and leaves HEAD alone", async () => {
+    const headBefore = read(["rev-parse", "HEAD"]);
+
+    await expect(revert("0".repeat(40))).rejects.toThrow();
+
+    expect(read(["rev-parse", "HEAD"])).toBe(headBefore);
   });
 });

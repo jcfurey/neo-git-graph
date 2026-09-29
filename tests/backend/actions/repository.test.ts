@@ -23,7 +23,8 @@ import { normalizeRepoPath } from "@/backend/utils/repoPath";
 
 import { makeRepo } from "@tests/backend/helpers";
 
-let repo: string;
+// The running test's own repository, as `makeRepo` gave it; the `beforeEach` below sets it anew.
+let repo = "";
 let dirs: string[];
 const read = (args: string[], cwd = repo) =>
   execFileSync("git", args, { cwd, stdio: "pipe" }).toString().trim();
