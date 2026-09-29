@@ -11,6 +11,7 @@ Branchwise was named (neo) Git Graph, `jcfurey.neo-git-graph`, through its 0.9.6
 
 - A lint rule that reports hard-coded text in the webview.
 - Tests that submit each classic action dialog and check the request, the action dispatch table, and the repository lock, with CI keeping `menus.tsx` function coverage at 80% or more.
+- Rewritten tests for the Git queries and actions, repository discovery, the extension host, the menus and the webview utilities, so that each test can fail when the behaviour it names breaks. New checks include tags created on commits other than HEAD, branches that are never force-updated, and the walkthrough and guide the extension opens.
 
 ### Changed
 

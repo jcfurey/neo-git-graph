@@ -1780,5 +1780,313 @@
       "problems.push(`stale (not in English): \"${key}\"`);",
       "problems.push(`missing translation: \"${key}\"`);"
     ]
+  },
+  "tests/backend/queries/loadCommits/list.test.ts": {
+    "commit": "c23aa1f1782642e3b378bec3d8b72d31d9658bb7",
+    "specification": "docs/clean-room/tests-backend-queries.md",
+    "note": "Fields that the query options and result types fix (maxCommits, dateType, hard, isRepo, moreCommitsAvailable, uncommittedChanges and the uncommitted row's placeholder fields), test lifecycle hooks, and the helper's interface: makeRepo's signature, its first file and its return.",
+    "lines": [
+      "branchName: \"\",",
+      "maxCommits: 300,",
+      "showRemoteBranches: false,",
+      "dateType: \"Author Date\",",
+      "showUncommittedChanges: false",
+      "moreCommitsAvailable: false,",
+      "moreCommitsAvailable: false,",
+      "hard: false,",
+      "uncommittedChanges: 0",
+      "expect(result.uncommittedChanges).toBe(1);",
+      "hash: \"*\",",
+      "parentHashes: [result.head],",
+      "author: \"*\",",
+      "email: \"\",",
+      "date: expect.any(Number),",
+      "message: \"\",",
+      "refs: []",
+      "moreCommitsAvailable: false,",
+      "uncommittedChanges: 0"
+    ]
+  },
+  "tests/backend/queries/loadBranches/list.test.ts": {
+    "commit": "c23aa1f1782642e3b378bec3d8b72d31d9658bb7",
+    "specification": "docs/clean-room/tests-backend-queries.md",
+    "note": "Fields that the query options and result types fix (maxCommits, dateType, hard, isRepo, moreCommitsAvailable, uncommittedChanges and the uncommitted row's placeholder fields), test lifecycle hooks, and the helper's interface: makeRepo's signature, its first file and its return.",
+    "lines": [
+      "afterAll(() => {",
+      "head: \"main\",",
+      "hard: false,",
+      "isRepo: true",
+      "isRepo: true",
+      "hard: false,",
+      "isRepo: true",
+      "hard: false,",
+      "isRepo: true"
+    ]
+  },
+  "tests/backend/queries/commitDetails/get.test.ts": {
+    "commit": "c23aa1f1782642e3b378bec3d8b72d31d9658bb7",
+    "specification": "docs/clean-room/tests-backend-queries.md",
+    "note": "Fields that the query options and result types fix (maxCommits, dateType, hard, isRepo, moreCommitsAvailable, uncommittedChanges and the uncommitted row's placeholder fields), test lifecycle hooks, and the helper's interface: makeRepo's signature, its first file and its return.",
+    "lines": [
+      "beforeAll(() => {",
+      "repo = makeRepo();",
+      "afterAll(() => {",
+      "commitDetails: {",
+      "date: expect.any(Number),",
+      "expect(result.commitDetails!.date).toBeGreaterThan(0);"
+    ]
+  },
+  "tests/backend/helpers.ts": {
+    "commit": "c23aa1f1782642e3b378bec3d8b72d31d9658bb7",
+    "specification": "docs/clean-room/tests-backend-queries.md",
+    "note": "Fields that the query options and result types fix (maxCommits, dateType, hard, isRepo, moreCommitsAvailable, uncommittedChanges and the uncommitted row's placeholder fields), test lifecycle hooks, and the helper's interface: makeRepo's signature, its first file and its return.",
+    "lines": [
+      "export function makeRepo(): string {",
+      "fs.writeFileSync(path.join(dir, \"f\"), \"x\");",
+      "return dir;"
+    ]
+  },
+  "tests/webview/test-utils.ts": {
+    "commit": "864f33e09da545c9a76aea846c9631182c439a98",
+    "specification": "docs/clean-room/tests-webview-utils.md",
+    "note": "The eight configuration values and the window.l10n and acquireVsCodeApi definitions that the helpers' interface fixes (Decision Q1), lifecycle hooks, mock resets, and describe blocks named after the exported functions they test.",
+    "lines": [
+      "autoCenterCommitDetailsView: true,",
+      "dateFormat: \"Date & Time\",",
+      "graphColours: [],",
+      "graphStyle: \"rounded\",",
+      "initialLoadCommits: 300,",
+      "loadMoreCommits: 100,",
+      "locale: \"en\",",
+      "showCurrentBranchByDefault: false",
+      "Object.defineProperty(window, \"l10n\", {",
+      "if (dispatchMessages) {",
+      "rpcClient.init();",
+      "initDispatcher();"
+    ]
+  },
+  "tests/webview/test-helpers.test.ts": {
+    "commit": "864f33e09da545c9a76aea846c9631182c439a98",
+    "specification": "docs/clean-room/tests-webview-utils.md",
+    "note": "The eight configuration values and the window.l10n and acquireVsCodeApi definitions that the helpers' interface fixes (Decision Q1), lifecycle hooks, mock resets, and describe blocks named after the exported functions they test.",
+    "lines": [
+      "autoCenterCommitDetailsView: true,",
+      "dateFormat: \"Date & Time\",",
+      "graphColours: [],",
+      "graphStyle: \"rounded\",",
+      "initialLoadCommits: 300,",
+      "loadMoreCommits: 100,",
+      "locale: \"en\",",
+      "showCurrentBranchByDefault: false",
+      "Object.defineProperty(globalThis, \"acquireVsCodeApi\", {"
+    ]
+  },
+  "tests/webview/lib/rpc-client.test.ts": {
+    "commit": "864f33e09da545c9a76aea846c9631182c439a98",
+    "specification": "docs/clean-room/tests-webview-utils.md",
+    "note": "The eight configuration values and the window.l10n and acquireVsCodeApi definitions that the helpers' interface fixes (Decision Q1), lifecycle hooks, mock resets, and describe blocks named after the exported functions they test.",
+    "lines": [
+      "beforeEach(() => {",
+      "vscodeApi.postMessage.mockClear();",
+      "afterEach(() => {",
+      "vi.useRealTimers();",
+      "await vi.runAllTimersAsync();"
+    ]
+  },
+  "tests/webview/setup.ts": {
+    "commit": "864f33e09da545c9a76aea846c9631182c439a98",
+    "specification": "docs/clean-room/tests-webview-utils.md",
+    "note": "The eight configuration values and the window.l10n and acquireVsCodeApi definitions that the helpers' interface fixes (Decision Q1), lifecycle hooks, mock resets, and describe blocks named after the exported functions they test.",
+    "lines": [
+      "setState: vi.fn(),",
+      "postMessage: vi.fn()",
+      "Object.defineProperty(globalThis, \"acquireVsCodeApi\", {",
+      "value: vi.fn(() => vscodeApi),"
+    ]
+  },
+  "tests/webview/utils/columns.test.ts": {
+    "commit": "864f33e09da545c9a76aea846c9631182c439a98",
+    "specification": "docs/clean-room/tests-webview-utils.md",
+    "note": "The eight configuration values and the window.l10n and acquireVsCodeApi definitions that the helpers' interface fixes (Decision Q1), lifecycle hooks, mock resets, and describe blocks named after the exported functions they test.",
+    "lines": [
+      "describe(\"isColumnWidths\", () => {",
+      "expect(isColumnWidths(null)).toBe(false);",
+      "describe(\"moveBoundary\", () => {"
+    ]
+  },
+  "tests/webview/utils/ref.test.ts": {
+    "commit": "864f33e09da545c9a76aea846c9631182c439a98",
+    "specification": "docs/clean-room/tests-webview-utils.md",
+    "note": "The eight configuration values and the window.l10n and acquireVsCodeApi definitions that the helpers' interface fixes (Decision Q1), lifecycle hooks, mock resets, and describe blocks named after the exported functions they test.",
+    "lines": ["describe(\"hasInvalidRefChars\", () => {", "it.each(["]
+  },
+  "tests/webview/utils/format.test.ts": {
+    "commit": "864f33e09da545c9a76aea846c9631182c439a98",
+    "specification": "docs/clean-room/tests-webview-utils.md",
+    "note": "The eight configuration values and the window.l10n and acquireVsCodeApi definitions that the helpers' interface fixes (Decision Q1), lifecycle hooks, mock resets, and describe blocks named after the exported functions they test.",
+    "lines": ["describe(\"format\", () => {"]
+  },
+  "tests/backend/actions/branch/create.test.ts": {
+    "commit": "8120ada6f61f112c5365fa98713c61452fdf4844",
+    "specification": "docs/clean-room/tests-backend-actions.md",
+    "note": "A describe block named after the action the file tests.",
+    "lines": ["describe(\"createBranch\", () => {"]
+  },
+  "tests/backend/actions/branch/delete.test.ts": {
+    "commit": "8120ada6f61f112c5365fa98713c61452fdf4844",
+    "specification": "docs/clean-room/tests-backend-actions.md",
+    "note": "A describe block named after the action the file tests.",
+    "lines": ["describe(\"deleteBranch\", () => {"]
+  },
+  "tests/backend/actions/branch/rename.test.ts": {
+    "commit": "8120ada6f61f112c5365fa98713c61452fdf4844",
+    "specification": "docs/clean-room/tests-backend-actions.md",
+    "note": "A describe block named after the action the file tests.",
+    "lines": ["describe(\"renameBranch\", () => {"]
+  },
+  "tests/backend/actions/commit/checkout.test.ts": {
+    "commit": "8120ada6f61f112c5365fa98713c61452fdf4844",
+    "specification": "docs/clean-room/tests-backend-actions.md",
+    "note": "A describe block named after the action the file tests.",
+    "lines": ["describe(\"checkoutCommit\", () => {"]
+  },
+  "tests/backend/actions/commit/cherrypick.test.ts": {
+    "commit": "8120ada6f61f112c5365fa98713c61452fdf4844",
+    "specification": "docs/clean-room/tests-backend-actions.md",
+    "note": "A describe block named after the action the file tests.",
+    "lines": ["describe(\"cherrypickCommit\", () => {"]
+  },
+  "tests/backend/actions/commit/reset.test.ts": {
+    "commit": "8120ada6f61f112c5365fa98713c61452fdf4844",
+    "specification": "docs/clean-room/tests-backend-actions.md",
+    "note": "A describe block named after the action the file tests.",
+    "lines": ["describe(\"resetToCommit\", () => {"]
+  },
+  "tests/backend/actions/commit/revert.test.ts": {
+    "commit": "8120ada6f61f112c5365fa98713c61452fdf4844",
+    "specification": "docs/clean-room/tests-backend-actions.md",
+    "note": "A describe block named after the action the file tests.",
+    "lines": ["describe(\"revertCommit\", () => {"]
+  },
+  "tests/backend/actions/merge/mergeBranch.test.ts": {
+    "commit": "8120ada6f61f112c5365fa98713c61452fdf4844",
+    "specification": "docs/clean-room/tests-backend-actions.md",
+    "note": "A describe block named after the action the file tests.",
+    "lines": ["describe(\"mergeBranch\", () => {"]
+  },
+  "tests/backend/actions/merge/mergeCommit.test.ts": {
+    "commit": "8120ada6f61f112c5365fa98713c61452fdf4844",
+    "specification": "docs/clean-room/tests-backend-actions.md",
+    "note": "A describe block named after the action the file tests.",
+    "lines": ["describe(\"mergeCommit\", () => {"]
+  },
+  "tests/backend/actions/tag/delete.test.ts": {
+    "commit": "8120ada6f61f112c5365fa98713c61452fdf4844",
+    "specification": "docs/clean-room/tests-backend-actions.md",
+    "note": "A describe block named after the action the file tests.",
+    "lines": ["describe(\"deleteTag\", () => {"]
+  },
+  "tests/backend/actions/tag/push.test.ts": {
+    "commit": "8120ada6f61f112c5365fa98713c61452fdf4844",
+    "specification": "docs/clean-room/tests-backend-actions.md",
+    "note": "A describe block named after the action the file tests.",
+    "lines": ["describe(\"pushTag\", () => {"]
+  },
+  "tests/webview/lib/actions/clipboard.test.ts": {
+    "commit": "225dc7d4f938e1cb1bc0aab0cb40b156223e4dbd",
+    "specification": "docs/clean-room/tests-webview-menus.md",
+    "note": "The jsdom header, commit fields that the product type fixes, the RPC request and error dialog fields that the product fixes, and generic assertions on posted commands and form inputs.",
+    "lines": [
+      "// @vitest-environment jsdom",
+      "parentHashes: [],",
+      "date: 0,",
+      "refs: []",
+      "beforeEach(() => {",
+      "vscodeApi.postMessage.mockClear();",
+      "expect(request).toEqual({",
+      "kind: \"rpc.request\",",
+      "id: expect.any(String),",
+      "method: \"clipboard.copy\",",
+      "kind: \"error\",",
+      "message: \"unableToCopyToClipboard\",",
+      "reason: null"
+    ]
+  },
+  "tests/webview/lib/menus.test.ts": {
+    "commit": "225dc7d4f938e1cb1bc0aab0cb40b156223e4dbd",
+    "specification": "docs/clean-room/tests-webview-menus.md",
+    "note": "The jsdom header, commit fields that the product type fixes, the RPC request and error dialog fields that the product fixes, and generic assertions on posted commands and form inputs.",
+    "lines": [
+      "// @vitest-environment jsdom",
+      "date: 0,",
+      "refs: []",
+      "kind: \"select\",",
+      "value: \"1\",",
+      "options: [",
+      "expect(vscodeApi.postMessage).toHaveBeenCalledWith({",
+      "command,",
+      "expect(vscodeApi.postMessage).toHaveBeenCalledWith({",
+      "command,",
+      "expect(form.inputs).toEqual([",
+      "expect(vscodeApi.postMessage).toHaveBeenCalledWith({"
+    ]
+  },
+  "tests/webview/components/commit/CommitRow.test.ts": {
+    "commit": "225dc7d4f938e1cb1bc0aab0cb40b156223e4dbd",
+    "specification": "docs/clean-room/tests-webview-menus.md",
+    "note": "The jsdom header, commit fields that the product type fixes, the RPC request and error dialog fields that the product fixes, and generic assertions on posted commands and form inputs.",
+    "lines": [
+      "// @vitest-environment jsdom",
+      "parentHashes: [],",
+      "date: 0,",
+      "message,",
+      "render(",
+      "h(CommitRow, {",
+      "commit,",
+      "messages: new Map(),",
+      "colour: undefined,",
+      "expanded: false,",
+      "onSelect: undefined"
+    ]
+  },
+  "tests-ext/extension.test.ts": {
+    "commit": "47f691c9f1eab374255210622d6f7e6291afd320",
+    "specification": "docs/clean-room/tests-discovery-extension.md",
+    "note": "The stand-in's export names (Decision Q1), suite lifecycle hooks, VS Code's own command for closing editors, and the empty-input call of the product's search.",
+    "lines": [
+      "await vscode.commands.executeCommand(\"workbench.action.closeAllEditors\");",
+      "suiteSetup(async () => {",
+      "setup(async () => {",
+      "suiteTeardown(async () => {",
+      "await vscode.commands.executeCommand(\"workbench.action.closeAllEditors\");"
+    ]
+  },
+  "tests/extension/__mocks__/vscode.ts": {
+    "commit": "47f691c9f1eab374255210622d6f7e6291afd320",
+    "specification": "docs/clean-room/tests-discovery-extension.md",
+    "note": "The stand-in's export names (Decision Q1), suite lifecycle hooks, VS Code's own command for closing editors, and the empty-input call of the product's search.",
+    "lines": [
+      "export const workspace = {",
+      "workspaceFolders: undefined,",
+      "export const commands = {",
+      "export const window = {",
+      "showErrorMessage: () => Promise.resolve(undefined)"
+    ]
+  },
+  "tests/backend/queries/repoSearch.test.ts": {
+    "commit": "47f691c9f1eab374255210622d6f7e6291afd320",
+    "specification": "docs/clean-room/tests-discovery-extension.md",
+    "note": "The stand-in's export names (Decision Q1), suite lifecycle hooks, VS Code's own command for closing editors, and the empty-input call of the product's search.",
+    "lines": [
+      "beforeAll(() => {",
+      "afterAll(() => {",
+      "expect(await findGitRepos([], \"git\", 2)).toEqual([]);"
+    ]
+  },
+  "tests/backend/utils/repoSearch.test.ts": {
+    "commit": "47f691c9f1eab374255210622d6f7e6291afd320",
+    "specification": "docs/clean-room/tests-discovery-extension.md",
+    "note": "The stand-in's export names (Decision Q1), suite lifecycle hooks, VS Code's own command for closing editors, and the empty-input call of the product's search.",
+    "lines": ["afterAll(() => {"]
   }
 }
