@@ -3,7 +3,8 @@
 ## [Unreleased]
 
 Branchwise was named (neo) Git Graph, `jcfurey.neo-git-graph`, through its 0.9.6 builds. Releases
-0.6.0 and earlier are from [asispts/neo-git-graph](https://github.com/asispts/neo-git-graph).
+0.6.0 and earlier are from [asispts/neo-git-graph](https://github.com/asispts/neo-git-graph);
+see [its changelog](https://github.com/asispts/neo-git-graph/blob/v0.6.0/CHANGELOG.md) for them.
 
 ## [0.9.7] - 2026-09-26
 
@@ -24,6 +25,7 @@ Branchwise was named (neo) Git Graph, `jcfurey.neo-git-graph`, through its 0.9.6
 - Remove the unused avatar code, its storage, and the Clear Avatar Cache command; activation deletes the old avatar cache once, and the deprecated `fetchAvatars` setting has no effect.
 - Reword the graph's buttons, menus, dialogs, error titles, tooltips and settings descriptions, with new Simplified and Traditional Chinese translations. Confirmations name their action instead of asking whether you are sure, and their buttons repeat the action instead of saying Yes. Error titles use sentence case, the pickers say **Repository**, the commit columns are **Message** and **ID**, **Load More Commits** is **Load Older Commits**, the reset options say exactly what each mode keeps, and the uncommitted changes row counts files in the singular for one file. The translation check also covers the settings translations, and it reports empty or malformed entries instead of passing or crashing.
 - Rewrite the build, test, lint, editor and CI configuration and the extension manifest. The watch build reports one start and one finish per round, including after an error without a location, shows esbuild's warnings, and a production build ships no source maps. The lint configuration keeps the project's conventions in one file, the translation check also compares the manifest's `%key%` references with `package.nls.json`, the manifest no longer lists the upstream authors, and the Nix development shell is gone.
+- Release Branchwise under the Apache License 2.0 now that it has replaced everything it inherited; earlier versions remain available under the MIT License. The changelog links to asispts/neo-git-graph's for releases 0.6.0 and earlier instead of repeating them, the README's header, headings, and remaining feature and setting descriptions are rewritten, and bug reports and feature requests use issue forms that also ask for the Git version and any remote connection.
 
 ### Fixed
 
@@ -149,93 +151,4 @@ Branchwise was named (neo) Git Graph, `jcfurey.neo-git-graph`, through its 0.9.6
 - Report a diff that VS Code cannot open instead of leaving the request pending.
 - Keep dialog fields and checkboxes visible on themes whose input and dialog backgrounds match.
 
-## [0.6.0] - 2026-08-25
-
-### Added
-
-- View for repositories without commits
-- Faster tab restoration by retaining the webview context
-
-### Changed
-
-- Migrate the webview to Preact
-- Improve long branch name display and emphasize the checked-out branch
-- Deprecate the `fetchAvatars` setting
-
-### Fixed
-
-- Handle root commit actions correctly
-- Avoid reloading a retained panel when it is restored
-- Make repository watcher muting safe
-
-## [0.5.0] - 2026-07-24
-
-### Added
-
-- Git Graph button in the Source Control view title
-- Centralized logging with a dedicated "Git Graph" output channel
-
-### Changed
-
-- Optimize extension initialization logic
-- Replace the "Locate HEAD" button with a highlighted HEAD commit row in the graph
-- Status bar: add icons for the active and watching states
-- Simplify localization to use English-string keys extracted with @vscode/l10n-dev
-
-### Fixed
-
-- Native browser context menu appearing over the graph in browser-based VS Code (vscode.dev / Codespaces)
-- Header layout quirks around the refresh button
-
-## [0.4.0] - 2026-04-10
-
-### Added
-
-- Full internationalization (i18n) support with multiple languages
-- Language support: English (default), Simplified Chinese (简体中文), Traditional Chinese (繁體中文)
-
-### Fixed
-
-- Escape HTML in git output before rendering
-
-## [0.3.0] - 2026-03-26
-
-### Added
-
-- Introduce gitClient based on simple-git
-- Added a button to locate HEAD in the graph
-
-### Changed
-
-- Extract webview bridge
-- Extract webview lifecycle
-
-## [0.2.0] - 2026-03-17
-
-### Added
-
-- Add initial test suite and CI configuration
-
-### Fixed
-
-- Remove information message
-
-## [0.1.1] - 2026-02-23
-
-### Changed
-
-- Migrate build system to esbuild and upgrade dependencies
-- Add oxlint linter and oxfmt formatter
-
-## [0.1.0] - 2026-02-18
-
-Initial release
-
 [Unreleased]: https://github.com/jcfurey/neo-git-graph/compare/v0.6.0...HEAD
-[0.6.0]: https://github.com/asispts/neo-git-graph/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/asispts/neo-git-graph/compare/v0.4.0...v0.5.0
-[0.4.0]: https://github.com/asispts/neo-git-graph/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/asispts/neo-git-graph/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/asispts/neo-git-graph/compare/v0.1.1...v0.2.0
-[0.1.1]: https://github.com/asispts/neo-git-graph/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/asispts/neo-git-graph/releases/tag/v0.1.0

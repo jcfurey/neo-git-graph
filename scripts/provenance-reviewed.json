@@ -2102,7 +2102,6 @@
       "\"branch\",",
       "\"git\",",
       "\"bugs\": {",
-      "\"license\": \"MIT\",",
       "\"repository\": {",
       "\"type\": \"git\",",
       "\"main\": \"./out/extension.js\",",
@@ -2535,5 +2534,23 @@
     "specification": "docs/clean-room/config-build.md",
     "note": "Tool entry points and options the build and tests depend on: module imports, the watch lines the problem matcher reads, the PostCSS dependency-message idiom, esbuild bundle options, compiler options the code relies on, path aliases, Vitest project names and globs, tsconfig extends and includes, and pnpm's install-script decisions.",
     "lines": ["export default defineConfig({"]
+  },
+  "README.md": {
+    "commit": "55e7e8b5aaecfd21a8a6eff2fe18906e256f83a0",
+    "specification": "docs/clean-room/readme-and-templates.md",
+    "note": "Standard README structure a writer arrives at unaided: the centred header's opening tag, the common section headings, and the settings table's column names.",
+    "lines": [
+      "<div align=\"center\">",
+      "## Features",
+      "## Installation",
+      "| Setting                       | Default         | Description                                                  |",
+      "## Contributing"
+    ]
+  },
+  "CHANGELOG.md": {
+    "commit": "5a892daa1e5b06093378a1dd77a09b769da147b8",
+    "specification": "docs/clean-room/readme-and-templates.md",
+    "note": "The title and Unreleased heading that the Keep a Changelog format prescribes (Decisions, D6).",
+    "lines": ["# Changelog", "## [Unreleased]"]
   }
 }

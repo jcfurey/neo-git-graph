@@ -1,11 +1,5 @@
 {
   "forkPoint": "f8ed5df0f4fb1340f6a30d72a088f38a6b3e64fd",
-  "total": 127,
-  "files": {
-    ".github/ISSUE_TEMPLATE/bug_report.md": 16,
-    ".github/ISSUE_TEMPLATE/feature_request.md": 9,
-    "CHANGELOG.md": 57,
-    "LICENSE": 17,
-    "README.md": 28
-  }
+  "total": 0,
+  "files": {}
 }
