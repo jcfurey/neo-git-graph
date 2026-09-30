@@ -1,5 +1,8 @@
 {
-  // See http://go.microsoft.com/fwlink/?LinkId=827846
-  // for the documentation about the extensions.json format
-  "recommendations": ["connor4312.esbuild-problem-matchers", "ms-vscode.extension-test-runner"]
+  "recommendations": [
+    // Contributes the $esbuild and $esbuild-watch problem matchers that tasks.json uses.
+    "connor4312.esbuild-problem-matchers",
+    // Runs and debugs the VS Code test suites of .vscode-test.mjs from the Testing view.
+    "ms-vscode.extension-test-runner"
+  ]
 }

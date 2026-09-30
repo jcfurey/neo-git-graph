@@ -1,13 +1,14 @@
-# Ignore everything
-*
-*/**
+# The VSIX is an allow-list: exclude every path, then include what the installed extension uses.
+# vsce adds package.json and README.md on its own. Order does not matter to vsce.
+**
 
-# Whitelist files
 !LICENSE
-!README.md
 !CHANGELOG.md
 !package.nls*.json
+
+# Bundles built by esbuild.js; the prepublish step cleans out/ and builds without source maps.
 !out/
+# Runtime translation bundles (manifest "l10n")
 !l10n/
 
 !resources/icon.png
@@ -15,8 +16,6 @@
 !resources/webview-icon-dark.svg
 !resources/webview-icon-light.svg
 
-# The user guide that Learn more opens. Contributor documents stay in the repository; the
-# README's links to them point there once packaged.
+# Only the user guide ships from docs/: the Learn more command opens it in the installed extension.
 !docs/git-actions.md
-
 !walkthroughs/

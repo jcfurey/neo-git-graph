@@ -1,8 +1,9 @@
 {
+  // The extension side: everything under src except the webview, which has its own project.
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node", "vscode"]
+    "types": ["node"]
   },
-  "include": ["vitest.config.ts", "src"],
+  "include": ["src", "vitest.config.ts"],
   "exclude": ["src/webview"]
 }

@@ -79,6 +79,19 @@ Text the user reads cannot be reimplemented like code, so it is written again in
 [ui-wording.md](clean-room/ui-wording.md) is the first such rewording. Specifications written
 before it quote the wording they were written against.
 
+## Rewriting configuration
+
+Configuration is rewritten the same way, but much of it is data that something outside the file
+requires. The specification sorts every entry into three kinds:
+
+- **Dictated:** values an interface or tool requires exactly, such as setting names and defaults
+  stored in users' settings, command IDs, action pins, compiler options the code relies on, and
+  the packaged file set. The specification states them, and matching lines are listed as reviewed.
+- **Chosen:** free choices, such as which lint rules to enable or how the build script is
+  structured. The specification states only the requirement each serves, and the writer derives
+  a new choice from it.
+- **Obsolete:** entries nothing needs any more, which are dropped.
+
 ## End state
 
 When `pnpm run provenance` reports no inherited lines and the logged rewrites cover the modules
@@ -233,5 +246,29 @@ the code came from and how it was replaced.
 | `tests/webview/utils/ref.test.ts`                     | [tests-webview-utils.md](clean-room/tests-webview-utils.md)             | `864f33e`    |
 | `tests/webview/utils/format.test.ts`                  | [tests-webview-utils.md](clean-room/tests-webview-utils.md)             | `864f33e`    |
 | `tests/webview/lib/webview-config.test.ts`            | [tests-webview-utils.md](clean-room/tests-webview-utils.md)             | `864f33e`    |
+| `package.json`                                        | [config-manifest.md](clean-room/config-manifest.md)                     | `baf6e38`    |
+| `esbuild.js`                                          | [config-build.md](clean-room/config-build.md)                           | `81faeb2`    |
+| `vitest.config.ts`                                    | [config-build.md](clean-room/config-build.md)                           | `81faeb2`    |
+| `.vscode-test.mjs`                                    | [config-build.md](clean-room/config-build.md)                           | `81faeb2`    |
+| `tsconfig.base.json`                                  | [config-build.md](clean-room/config-build.md)                           | `81faeb2`    |
+| `tsconfig.json`                                       | [config-build.md](clean-room/config-build.md)                           | `81faeb2`    |
+| `tests/tsconfig.json`                                 | [config-build.md](clean-room/config-build.md)                           | `81faeb2`    |
+| `tests/webview/tsconfig.json`                         | [config-build.md](clean-room/config-build.md)                           | `81faeb2`    |
+| `tests-ext/tsconfig.json`                             | [config-build.md](clean-room/config-build.md)                           | `81faeb2`    |
+| `pnpm-workspace.yaml`                                 | [config-build.md](clean-room/config-build.md)                           | `81faeb2`    |
+| `.oxlintrc.json`                                      | [config-lint.md](clean-room/config-lint.md)                             | `f50dc99`    |
+| `.oxfmtrc.jsonc`                                      | [config-lint.md](clean-room/config-lint.md)                             | `f50dc99`    |
+| `.github/workflows/ci.yaml`                           | [config-repo.md](clean-room/config-repo.md)                             | `8082d26`    |
+| `.github/workflows/publish.yml`                       | [config-repo.md](clean-room/config-repo.md)                             | `8082d26`    |
+| `.github/dependabot.yml`                              | [config-repo.md](clean-room/config-repo.md)                             | `8082d26`    |
+| `.vscode/tasks.json`                                  | [config-repo.md](clean-room/config-repo.md)                             | `8082d26`    |
+| `.vscode/launch.json`                                 | [config-repo.md](clean-room/config-repo.md)                             | `8082d26`    |
+| `.vscode/settings.json`                               | [config-repo.md](clean-room/config-repo.md)                             | `8082d26`    |
+| `.vscode/extensions.json`                             | [config-repo.md](clean-room/config-repo.md)                             | `8082d26`    |
+| `.gitattributes`                                      | [config-repo.md](clean-room/config-repo.md)                             | `8082d26`    |
+| `.gitignore`                                          | [config-repo.md](clean-room/config-repo.md)                             | `8082d26`    |
+| `.vscodeignore`                                       | [config-repo.md](clean-room/config-repo.md)                             | `8082d26`    |
 
 Two inherited test files were not rewritten but removed, because other tests check the same behaviour: `tests-ext/repoManager.test.ts` and `tests/webview/components/commit/RefLabel.test.ts` ([tests-discovery-extension.md](clean-room/tests-discovery-extension.md) Q5, [tests-webview-menus.md](clean-room/tests-webview-menus.md) Q8).
+
+The configuration batch also removed files instead of rewriting them: the four `oxlint/*.config.json` presets, now folded into one `.oxlintrc.json` ([config-lint.md](clean-room/config-lint.md) Q3), and the Nix development shell, `flake.nix`, `flake.lock` and `.envrc` ([config-repo.md](clean-room/config-repo.md) Q12).

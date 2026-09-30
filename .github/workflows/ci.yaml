@@ -1,16 +1,26 @@
+# Checks the tree once on Linux (lint) and tests on Linux, Windows and macOS (test).
+# publish.yml also calls this workflow to validate a release from the tagged commit.
 name: CI
 
 on:
   push:
-    branches: [main, "fix/**", "claude/**"]
+    # Tags are left out on purpose: publish.yml runs CI for a pushed tag.
+    branches:
+      - main
+      - "claude/**"
+      - "fix/**"
   pull_request:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
   workflow_call:
-  # Stable VS Code and Git change between pushes; a nightly run finds drift before the next change.
+  # Nightly, so that drift in stable VS Code, in the runners' Git and in VS Code Insiders shows
+  # up between pushes. Only this event runs the Insiders leg.
   schedule:
     - cron: "23 5 * * *"
 
+# A newer run for the same ref replaces one still in progress. The group always ends in the ref,
+# so it never equals the group of a publish run that calls this workflow.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -21,14 +31,15 @@ permissions:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
+      # One value, so that the check is named "lint (24)".
       matrix:
         node: [24]
-
     steps:
+      # The provenance check blames every line back to its commit, so it needs the full history.
       - uses: actions/checkout@v7
         with:
-          # The inherited-code check blames every line back to its commit.
           fetch-depth: 0
 
       - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
@@ -37,38 +48,44 @@ jobs:
           cache: true
           install: false
 
-      - name: Install locked dependencies
+      - name: Install the locked dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Format check
+      - name: Check formatting
         run: pnpm run format
 
-      - name: Run lint
-        run: pnpm run lint && pnpm run test:lint-rules
+      - name: Lint
+        run: pnpm run lint
 
-      - name: Run typecheck
+      - name: Test the lint rules
+        run: pnpm run test:lint-rules
+
+      - name: Type-check
         run: pnpm run typecheck
 
-      - name: Check l10n
+      - name: Check the localization bundles
         run: pnpm run l10n:check
 
-      - name: Validate extension identity and release checks
-        run: pnpm run check:release && pnpm run test:release
+      - name: Check the release identity
+        run: pnpm run check:release
+
+      - name: Test the release scripts
+        run: pnpm run test:release
 
       - name: Check links in packaged Markdown
         run: pnpm run check:links
 
-      - name: Check that no inherited code was added
+      - name: Check provenance
         run: pnpm run check:provenance
 
   test:
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
+    timeout-minutes: 30
     strategy:
+      # Let every platform finish and report, even when another fails.
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-
     steps:
       - uses: actions/checkout@v7
 
@@ -78,96 +95,112 @@ jobs:
           cache: true
           install: false
 
-      - name: Install locked dependencies
+      - name: Install the locked dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run tests
+      - name: Unit and component tests
         run: pnpm run test
 
-      - name: Check menu coverage
+      - name: Menu coverage
         if: runner.os == 'Linux'
         run: pnpm run test:coverage
 
-      # Each destructive-action test builds its own repository, so order must not matter. Vitest
-      # prints the seed, so a failing order can be reproduced with --sequence.seed.
-      - name: Run backend tests in a shuffled order
+      # Each destructive-action test builds its own repository, so the order must not matter.
+      # Vitest prints the seed, which replays a failing order.
+      - name: Backend tests in random order
         if: runner.os == 'Linux'
         run: pnpm exec vitest run --project backend --sequence.shuffle
 
-      # Git translates its messages but not its plumbing, porcelain, or -z output, and reports
-      # failures through its exit status. Parsing must not depend on the user's configuration,
-      # such as log.showSignature or color.ui=always, or on the language of Git's messages.
-      - name: Run backend and extension tests with a hostile Git configuration in German
+      # Ubuntu ships Git's German messages in the language pack.
+      - name: Install German language support
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends language-pack-de
+
+      # Git translates its messages but not its plumbing, porcelain or -z output. The tests must
+      # parse Git's output whatever the user's Git configuration and language. The step proves
+      # that Git speaks German first, so that it cannot pass in English.
+      - name: Backend and extension tests with a hostile Git configuration, in German
         if: runner.os == 'Linux'
         env:
           NGG_HOSTILE_GIT_CONFIG: "1"
+          LANG: de_DE.UTF-8
+          LC_ALL: de_DE.UTF-8
+          LANGUAGE: de
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends language-pack-de
-          # Ubuntu ships Git's translations in the language pack.
           if [ ! -f /usr/share/locale/de/LC_MESSAGES/git.mo ]; then
             export GIT_TEXTDOMAINDIR=/usr/share/locale-langpack
           fi
-          export LANG=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 LANGUAGE=de
-          # Stop unless Git really speaks German, so the step cannot pass in English.
-          git -C "$(mktemp -d)" rev-parse --git-dir 2>&1 | grep "Kein Git-Repository"
+          message="$(git -C "$(mktemp -d)" rev-parse --git-dir 2>&1 || true)"
+          echo "$message"
+          case "$message" in
+            *"Kein Git-Repository"*) ;;
+            *)
+              echo "::error::Git does not print its messages in German."
+              exit 1
+              ;;
+          esac
           pnpm exec vitest run --project backend --project extension
 
-      - name: Run extension and UI tests (Linux)
+      # Linux runners have no display; xvfb-run provides a virtual one.
+      - name: VS Code tests on a virtual display
         if: runner.os == 'Linux'
         run: xvfb-run -a pnpm run test:ext
 
-      - name: Run extension and UI tests (Windows/macOS)
+      - name: VS Code tests
         if: runner.os != 'Linux'
         run: pnpm run test:ext
 
-      - name: Run extension and UI tests against VS Code Insiders (nightly)
+      - name: VS Code tests against Insiders
         if: runner.os == 'Linux' && github.event_name == 'schedule'
         env:
           NGG_VSCODE_VERSION: insiders
         run: xvfb-run -a pnpm run test:ext
 
-      - name: Verify failure artifacts and minimum VS Code compatibility
+      - name: UI failure diagnostics and minimum VS Code version
         if: runner.os == 'Linux'
         run: xvfb-run -a pnpm run test:ui-harness
 
-      - name: Collect UI diagnostics
+      # Before the benchmarks, so that the artifact holds UI output only.
+      - name: Keep the UI diagnostics
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: ui-${{ matrix.os }}
+          name: ui-diagnostics-${{ matrix.os }}
           path: test-results/
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Benchmark large histories and workspaces
+      - name: Backend benchmark
         if: runner.os == 'Linux'
         run: pnpm run benchmark
 
-      - name: Benchmark graph interactions
+      - name: Interaction benchmark
         if: runner.os == 'Linux'
         run: xvfb-run -a pnpm run benchmark:ui
 
-      - name: Collect benchmark results
-        if: runner.os == 'Linux' && always()
+      - name: Keep the benchmark reports
+        if: always() && runner.os == 'Linux'
         uses: actions/upload-artifact@v7
         with:
-          name: benchmark
+          name: benchmarks
           path: |
             test-results/benchmark*.json
             test-results/benchmark*.cpuprofile
           if-no-files-found: ignore
           retention-days: 30
 
-      - name: Build installable extension
+      - name: Package the extension
         if: runner.os == 'Linux'
         run: pnpm run package:vsix --out branchwise.vsix
 
-      - name: Verify packaged upgrade and activation
+      - name: Install and activate the package
         if: runner.os == 'Linux'
         run: xvfb-run -a pnpm run test:package branchwise.vsix
 
-      - name: Upload extension
+      # publish.yml downloads the tested package by this name.
+      - name: Keep the package
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v7
         with:

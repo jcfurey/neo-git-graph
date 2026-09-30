@@ -8,6 +8,8 @@ const { test } = require("node:test");
 const {
   checkTranslations,
   englishProblems,
+  manifestKeys,
+  manifestProblems,
   placeholders,
   translationProblems
 } = require("./check-l10n.js");
@@ -15,11 +17,20 @@ const {
 const ENGLISH = { "A {0}": "A {0}", B: "B", "C {0} {1}": "C {0} {1}", D: "D" };
 const GOOD = { "A {0}": "a {0}", B: "b", "C {0} {1}": "c {1} {0}", D: "d" };
 
-/** A repository root holding `files` (path to JSON value), removed after the test. */
+/** A manifest that refers to every key of `english`, and to nothing else. */
+function manifestFor(english) {
+  return { contributes: { texts: Object.keys(english).map((key) => `%${key}%`) } };
+}
+
+/**
+ * A repository root holding `files` (path to JSON value), removed after the test. Unless `files`
+ * names one, its `package.json` refers to exactly the keys of its `package.nls.json`.
+ */
 function repository(t, files) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "branchwise-l10n-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const all = { "l10n/bundle.l10n.json": ENGLISH, "package.nls.json": {}, ...files };
+  const given = { "l10n/bundle.l10n.json": ENGLISH, "package.nls.json": {}, ...files };
+  const all = { "package.json": manifestFor(given["package.nls.json"]), ...given };
   for (const [file, value] of Object.entries(all)) {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     const text = typeof value === "string" ? value : JSON.stringify(value);
@@ -100,6 +111,51 @@ test("values that are not strings are reported instead of stopping the check", (
   assert.deepEqual(translationProblems(english, GOOD), []);
 });
 
+test("the manifest refers to a key with a whole string between percent signs, anywhere", () => {
+  const manifest = {
+    description: "%description%",
+    "%name%": "Branchwise",
+    contributes: {
+      commands: [
+        { command: "x.view", title: "%command.view%", category: "Branchwise" },
+        { command: "x.other", title: "%command.view%" }
+      ],
+      configuration: {
+        properties: {
+          "x.style": {
+            enum: ["%", "%start", "end%", "50 %", "a %inner% b"],
+            enumDescriptions: ["%config.style.a%", "%%", "%a%b%"]
+          }
+        }
+      }
+    },
+    engines: { vscode: "^1.0.0" },
+    count: 3,
+    enabled: true,
+    none: null
+  };
+  assert.deepEqual(manifestKeys(manifest), [
+    "description",
+    "command.view",
+    "config.style.a",
+    "",
+    "a%b"
+  ]);
+  assert.deepEqual(manifestKeys({}), []);
+});
+
+test("manifest problems list missing keys in manifest order, then unused keys in English order", () => {
+  const english = { a: "A", b: "B", c: "C", toString: "T" };
+  const manifest = { x: ["%c%", "%z%", "%a%"], y: { z: "%constructor%", again: "%z%" } };
+  assert.deepEqual(manifestProblems(english, manifest), [
+    'missing (used in package.json): "z"',
+    'missing (used in package.json): "constructor"',
+    'unused (not in package.json): "b"',
+    'unused (not in package.json): "toString"'
+  ]);
+  assert.deepEqual(manifestProblems({ a: "A", b: 2 }, { x: ["%b%", "%a%", "%a%"] }), []);
+});
+
 test("every translation file is checked, in sorted order, with one line each when it passes", (t) => {
   const root = repository(t, {
     "l10n/bundle.l10n.zz.json": GOOD,
@@ -157,6 +213,48 @@ test("an English value that is not a string fails the English file", (t) => {
     out: ["✓ bundle.l10n.xx.json (4/4 translated)"],
     err: ["✗ bundle.l10n.json", '  not a string: "B"', "", "l10n check failed."]
   });
+});
+
+test("package.nls.json fails on keys the manifest lacks or refers to in vain", (t) => {
+  const root = repository(t, {
+    "package.json": {
+      description: "%description%",
+      contributes: { commands: [{ title: "%command.x%" }, { title: "%command.w%" }] }
+    },
+    "package.nls.json": { description: 2, "command.y": "Y", "command.w": "W" },
+    "package.nls.zh-cn.json": { description: "d", "command.y": "y", "command.w": "w" }
+  });
+  assert.deepEqual(check(root), {
+    code: 1,
+    out: ["✓ package.nls.zh-cn.json (3/3 translated)"],
+    err: [
+      "✗ package.nls.json",
+      '  not a string: "description"',
+      '  missing (used in package.json): "command.x"',
+      '  unused (not in package.json): "command.y"',
+      "",
+      "l10n check failed."
+    ]
+  });
+});
+
+test("the manifest is not compared with the extension's own English bundle", (t) => {
+  const root = repository(t, {
+    "package.json": { description: "%description%" },
+    "package.nls.json": { description: "D" },
+    "l10n/bundle.l10n.xx.json": GOOD
+  });
+  assert.deepEqual(check(root), {
+    code: 0,
+    out: ["✓ bundle.l10n.xx.json (4/4 translated)"],
+    err: []
+  });
+});
+
+test("without a manifest the check stops with Node's own error", (t) => {
+  const root = repository(t, {});
+  fs.rmSync(path.join(root, "package.json"));
+  assert.throws(() => check(root), { code: "ENOENT" });
 });
 
 test("with no translation files nothing is printed and the check passes", (t) => {
