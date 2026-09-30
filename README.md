@@ -1,25 +1,21 @@
 <div align="center">
-  <img src="./resources/icon.png" height="128"/>
-  <samp>
-    <h1>Branchwise for Visual Studio Code</h1>
-    <h3>Visual Git history, branch focus, repository workflows, and devcontainer support.</h3>
-  </samp>
+  <img src="resources/icon.png" alt="Branchwise icon" height="128" />
+  <h1>Branchwise for Visual Studio Code</h1>
+  <p>Visual Git history, branch focus, repository workflows, and devcontainer support.</p>
+  <p>
+    <a href="#features">Features</a> ·
+    <a href="#installation">Installation</a> ·
+    <a href="#status-and-roadmap">Status and roadmap</a> ·
+    <a href="#settings">Settings</a> ·
+    <a href="#contributing">Contributing</a> ·
+    <a href="#origins-and-license">Origins and license</a>
+  </p>
+  <p>
+    <a href="./LICENSE"><img src="https://img.shields.io/github/license/jcfurey/neo-git-graph" alt="License" /></a>
+  </p>
 </div>
 
-<h4 align="center">
-  <a href="#features">Features</a> |
-  <a href="#installation">Installation</a> |
-  <a href="#roadmap">Roadmap</a> |
-  <a href="#configuration">Configuration</a> |
-  <a href="#contributing">Contributing</a> |
-  <a href="#origins-and-license">Origins and license</a>
-</h4>
-
-<p align="center">
-  <a href="./LICENSE"><img src="https://img.shields.io/github/license/jcfurey/neo-git-graph" alt="License"></a>
-</p>
-
-<p>&nbsp;</p>
+<br />
 
 ## Features
 
@@ -43,13 +39,13 @@
 - **Remote branch checkout**: Reuse and fast-forward an existing local branch, or create a new tracking branch
 - **Branches pane**: Browse local branches, remotes, tags and stashes beside the graph; select or focus a branch, check out, fetch or apply inline, and hide individual remotes or all remote branches
 - **Graph view**: See branches, tags, and uncommitted changes in one graph. Click the uncommitted changes row at the top (or press Enter) to browse unstaged, staged, untracked, and conflicted files, then select a file to open its diff or merge editor.
-- **Commit details**: Click a commit to see message, files, and diffs
-- **Branch actions**: Create, checkout, rename, delete, and merge
-- **Tag actions**: Create, delete, and push tags
-- **Commit actions**: Checkout, cherry-pick, revert, and reset
+- **Commit details**: Select a commit to open a panel with its full message, the files it changed and a diff for each file
+- **Branch actions**: Create, check out, rename, delete and merge branches from the graph
+- **Tag actions**: Create and delete tags, and push them to a remote
+- **Commit actions**: Check out, cherry-pick or revert a commit, or reset the current branch to it
 - **Multi-repo**: Work with multiple repositories in one workspace, including initialized submodules and their nested submodules
 - **Repository selection**: Click a repository's Branchwise button in Source Control to open its graph or switch the existing graph to that repository
-- **Devcontainer support**: Works in remote and container environments
+- **Remote development**: Use Branchwise while VS Code is connected to a remote machine or container through Remote - SSH, WSL, Dev Containers or Codespaces
 - **Languages**: English, Simplified Chinese, and Traditional Chinese
 
 See [Working from the graph](docs/git-actions.md) for the available actions and their behavior.
@@ -83,7 +79,7 @@ minimum-version compatibility checks.
 
 After installing, the **Get started with Branchwise** walkthrough appears on the Welcome page. Reopen it any time with the **Getting Started** entry in the graph's settings cog.
 
-## Roadmap
+## Status and roadmap
 
 Branchwise already includes the Preact webview, request/response repository workflows, branch
 focus, individual remote visibility, horizontal graph navigation, and browsing of uncommitted
@@ -95,30 +91,30 @@ The backlog reviewed 2026-09-25 is complete; [todo.md](todo.md) records each ite
 criteria and how it was verified. Row virtualization and ancestry caching remain deferred; see the
 [performance report](docs/performance.md).
 
-## Configuration
+## Settings
 
 All settings use the `branchwise` prefix.
 
-| Setting                       | Default         | Description                                     |
-| ----------------------------- | --------------- | ----------------------------------------------- |
-| `autoCenterCommitDetailsView` | `true`          | Centre an opened commit's details vertically    |
-| `dateFormat`                  | `"Date & Time"` | `"Date & Time"`, `"Date Only"`, or `"Relative"` |
-| `dateType`                    | `"Author Date"` | `"Author Date"` or `"Commit Date"`              |
-| `fetchAvatars`                | `false`         | No effect; avatars were removed                 |
-| `graphColours`                | 12 defaults     | Colours of the graph's lanes, in order          |
-| `graphStyle`                  | `"rounded"`     | `"rounded"` or `"angular"`                      |
-| `initialLoadCommits`          | `300`           | Commits to load on open                         |
-| `loadMoreCommits`             | `100`           | Commits added by Load Older Commits             |
-| `maxDepthOfRepoSearch`        | `0`             | Folder depth searched for repositories          |
-| `showCurrentBranchByDefault`  | `false`         | Show only current branch on open                |
-| `showUncommittedChanges`      | `true`          | Show the uncommitted changes row                |
-| `tabIconColourTheme`          | `"colour"`      | `"colour"` or `"grey"`                          |
+| Setting                       | Default         | Description                                                  |
+| ----------------------------- | --------------- | ------------------------------------------------------------ |
+| `autoCenterCommitDetailsView` | `true`          | Centre an opened commit's details vertically                 |
+| `dateFormat`                  | `"Date & Time"` | Show dates as `"Date & Time"`, `"Date Only"` or `"Relative"` |
+| `dateType`                    | `"Author Date"` | Show each commit's `"Author Date"` or `"Commit Date"`        |
+| `fetchAvatars`                | `false`         | No effect; avatars were removed                              |
+| `graphColours`                | 12 defaults     | Colours of the graph's lanes, in order                       |
+| `graphStyle`                  | `"rounded"`     | Lines that change lanes: `"rounded"` or `"angular"`          |
+| `initialLoadCommits`          | `300`           | Commits first loaded for a repository or branch              |
+| `loadMoreCommits`             | `100`           | Commits added by Load Older Commits                          |
+| `maxDepthOfRepoSearch`        | `0`             | Folder depth searched for repositories                       |
+| `showCurrentBranchByDefault`  | `false`         | Open showing only the checked-out branch                     |
+| `showUncommittedChanges`      | `true`          | Show the uncommitted changes row                             |
+| `tabIconColourTheme`          | `"colour"`      | Graph tab icon in `"colour"` or `"grey"`                     |
 
 ## Contributing
 
 Please use [Issues](https://github.com/jcfurey/neo-git-graph/issues) for bug reports, feature requests, and discussion.
 
-See the [Roadmap](#roadmap) for the project's current direction.
+See [Status and roadmap](#status-and-roadmap) for what has shipped and where the project is heading.
 
 ## Origins and license
 
