@@ -50,7 +50,7 @@ async function main() {
         description: "Package upgrade test fixture",
         engines: manifest.engines,
         repository: manifest.repository,
-        license: "MIT"
+        license: manifest.license
       })
     );
     fs.copyFileSync(path.join(__dirname, "..", "LICENSE"), path.join(previous, "LICENSE"));

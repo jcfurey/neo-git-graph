@@ -2102,7 +2102,6 @@
       "\"branch\",",
       "\"git\",",
       "\"bugs\": {",
-      "\"license\": \"MIT\",",
       "\"repository\": {",
       "\"type\": \"git\",",
       "\"main\": \"./out/extension.js\",",

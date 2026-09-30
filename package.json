@@ -19,7 +19,7 @@
   "bugs": {
     "url": "https://github.com/jcfurey/neo-git-graph/issues"
   },
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/jcfurey/neo-git-graph.git"

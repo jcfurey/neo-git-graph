@@ -124,7 +124,8 @@ which continued mhutchie's [Git Graph](https://github.com/mhutchie/vscode-git-gr
 its last commit under the MIT License. Later Git Graph releases use a different license, and no code
 from them is included.
 
-Branchwise is released under the MIT License; see [LICENSE](LICENSE), which keeps both projects'
-copyright notices as the license requires. Branchwise is replacing the inherited code module by
-module; [Replacing inherited code](docs/provenance.md) describes how, and how much is left.
-Branchwise is not affiliated with or endorsed by either project.
+Branchwise has since replaced everything it inherited from both projects, module by module;
+[Replacing inherited code](docs/provenance.md) describes how. It is released under the
+[Apache License 2.0](LICENSE). Earlier versions, which still contained inherited code, were
+released under the MIT License with both projects' copyright notices. Branchwise is not affiliated
+with or endorsed by either project.

@@ -1,8 +1,10 @@
 # Replacing inherited code
 
 Branchwise began as a fork of [asispts/neo-git-graph](https://github.com/asispts/neo-git-graph),
-which continued mhutchie's [Git Graph](https://github.com/mhutchie/vscode-git-graph). The goal is
-for Branchwise to contain no code from either project. Until it does, [LICENSE](../LICENSE) keeps
+which continued mhutchie's [Git Graph](https://github.com/mhutchie/vscode-git-graph). The goal was
+for Branchwise to contain no code or text from either project, so that it could be released under
+a license of its own. Every inherited line has now been replaced, and Branchwise is released under
+the [Apache License 2.0](../LICENSE). Earlier versions, which still contained inherited code, kept
 both projects' MIT notices, as their license requires.
 
 ## Measuring what is left

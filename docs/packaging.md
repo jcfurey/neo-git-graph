@@ -2,9 +2,8 @@
 
 The checked-in manifest is the source of truth: `jcfurey.branchwise@0.9.7`.
 Keep `publisher` and `name` stable so local VSIX installations upgrade the existing installation.
-When changing metadata, keep the upstream projects' copyright notices in `LICENSE` and their
-credits in the README's [Origins and license](../README.md#origins-and-license) section; the
-manifest does not name them.
+When changing metadata, keep the README's [Origins and license](../README.md#origins-and-license)
+section, which credits the projects Branchwise began from; the manifest does not name them.
 
 ## Build and install
 
