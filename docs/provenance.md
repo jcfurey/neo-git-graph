@@ -96,10 +96,10 @@ requires. The specification sorts every entry into three kinds:
 
 ## End state
 
-When `pnpm run provenance` reports no inherited lines and the logged rewrites cover the modules
-that had them, Branchwise moves to a new repository that starts from a fresh first commit, so its
-history contains no upstream code either. This repository is then archived as the record of where
-the code came from and how it was replaced.
+Now that `pnpm run provenance` reports no inherited lines and the logged rewrites cover the
+modules that had them, Branchwise moves to a new repository that starts from a fresh first commit,
+so its history contains no upstream code either. This repository is then archived as the record of
+where the code came from and how it was replaced.
 
 ## Rewritten modules
 
@@ -270,7 +270,12 @@ the code came from and how it was replaced.
 | `.gitattributes`                                      | [config-repo.md](clean-room/config-repo.md)                             | `8082d26`    |
 | `.gitignore`                                          | [config-repo.md](clean-room/config-repo.md)                             | `8082d26`    |
 | `.vscodeignore`                                       | [config-repo.md](clean-room/config-repo.md)                             | `8082d26`    |
+| `README.md`                                           | [readme-and-templates.md](clean-room/readme-and-templates.md)           | `55e7e8b`    |
+| `.github/ISSUE_TEMPLATE/bug_report.yml`               | [readme-and-templates.md](clean-room/readme-and-templates.md)           | `55e7e8b`    |
+| `.github/ISSUE_TEMPLATE/feature_request.yml`          | [readme-and-templates.md](clean-room/readme-and-templates.md)           | `55e7e8b`    |
 
 Two inherited test files were not rewritten but removed, because other tests check the same behaviour: `tests-ext/repoManager.test.ts` and `tests/webview/components/commit/RefLabel.test.ts` ([tests-discovery-extension.md](clean-room/tests-discovery-extension.md) Q5, [tests-webview-menus.md](clean-room/tests-webview-menus.md) Q8).
 
 The configuration batch also removed files instead of rewriting them: the four `oxlint/*.config.json` presets, now folded into one `.oxlintrc.json` ([config-lint.md](clean-room/config-lint.md) Q3), and the Nix development shell, `flake.nix`, `flake.lock` and `.envrc` ([config-repo.md](clean-room/config-repo.md) Q12).
+
+The last batch replaced the Markdown issue templates with issue forms, removed the upstream release notes from `CHANGELOG.md` in favour of a link to asispts/neo-git-graph's changelog, and replaced the MIT notices in `LICENSE` with the Apache License 2.0 ([readme-and-templates.md](clean-room/readme-and-templates.md) D2, D6, D7). `pnpm run provenance` now reports no inherited lines.
